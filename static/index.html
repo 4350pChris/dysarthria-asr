@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dysarthria ASR Prototype</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="toolbar">
+        <h1>Dysarthria ASR</h1>
+        <button id="record">Aufnehmen</button>
+        <button id="stop" disabled>Stopp</button>
+        <button id="speak" disabled>Vorlesen</button>
+      </section>
+
+      <label>
+        Testsatz
+        <select id="phrase">
+          <option value="">Freier Text</option>
+        </select>
+      </label>
+
+      <label>
+        Erwarteter Satz
+        <input id="expected" placeholder="Was gesagt werden sollte" />
+      </label>
+
+      <label>
+        Rohe ASR-Erkennung
+        <textarea id="raw" readonly placeholder="Die Erkennung erscheint hier"></textarea>
+      </label>
+
+      <label>
+        Korrigierter Satz
+        <textarea id="corrected" placeholder="Den gemeinten Satz eingeben"></textarea>
+      </label>
+
+      <label>
+        Notizen
+        <input id="notes" placeholder="Optional: Kategorie, Geräusche, Sicherheit" />
+      </label>
+
+      <label class="checkbox">
+        <input id="understandable" type="checkbox" />
+        Rohe ASR war verständlich
+      </label>
+
+      <button id="save" disabled>Korrektur speichern</button>
+      <p id="status"></p>
+
+      <section class="review">
+        <h2>Letzte Versuche</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Erwartet</th>
+              <th>Rohe ASR</th>
+              <th>Korrigiert</th>
+              <th>OK</th>
+            </tr>
+          </thead>
+          <tbody id="corrections"></tbody>
+        </table>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

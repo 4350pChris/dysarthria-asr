@@ -1,0 +1,108 @@
+category,text
+greetings,Hallo.
+greetings,Guten Morgen.
+greetings,Guten Abend.
+greetings,Tschüss.
+greetings,Bis später.
+greetings,Schön dich zu sehen.
+greetings,Wie geht es dir?
+greetings,Mir geht es gut.
+greetings,Mir geht es nicht gut.
+requests,Ich brauche Wasser.
+requests,Ich möchte Kaffee.
+requests,Ich möchte Tee.
+requests,Ich habe Hunger.
+requests,Ich habe Durst.
+requests,Ich möchte etwas essen.
+requests,Ich brauche eine Pause.
+requests,Ich möchte mich hinlegen.
+requests,Ich möchte aufstehen.
+requests,Ich möchte raus.
+requests,Ich möchte nach Hause.
+requests,Bitte hilf mir.
+requests,Kannst du mir helfen?
+requests,Bitte komm her.
+requests,Bitte bleib hier.
+care,Ich muss auf's Klo.
+care,Ich habe Schmerzen.
+care,Mir ist kalt.
+care,Mir ist warm.
+care,Mir ist schlecht.
+care,Mir ist schwindelig.
+care,Ich bin müde.
+care,Ich brauche meine Medikamente.
+care,Ich brauche den Arzt.
+care,Ich brauche die Pflege.
+care,Ich kann nicht schlafen.
+care,Ich brauche ein Kissen.
+care,Ich brauche eine Decke.
+care,Bitte mach das Fenster auf.
+care,Bitte mach das Fenster zu.
+clarification,Ja.
+clarification,Nein.
+clarification,Vielleicht.
+clarification,Ich weiß nicht.
+clarification,Bitte wiederholen.
+clarification,Bitte langsamer.
+clarification,Bitte lauter.
+clarification,Bitte leiser.
+clarification,Ich verstehe dich nicht.
+clarification,Hast du mich verstanden?
+clarification,Das stimmt.
+clarification,Das stimmt nicht.
+clarification,Genau.
+clarification,Noch einmal bitte.
+clarification,Warte bitte.
+comfort,Das tut weh.
+comfort,Das ist besser.
+comfort,Das ist zu eng.
+comfort,Das ist zu locker.
+comfort,Bitte vorsichtig.
+comfort,Bitte hör auf.
+comfort,So ist es gut.
+comfort,Ich brauche Ruhe.
+comfort,Ich brauche Hilfe beim Sitzen.
+comfort,Ich brauche Hilfe beim Liegen.
+objects,Wo ist mein Handy?
+objects,Wo ist meine Brille?
+objects,Wo ist meine Tasche?
+objects,Wo ist die Fernbedienung?
+objects,Ich brauche mein Ladegerät.
+objects,Ich brauche meine Kopfhörer.
+objects,Ich brauche Papier.
+objects,Ich brauche einen Stift.
+locations,Ich möchte ins Wohnzimmer.
+locations,Ich möchte ins Schlafzimmer.
+locations,Ich möchte in die Küche.
+locations,Ich möchte ins Bad.
+locations,Ich möchte nach draußen.
+locations,Ich möchte zurück.
+social,Danke.
+social,Bitte.
+social,Entschuldigung.
+social,Kein Problem.
+social,Ich freue mich.
+social,Das ist schön.
+social,Das ist lustig.
+social,Ich bin traurig.
+social,Ich bin sauer.
+social,Ich habe Angst.
+social,Ich möchte allein sein.
+social,Ich möchte reden.
+social,Ruf mich bitte an.
+social,Schreib mir bitte.
+daily,Wie spät ist es?
+daily,Welcher Tag ist heute?
+daily,Was gibt es zu essen?
+daily,Was machen wir heute?
+daily,Ich möchte Musik hören.
+daily,Ich möchte fernsehen.
+daily,Ich möchte lesen.
+daily,Ich möchte schlafen.
+daily,Ich möchte duschen.
+daily,Ich möchte mich waschen.
+daily,Ich möchte mich umziehen.
+daily,Bitte mach das Licht an.
+daily,Bitte mach das Licht aus.
+daily,Bitte mach die Tür auf.
+daily,Bitte mach die Tür zu.
