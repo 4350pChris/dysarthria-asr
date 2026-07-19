@@ -1,11 +1,13 @@
 let recorder;
 let chunks = [];
 let lastResult;
+let source = "browser_recording";
 
 const recordButton = document.querySelector("#record");
 const stopButton = document.querySelector("#stop");
 const speakButton = document.querySelector("#speak");
 const saveButton = document.querySelector("#save");
+const upload = document.querySelector("#upload");
 const phrase = document.querySelector("#phrase");
 const expected = document.querySelector("#expected");
 const raw = document.querySelector("#raw");
@@ -22,6 +24,7 @@ function setStatus(message) {
 recordButton.addEventListener("click", async () => {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   chunks = [];
+  source = "browser_recording";
   recorder = new MediaRecorder(stream);
   recorder.ondataavailable = (event) => chunks.push(event.data);
   recorder.onstop = async () => {
@@ -42,6 +45,18 @@ stopButton.addEventListener("click", () => {
   setStatus("Erkennung läuft...");
 });
 
+upload.addEventListener("change", async () => {
+  const file = upload.files[0];
+  if (!file) return;
+  source = "uploaded_audio";
+  recordButton.disabled = true;
+  stopButton.disabled = true;
+  saveButton.disabled = true;
+  speakButton.disabled = true;
+  setStatus("Upload wird erkannt...");
+  await transcribe(file, file.name);
+});
+
 speakButton.addEventListener("click", () => {
   const text = corrected.value.trim() || raw.value.trim();
   if (!text) return;
@@ -55,6 +70,7 @@ saveButton.addEventListener("click", async () => {
   const form = new FormData();
   form.append("audio_id", lastResult.audio_id);
   form.append("audio_path", lastResult.audio_path);
+  form.append("source", source);
   form.append("expected_text", expected.value);
   form.append("raw_transcript", raw.value);
   form.append("corrected_text", corrected.value);
@@ -75,9 +91,9 @@ phrase.addEventListener("change", () => {
   if (!corrected.value.trim()) corrected.value = phrase.value;
 });
 
-async function transcribe(blob) {
+async function transcribe(blob, filename = "recording.webm") {
   const form = new FormData();
-  form.append("audio", blob, "recording.webm");
+  form.append("audio", blob, filename);
 
   try {
     const response = await fetch("/api/transcribe", { method: "POST", body: form });

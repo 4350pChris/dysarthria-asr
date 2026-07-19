@@ -52,6 +52,7 @@ async def transcribe(audio: UploadFile = File(...)) -> dict:
 async def save_correction(
     audio_id: str = Form(...),
     audio_path: str = Form(""),
+    source: str = Form("browser_recording"),
     expected_text: str = Form(""),
     raw_transcript: str = Form(""),
     corrected_text: str = Form(...),
@@ -63,6 +64,7 @@ async def save_correction(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "audio_id": audio_id,
         "audio_file": audio_path,
+        "source": source,
         "expected_text": expected_text,
         "raw_transcript": raw_transcript,
         "corrected_text": corrected_text,
