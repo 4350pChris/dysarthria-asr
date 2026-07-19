@@ -21,6 +21,10 @@ function setStatus(message) {
   status.textContent = message;
 }
 
+function phraseNumber(index) {
+  return String(index + 1).padStart(3, "0");
+}
+
 recordButton.addEventListener("click", async () => {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   chunks = [];
@@ -71,6 +75,7 @@ saveButton.addEventListener("click", async () => {
   form.append("audio_id", lastResult.audio_id);
   form.append("audio_path", lastResult.audio_path);
   form.append("source", source);
+  form.append("phrase_number", phrase.selectedOptions[0]?.dataset.number || "");
   form.append("expected_text", expected.value);
   form.append("raw_transcript", raw.value);
   form.append("corrected_text", corrected.value);
@@ -118,12 +123,14 @@ async function loadPhrases() {
   const response = await fetch("/api/phrases");
   if (!response.ok) return;
   const phrases = await response.json();
-  for (const item of phrases) {
+  phrases.forEach((item, index) => {
+    const number = item.number || phraseNumber(index);
     const option = document.createElement("option");
     option.value = item.text || "";
-    option.textContent = item.category ? `${item.category}: ${item.text}` : item.text;
+    option.dataset.number = number;
+    option.textContent = `${number} ${item.text}`;
     phrase.append(option);
-  }
+  });
 }
 
 async function loadCorrections() {
@@ -134,6 +141,7 @@ async function loadCorrections() {
     ...rows.map((row) => {
       const tr = document.createElement("tr");
       for (const value of [
+        row.phrase_number || "",
         row.expected_text || "",
         row.raw_transcript || "",
         row.corrected_text || "",
