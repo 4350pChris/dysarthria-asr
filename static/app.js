@@ -93,7 +93,7 @@ saveButton.addEventListener("click", async () => {
 
 phrase.addEventListener("change", () => {
   expected.value = phrase.value;
-  if (!corrected.value.trim()) corrected.value = phrase.value;
+  corrected.value = phrase.value;
 });
 
 async function transcribe(blob, filename = "recording.webm") {
@@ -108,7 +108,7 @@ async function transcribe(blob, filename = "recording.webm") {
     }
     lastResult = await response.json();
     raw.value = lastResult.raw_transcript;
-    corrected.value = lastResult.raw_transcript;
+    corrected.value = phrase.value || lastResult.raw_transcript;
     saveButton.disabled = false;
     speakButton.disabled = false;
     setStatus(`Audio gespeichert als ${lastResult.audio_path}`);
