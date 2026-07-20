@@ -4,11 +4,12 @@ import json
 import os
 import uuid
 import csv
+import io
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .asr import transcribe_german
@@ -19,9 +20,35 @@ DATA_DIR = ROOT / "data"
 AUDIO_DIR = DATA_DIR / "audio"
 CORRECTIONS_FILE = DATA_DIR / "corrections.jsonl"
 PHRASES_FILE = DATA_DIR / "phrases.csv"
+CORRECTION_FIELDS = [
+    "created_at",
+    "audio_id",
+    "audio_file",
+    "source",
+    "phrase_number",
+    "expected_text",
+    "raw_transcript",
+    "corrected_text",
+    "was_understandable",
+    "notes",
+]
 
 app = FastAPI(title="Dysarthria ASR Prototype")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+def read_corrections() -> list[dict]:
+    if not CORRECTIONS_FILE.exists():
+        return []
+    return [
+        json.loads(line)
+        for line in CORRECTIONS_FILE.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def normalize_text(text: str) -> str:
+    return " ".join(text.casefold().strip().rstrip(".!?").split())
 
 
 @app.get("/")
@@ -80,14 +107,56 @@ async def save_correction(
 
 @app.get("/api/corrections")
 def list_corrections() -> list[dict]:
-    if not CORRECTIONS_FILE.exists():
-        return []
-    records = [
-        json.loads(line)
-        for line in CORRECTIONS_FILE.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-    return records[-50:][::-1]
+    return read_corrections()[-50:][::-1]
+
+
+@app.get("/api/corrections.csv")
+def export_corrections() -> Response:
+    records = read_corrections()
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=CORRECTION_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(records)
+    return Response(
+        output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=corrections.csv"},
+    )
+
+
+@app.get("/api/analysis")
+def analyze_corrections() -> dict:
+    records = read_corrections()
+    total = len(records)
+    understandable = sum(1 for row in records if row.get("was_understandable"))
+    exact = sum(
+        1
+        for row in records
+        if normalize_text(row.get("raw_transcript", ""))
+        == normalize_text(row.get("expected_text", ""))
+    )
+    by_phrase = {}
+    for row in records:
+        key = row.get("phrase_number") or "?"
+        item = by_phrase.setdefault(
+            key,
+            {"phrase_number": key, "expected_text": row.get("expected_text", ""), "attempts": 0, "failures": 0},
+        )
+        item["attempts"] += 1
+        if not row.get("was_understandable"):
+            item["failures"] += 1
+    worst_phrases = sorted(
+        by_phrase.values(),
+        key=lambda item: (-item["failures"], -item["attempts"], item["phrase_number"]),
+    )[:10]
+    return {
+        "total": total,
+        "understandable": understandable,
+        "understandable_rate": understandable / total if total else 0,
+        "exact_matches": exact,
+        "exact_match_rate": exact / total if total else 0,
+        "worst_phrases": worst_phrases,
+    }
 
 
 @app.get("/api/phrases")

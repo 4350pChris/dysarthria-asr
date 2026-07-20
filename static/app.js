@@ -16,6 +16,10 @@ const notes = document.querySelector("#notes");
 const understandable = document.querySelector("#understandable");
 const status = document.querySelector("#status");
 const corrections = document.querySelector("#corrections");
+const total = document.querySelector("#total");
+const understandableRate = document.querySelector("#understandableRate");
+const exactRate = document.querySelector("#exactRate");
+const worstPhrases = document.querySelector("#worstPhrases");
 
 function setStatus(message) {
   status.textContent = message;
@@ -23,6 +27,10 @@ function setStatus(message) {
 
 function phraseNumber(index) {
   return String(index + 1).padStart(3, "0");
+}
+
+function percent(value) {
+  return `${Math.round(value * 100)}%`;
 }
 
 recordButton.addEventListener("click", async () => {
@@ -89,6 +97,7 @@ saveButton.addEventListener("click", async () => {
   }
   setStatus("Gespeichert.");
   await loadCorrections();
+  await loadAnalysis();
 });
 
 phrase.addEventListener("change", () => {
@@ -156,5 +165,31 @@ async function loadCorrections() {
   );
 }
 
+async function loadAnalysis() {
+  const response = await fetch("/api/analysis");
+  if (!response.ok) return;
+  const analysis = await response.json();
+  total.textContent = analysis.total;
+  understandableRate.textContent = percent(analysis.understandable_rate);
+  exactRate.textContent = percent(analysis.exact_match_rate);
+  worstPhrases.replaceChildren(
+    ...analysis.worst_phrases.map((row) => {
+      const tr = document.createElement("tr");
+      for (const value of [
+        row.phrase_number,
+        row.expected_text,
+        row.failures,
+        row.attempts,
+      ]) {
+        const td = document.createElement("td");
+        td.textContent = value;
+        tr.append(td);
+      }
+      return tr;
+    }),
+  );
+}
+
 loadPhrases();
 loadCorrections();
+loadAnalysis();

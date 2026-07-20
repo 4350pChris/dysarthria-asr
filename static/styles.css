@@ -52,7 +52,9 @@ textarea {
   resize: vertical;
 }
 
-button {
+button,
+.button {
+  display: inline-block;
   border: 0;
   border-radius: 6px;
   padding: 10px 14px;
@@ -61,6 +63,7 @@ button {
   color: white;
   background: #245b78;
   cursor: pointer;
+  text-decoration: none;
 }
 
 button:disabled {
@@ -85,12 +88,47 @@ button:disabled {
   color: #375466;
 }
 
+.analysis,
 .review {
   margin-top: 32px;
 }
 
+.review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 h2 {
   font-size: 18px;
+}
+
+h3 {
+  margin-top: 24px;
+  font-size: 16px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metrics div {
+  border: 1px solid #d7dee3;
+  border-radius: 6px;
+  padding: 12px;
+  background: white;
+}
+
+.metrics strong,
+.metrics span {
+  display: block;
+}
+
+.metrics strong {
+  font-size: 24px;
 }
 
 table {

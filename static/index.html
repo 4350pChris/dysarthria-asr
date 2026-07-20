@@ -55,8 +55,32 @@
       <button id="save" disabled>Korrektur speichern</button>
       <p id="status"></p>
 
+      <section class="analysis">
+        <h2>Analyse</h2>
+        <div class="metrics">
+          <div><strong id="total">0</strong><span>Versuche</span></div>
+          <div><strong id="understandableRate">0%</strong><span>verständlich</span></div>
+          <div><strong id="exactRate">0%</strong><span>exakt erkannt</span></div>
+        </div>
+        <h3>Häufige Probleme</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Nr.</th>
+              <th>Satz</th>
+              <th>Fehler</th>
+              <th>Versuche</th>
+            </tr>
+          </thead>
+          <tbody id="worstPhrases"></tbody>
+        </table>
+      </section>
+
       <section class="review">
-        <h2>Letzte Versuche</h2>
+        <div class="review-header">
+          <h2>Letzte Versuche</h2>
+          <a class="button" href="/api/corrections.csv" download>CSV exportieren</a>
+        </div>
         <table>
           <thead>
             <tr>
