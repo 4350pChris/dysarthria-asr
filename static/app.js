@@ -33,6 +33,17 @@ function percent(value) {
   return `${Math.round(value * 100)}%`;
 }
 
+function clearAttempt() {
+  lastResult = undefined;
+  upload.value = "";
+  raw.value = "";
+  notes.value = "";
+  understandable.checked = false;
+  saveButton.disabled = true;
+  speakButton.disabled = true;
+  setStatus("");
+}
+
 recordButton.addEventListener("click", async () => {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   chunks = [];
@@ -101,6 +112,7 @@ saveButton.addEventListener("click", async () => {
 });
 
 phrase.addEventListener("change", () => {
+  clearAttempt();
   expected.value = phrase.value;
   corrected.value = phrase.value;
 });
