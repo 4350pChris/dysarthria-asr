@@ -87,7 +87,9 @@ function stopRecording() {
 
 function speakHelp() {
   speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance('Sag aufnehmen, stopp, vorlesen, weiter, zurück oder hilfe.')
+  const utterance = new SpeechSynthesisUtterance(
+    'Sag aufnehmen. Sprich deinen Satz. Ich stoppe automatisch, wenn es ruhig ist. Danach sag vorlesen. Sag weiter für den nächsten Vorschlag. Sag zurück für den vorherigen Vorschlag.'
+  )
   utterance.lang = 'de-DE'
   speechSynthesis.speak(utterance)
 }
