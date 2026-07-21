@@ -17,7 +17,7 @@ function confidence(suggestion?: Suggestion) {
 <template>
   <section class="space-y-4">
     <UCard>
-      <p class="text-sm font-semibold text-slate-500">
+      <p class="text-sm font-semibold text-muted">
         Vorschlag {{ confidence(selected) }}%
       </p>
       <UButton

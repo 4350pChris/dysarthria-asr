@@ -34,7 +34,7 @@ async function createCategory() {
 </script>
 
 <template>
-  <UMain class="min-h-dvh bg-slate-50 px-4 py-5 text-slate-950">
+  <UMain class="min-h-dvh bg-default px-4 py-5 text-highlighted">
     <UContainer class="max-w-md space-y-5">
       <UButton
         class="min-h-14 rounded-2xl font-extrabold"
@@ -48,7 +48,7 @@ async function createCategory() {
       </UButton>
 
       <header>
-        <p class="text-sm font-semibold text-slate-500">
+        <p class="text-sm font-semibold text-muted">
           Satz auswählen
         </p>
         <h1 class="mt-1 text-3xl font-bold tracking-normal">
@@ -58,7 +58,7 @@ async function createCategory() {
 
       <p
         v-if="status"
-        class="text-lg font-semibold text-slate-600"
+        class="text-lg font-semibold text-toned"
       >
         {{ status }}
       </p>

@@ -17,7 +17,7 @@ defineEmits<{
       v-for="phrase in phrases"
       :key="phrase.id"
     >
-      <p class="text-xl font-bold leading-snug text-slate-950">
+      <p class="text-xl font-bold leading-snug text-highlighted">
         {{ phrase.text }}
       </p>
       <div class="mt-4 grid grid-cols-3 gap-2">

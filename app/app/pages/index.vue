@@ -73,7 +73,7 @@ function submit() {
 </script>
 
 <template>
-  <UMain class="min-h-dvh bg-slate-50 px-4 py-5 text-slate-950">
+  <UMain class="min-h-dvh bg-default px-4 py-5 text-highlighted">
     <UContainer class="flex min-h-[calc(100dvh-2.5rem)] max-w-md flex-col">
       <SpeakerHeader />
 
@@ -107,7 +107,7 @@ function submit() {
           }"
         />
 
-        <p class="min-h-7 text-center text-lg font-semibold text-slate-600">
+        <p class="min-h-7 text-center text-lg font-semibold text-toned">
           {{ speech.status.value }}
         </p>
 

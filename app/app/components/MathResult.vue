@@ -12,7 +12,7 @@ defineEmits<{
 <template>
   <section class="space-y-4">
     <UCard>
-      <p class="text-sm font-semibold text-slate-500">
+      <p class="text-sm font-semibold text-muted">
         Mathe
       </p>
       <UButton
@@ -24,7 +24,7 @@ defineEmits<{
       >
         {{ mathText }}
       </UButton>
-      <p class="mt-3 text-base font-semibold text-slate-500">
+      <p class="mt-3 text-base font-semibold text-muted">
         {{ correctedText }}
       </p>
     </UCard>

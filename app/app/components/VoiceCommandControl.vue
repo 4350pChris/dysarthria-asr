@@ -40,7 +40,7 @@ defineEmits<{
       :ui="{ leadingIcon: 'size-7', base: 'flex-col gap-2' }"
       @click="$emit('stop')"
     />
-    <p class="min-h-6 text-center text-sm font-semibold text-slate-500">
+    <p class="min-h-6 text-center text-sm font-semibold text-muted">
       {{ isSupported ? status : 'Sprachsteuerung braucht Chrome oder einen kompatiblen Browser.' }}
     </p>
   </section>

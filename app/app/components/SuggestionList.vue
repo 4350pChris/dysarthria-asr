@@ -16,7 +16,7 @@ defineEmits<{
     v-if="suggestions.length > 1"
     class="space-y-2"
   >
-    <p class="text-sm font-semibold text-slate-500">
+    <p class="text-sm font-semibold text-muted">
       Andere Vorschläge
     </p>
     <UButton
@@ -31,8 +31,8 @@ defineEmits<{
       @click="$emit('select', suggestion)"
     >
       <span class="grid w-full grid-cols-[1fr_auto] items-center gap-3">
-        <strong class="text-base text-slate-950">{{ suggestion.text }}</strong>
-        <small class="font-extrabold text-slate-500">{{ Math.round(suggestion.score * 100) }}%</small>
+        <strong class="text-base text-highlighted">{{ suggestion.text }}</strong>
+        <small class="font-extrabold text-muted">{{ Math.round(suggestion.score * 100) }}%</small>
       </span>
     </UButton>
   </section>
