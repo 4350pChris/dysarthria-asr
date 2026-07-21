@@ -6,7 +6,11 @@ from difflib import SequenceMatcher
 from fastapi import HTTPException
 
 from .database import connect_db
+from .semantic_matching import semantic_scores
 from .text import normalize_text
+
+FUZZY_FALLBACK_THRESHOLD = 0.72
+SEMANTIC_WEIGHT = 0.65
 
 
 def read_phrases() -> list[dict]:
@@ -48,8 +52,9 @@ def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
     normalized = normalize_text(text)
     if not normalized:
         return []
+    phrases = read_phrases()
     scored = []
-    for phrase in read_phrases():
+    for phrase in phrases:
         score = SequenceMatcher(None, normalized, normalize_text(phrase.get("text", ""))).ratio()
         scored.append(
             {
@@ -58,7 +63,24 @@ def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
                 "score": round(score, 3),
             }
         )
+
+    best_fuzzy = max((item["score"] for item in scored), default=0)
+    if best_fuzzy < FUZZY_FALLBACK_THRESHOLD:
+        scored = apply_semantic_fallback(text, phrases, scored)
+
     return sorted(scored, key=lambda item: item["score"], reverse=True)[:limit]
+
+
+def apply_semantic_fallback(text: str, phrases: list[dict], scored: list[dict]) -> list[dict]:
+    try:
+        semantic_by_id = semantic_scores(text, phrases)
+    except Exception:
+        return scored
+
+    for item in scored:
+        semantic_score = semantic_by_id.get(item["phrase_id"], 0)
+        item["score"] = round(max(item["score"], semantic_score * SEMANTIC_WEIGHT), 3)
+    return scored
 
 
 def create_category(name: str) -> dict:

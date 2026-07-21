@@ -9,6 +9,7 @@ dependencies = [
   "python-multipart",
   "faster-whisper",
   "text2num>=3.0.2",
+  "sentence-transformers>=5.0.0",
 ]
 
 [tool.uv]
