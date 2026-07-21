@@ -25,7 +25,7 @@ defineEmits<{
           class="min-h-14 justify-center rounded-2xl font-extrabold"
           color="primary"
           icon="i-lucide-volume-2"
-          :to="{ path: '/', query: { phrase: phrase.number } }"
+          :to="{ path: '/', query: { phrase: phrase.id } }"
         >
           Sagen
         </UButton>

@@ -1,12 +1,11 @@
 export type Suggestion = {
-  phrase_number: string
+  phrase_id: number
   text: string
   score: number
 }
 
 export type Phrase = {
   id: number
-  number: string
   category: string
   text: string
 }

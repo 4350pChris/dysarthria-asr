@@ -11,6 +11,6 @@ export async function usePhrases() {
     categories,
     phrases,
     byCategory: (category: string) => phrases.filter(phrase => phrase.category === category),
-    byNumber: (number: string) => phrases.find(phrase => phrase.number === number)
+    byId: (id: number) => phrases.find(phrase => phrase.id === id)
   }
 }

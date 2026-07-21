@@ -27,7 +27,7 @@ function setSelection(suggestion: Suggestion) {
 function selectPhrase(phrase: Phrase) {
   result.value = undefined
   selected.value = {
-    phrase_number: phrase.number,
+    phrase_id: phrase.id,
     text: phrase.text,
     score: 1
   }
@@ -36,11 +36,11 @@ function selectPhrase(phrase: Phrase) {
 }
 
 async function selectRoutePhrase() {
-  const number = String(route.query.phrase || '')
-  if (!number) return
+  const phraseId = Number(route.query.phrase || 0)
+  if (!phraseId) return
   try {
-    const { byNumber } = await usePhrases()
-    const phrase = byNumber(number)
+    const { byId } = await usePhrases()
+    const phrase = byId(phraseId)
     if (phrase) selectPhrase(phrase)
   } catch {
     status.value = 'Phrase konnte nicht geladen werden.'
@@ -108,11 +108,11 @@ async function saveAttempt() {
   form.append('audio_id', result.value.audio_id)
   form.append('audio_path', result.value.audio_path)
   form.append('source', 'friend_app')
-  form.append('phrase_number', selected.value.phrase_number)
+  form.append('phrase_id', String(selected.value.phrase_id))
   form.append('expected_text', selected.value.text)
   form.append('raw_transcript', result.value.raw_transcript)
   form.append('corrected_text', selected.value.text)
-  form.append('suggested_phrase_number', top?.phrase_number || '')
+  form.append('suggested_phrase_id', top?.phrase_id ? String(top.phrase_id) : '')
   form.append('suggested_text', top?.text || '')
   form.append('suggestion_score', top?.score ? String(top.score) : '')
   form.append('was_understandable', 'true')

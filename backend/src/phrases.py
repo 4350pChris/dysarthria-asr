@@ -23,7 +23,6 @@ def read_phrases() -> list[dict]:
     return [
         {
             "id": row["id"],
-            "number": str(row["id"]),
             "category": row["category"],
             "text": row["text"],
         }
@@ -54,7 +53,7 @@ def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
         score = SequenceMatcher(None, normalized, normalize_text(phrase.get("text", ""))).ratio()
         scored.append(
             {
-                "phrase_number": phrase["number"],
+                "phrase_id": phrase["id"],
                 "text": phrase.get("text", ""),
                 "score": round(score, 3),
             }
@@ -94,7 +93,7 @@ def create_phrase(category_id: int, text: str) -> dict:
             "INSERT INTO phrases (category_id, text, sort_order) VALUES (?, ?, ?)",
             (category_id, clean_text, sort_order),
         )
-        return {"id": cursor.lastrowid, "number": str(cursor.lastrowid), "category_id": category_id, "text": clean_text}
+        return {"id": cursor.lastrowid, "category_id": category_id, "text": clean_text}
 
 
 def update_phrase(phrase_id: int, text: str) -> dict:

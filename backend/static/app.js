@@ -29,10 +29,6 @@ function setStatus(message) {
   status.textContent = message;
 }
 
-function phraseNumber(index) {
-  return String(index + 1).padStart(3, "0");
-}
-
 function percent(value) {
   return `${Math.round(value * 100)}%`;
 }
@@ -101,11 +97,11 @@ saveButton.addEventListener("click", async () => {
   form.append("audio_id", lastResult.audio_id);
   form.append("audio_path", lastResult.audio_path);
   form.append("source", source);
-  form.append("phrase_number", phrase.selectedOptions[0]?.dataset.number || "");
+  form.append("phrase_id", phrase.selectedOptions[0]?.dataset.id || "");
   form.append("expected_text", expected.value);
   form.append("raw_transcript", raw.value);
   form.append("corrected_text", corrected.value);
-  form.append("suggested_phrase_number", topSuggestion.phrase_number || "");
+  form.append("suggested_phrase_id", topSuggestion.phrase_id || "");
   form.append("suggested_text", topSuggestion.text || "");
   form.append("suggestion_score", topSuggestion.score || "");
   form.append("was_understandable", understandable.checked ? "true" : "false");
@@ -143,7 +139,7 @@ async function transcribe(blob, filename = "recording.webm") {
     if (phrase.value) {
       corrected.value = phrase.value;
     } else if (lastResult.suggestions?.[0]?.score >= 0.8) {
-      selectPhrase(lastResult.suggestions[0].phrase_number, lastResult.suggestions[0].text);
+      selectPhrase(lastResult.suggestions[0].phrase_id, lastResult.suggestions[0].text);
     } else {
       corrected.value = lastResult.raw_transcript;
     }
@@ -157,9 +153,9 @@ async function transcribe(blob, filename = "recording.webm") {
   }
 }
 
-function selectPhrase(number, text) {
+function selectPhrase(id, text) {
   phrase.value = text;
-  phrase.selectedIndex = phrases.findIndex((item) => item.number === number) + 1;
+  phrase.selectedIndex = phrases.findIndex((item) => item.id === id) + 1;
   expected.value = text;
   corrected.value = text;
 }
@@ -171,8 +167,8 @@ function renderSuggestions(items) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "suggestion";
-      button.textContent = `${item.phrase_number} ${Math.round(item.score * 100)}% - ${item.text}`;
-      button.addEventListener("click", () => selectPhrase(item.phrase_number, item.text));
+      button.textContent = `${item.phrase_id} ${Math.round(item.score * 100)}% - ${item.text}`;
+      button.addEventListener("click", () => selectPhrase(item.phrase_id, item.text));
       return button;
     }),
   );
@@ -182,12 +178,11 @@ async function loadPhrases() {
   const response = await fetch("/api/phrases");
   if (!response.ok) return;
   phrases = await response.json();
-  phrases.forEach((item, index) => {
-    const number = item.number || phraseNumber(index);
+  phrases.forEach((item) => {
     const option = document.createElement("option");
     option.value = item.text || "";
-    option.dataset.number = number;
-    option.textContent = `${number} ${item.text}`;
+    option.dataset.id = item.id;
+    option.textContent = item.text;
     phrase.append(option);
   });
 }
@@ -200,7 +195,7 @@ async function loadCorrections() {
     ...rows.map((row) => {
       const tr = document.createElement("tr");
       for (const value of [
-        row.phrase_number || "",
+        row.phrase_id || "",
         row.expected_text || "",
         row.raw_transcript || "",
         row.corrected_text || "",
@@ -227,7 +222,7 @@ async function loadAnalysis() {
     ...analysis.worst_phrases.map((row) => {
       const tr = document.createElement("tr");
       for (const value of [
-        row.phrase_number,
+        row.phrase_id,
         row.expected_text,
         row.failures,
         row.attempts,
