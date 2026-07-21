@@ -61,7 +61,7 @@ async function transcribe(blob: Blob) {
   }
 }
 
-function speak() {
+function submit() {
   const text = selected.value?.text
   if (!text) return
   speechSynthesis.cancel()
@@ -88,8 +88,6 @@ async function saveAttempt() {
   form.append('was_understandable', 'true')
   await fetch(`${apiBase}/api/corrections`, { method: 'POST', body: form })
 }
-
-function submit() {}
 </script>
 
 <template>
@@ -119,7 +117,6 @@ function submit() {}
         >
           <MatchedPhrase
             :selected="selected"
-            @speak="speak"
           />
 
           <SuggestionList

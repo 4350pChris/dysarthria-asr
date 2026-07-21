@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import type { Suggestion } from '~/types/speech'
+import type { Suggestion } from "~/types/speech";
 
 defineProps<{
-  selected?: Suggestion
-}>()
-
-defineEmits<{
-  speak: []
-  reset: []
-}>()
+  selected?: Suggestion;
+}>();
 
 function confidence(suggestion?: Suggestion) {
-  return suggestion ? Math.round(suggestion.score * 100) : 0
+  return suggestion ? Math.round(suggestion.score * 100) : 0;
 }
 </script>
 
@@ -22,22 +17,20 @@ function confidence(suggestion?: Suggestion) {
         Vorschlag {{ confidence(selected) }}%
       </p>
       <p class="mt-2 text-3xl font-bold leading-tight">
-        {{ selected?.text || 'Kein Vorschlag' }}
+        {{ selected?.text || "Kein Vorschlag" }}
       </p>
     </UCard>
 
-    <div class="grid grid-cols-2 gap-3">
-      <UButton
-        class="min-h-24 justify-center rounded-2xl text-lg font-extrabold"
-        block
-        color="primary"
-        icon="i-lucide-volume-2"
-        label="Vorlesen"
-        size="xl"
-        :disabled="!selected"
-        :ui="{ leadingIcon: 'size-7', base: 'flex-col gap-1.5' }"
-        @click="$emit('speak')"
-      />
-    </div>
+    <UButton
+      class="min-h-24 justify-center rounded-2xl text-lg font-extrabold"
+      block
+      color="primary"
+      icon="i-lucide-volume-2"
+      label="Vorlesen"
+      size="xl"
+      type="submit"
+      :disabled="!selected"
+      :ui="{ leadingIcon: 'size-7', base: 'flex-col gap-1.5' }"
+    />
   </section>
 </template>
