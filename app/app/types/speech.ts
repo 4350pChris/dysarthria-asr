@@ -5,9 +5,16 @@ export type Suggestion = {
 }
 
 export type Phrase = {
+  id: number
   number: string
   category: string
   text: string
+}
+
+export type Category = {
+  id: number
+  name: string
+  phrase_count: number
 }
 
 export type TranscriptionResult = {

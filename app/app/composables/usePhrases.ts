@@ -1,9 +1,11 @@
-import type { Phrase } from '~/types/speech'
+import type { Category, Phrase } from '~/types/speech'
 
 export async function usePhrases() {
   const config = useRuntimeConfig()
-  const phrases = await $fetch<Phrase[]>(`${config.public.apiBase}/api/phrases`)
-  const categories = [...new Set(phrases.map(phrase => phrase.category))]
+  const [categories, phrases] = await Promise.all([
+    $fetch<Category[]>(`${config.public.apiBase}/api/categories`),
+    $fetch<Phrase[]>(`${config.public.apiBase}/api/phrases`)
+  ])
 
   return {
     categories,

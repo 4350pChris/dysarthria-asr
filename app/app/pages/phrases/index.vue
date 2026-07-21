@@ -1,14 +1,41 @@
 <script setup lang="ts">
-const status = ref('')
-const categories = ref<string[]>([])
+import type { Category } from '~/types/speech'
 
-onMounted(async () => {
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase as string
+
+const status = ref('')
+const formState = reactive({ name: '' })
+const categories = ref<Category[]>([])
+const isSaving = ref(false)
+
+onMounted(loadCategories)
+
+async function loadCategories() {
   try {
     categories.value = (await usePhrases()).categories
   } catch {
     status.value = 'Phrasen konnten nicht geladen werden.'
   }
-})
+}
+
+async function createCategory() {
+  const name = formState.name.trim()
+  if (!name || isSaving.value) return
+  isSaving.value = true
+  const form = new FormData()
+  form.append('name', name)
+  try {
+    await $fetch(`${apiBase}/api/categories`, { method: 'POST', body: form })
+    formState.name = ''
+    status.value = 'Kategorie gespeichert.'
+    await loadCategories()
+  } catch {
+    status.value = 'Kategorie konnte nicht gespeichert werden.'
+  } finally {
+    isSaving.value = false
+  }
+}
 </script>
 
 <template>
@@ -40,6 +67,31 @@ onMounted(async () => {
       >
         {{ status }}
       </p>
+
+      <UForm
+        :state="formState"
+        class="space-y-3"
+        @submit="createCategory"
+      >
+        <UFormField label="Neue Kategorie">
+          <UInput
+            v-model="formState.name"
+            class="w-full"
+            size="xl"
+            placeholder="z. B. Familie"
+          />
+        </UFormField>
+        <UButton
+          class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+          block
+          color="primary"
+          icon="i-lucide-plus"
+          label="Kategorie hinzufügen"
+          size="xl"
+          type="submit"
+          :loading="isSaving"
+        />
+      </UForm>
 
       <CategoryGrid :categories="categories" />
     </UContainer>

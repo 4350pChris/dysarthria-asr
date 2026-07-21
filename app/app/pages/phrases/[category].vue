@@ -1,18 +1,77 @@
 <script setup lang="ts">
-import type { Phrase } from '~/types/speech'
+import type { Category, Phrase } from '~/types/speech'
 
+const config = useRuntimeConfig()
 const route = useRoute()
+const apiBase = config.public.apiBase as string
 const category = computed(() => decodeURIComponent(String(route.params.category || '')))
 const status = ref('')
+const categories = ref<Category[]>([])
 const phrases = ref<Phrase[]>([])
+const formState = reactive({ text: '' })
+const editing = ref<Phrase>()
+const isSaving = ref(false)
 
-onMounted(async () => {
+const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
+const formLabel = computed(() => editing.value ? 'Satz ändern' : 'Neuer Satz')
+const submitLabel = computed(() => editing.value ? 'Änderung speichern' : 'Satz hinzufügen')
+
+onMounted(loadData)
+
+async function loadData() {
   try {
-    phrases.value = (await usePhrases()).byCategory(category.value)
+    const data = await usePhrases()
+    categories.value = data.categories
+    phrases.value = data.byCategory(category.value)
   } catch {
     status.value = 'Phrasen konnten nicht geladen werden.'
   }
-})
+}
+
+function startEdit(phrase: Phrase) {
+  editing.value = phrase
+  formState.text = phrase.text
+  status.value = 'Satz bearbeiten.'
+}
+
+function resetForm() {
+  editing.value = undefined
+  formState.text = ''
+}
+
+async function savePhrase() {
+  const text = formState.text.trim()
+  if (!text || isSaving.value) return
+  isSaving.value = true
+  const form = new FormData()
+  form.append('text', text)
+  try {
+    if (editing.value) {
+      await $fetch(`${apiBase}/api/phrases/${editing.value.id}`, { method: 'PATCH', body: form })
+      status.value = 'Satz gespeichert.'
+    } else if (currentCategory.value) {
+      form.append('category_id', String(currentCategory.value.id))
+      await $fetch(`${apiBase}/api/phrases`, { method: 'POST', body: form })
+      status.value = 'Satz hinzugefügt.'
+    }
+    resetForm()
+    await loadData()
+  } catch {
+    status.value = 'Satz konnte nicht gespeichert werden.'
+  } finally {
+    isSaving.value = false
+  }
+}
+
+async function deletePhrase(phrase: Phrase) {
+  try {
+    await $fetch(`${apiBase}/api/phrases/${phrase.id}`, { method: 'DELETE' })
+    status.value = 'Satz gelöscht.'
+    await loadData()
+  } catch {
+    status.value = 'Satz konnte nicht gelöscht werden.'
+  }
+}
 </script>
 
 <template>
@@ -45,7 +104,50 @@ onMounted(async () => {
         {{ status }}
       </p>
 
-      <PhraseGrid :phrases="phrases" />
+      <UForm
+        :state="formState"
+        class="space-y-3"
+        @submit="savePhrase"
+      >
+        <UFormField :label="formLabel">
+          <UTextarea
+            v-model="formState.text"
+            class="w-full"
+            autoresize
+            placeholder="z. B. Ich möchte Anna anrufen."
+            size="xl"
+          />
+        </UFormField>
+        <div class="grid grid-cols-2 gap-3">
+          <UButton
+            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+            block
+            color="primary"
+            icon="i-lucide-save"
+            size="xl"
+            type="submit"
+            :label="submitLabel"
+            :loading="isSaving"
+          />
+          <UButton
+            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+            block
+            color="neutral"
+            icon="i-lucide-x"
+            label="Abbrechen"
+            size="xl"
+            type="button"
+            variant="subtle"
+            @click="resetForm"
+          />
+        </div>
+      </UForm>
+
+      <PhraseGrid
+        :phrases="phrases"
+        @edit="startEdit"
+        @delete="deletePhrase"
+      />
     </UContainer>
   </UMain>
 </template>

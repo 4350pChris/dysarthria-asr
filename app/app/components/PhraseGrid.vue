@@ -4,24 +4,52 @@ import type { Phrase } from '~/types/speech'
 defineProps<{
   phrases: Phrase[]
 }>()
+
+defineEmits<{
+  edit: [phrase: Phrase]
+  delete: [phrase: Phrase]
+}>()
 </script>
 
 <template>
   <div class="grid gap-3">
-    <UButton
+    <UCard
       v-for="phrase in phrases"
-      :key="phrase.number"
-      class="justify-start rounded-3xl py-6 text-left"
-      block
-      color="neutral"
-      size="xl"
-      :to="{ path: '/', query: { phrase: phrase.number } }"
-      variant="outline"
+      :key="phrase.id"
     >
-      <span class="grid w-full grid-cols-[auto_1fr] items-center gap-4">
-        <span class="text-lg font-extrabold text-slate-500">{{ phrase.number }}</span>
-        <strong class="text-xl leading-snug text-slate-950">{{ phrase.text }}</strong>
-      </span>
-    </UButton>
+      <p class="text-xl font-bold leading-snug text-slate-950">
+        {{ phrase.text }}
+      </p>
+      <div class="mt-4 grid grid-cols-3 gap-2">
+        <UButton
+          class="min-h-14 justify-center rounded-2xl font-extrabold"
+          color="primary"
+          icon="i-lucide-volume-2"
+          :to="{ path: '/', query: { phrase: phrase.number } }"
+        >
+          Sagen
+        </UButton>
+        <UButton
+          class="min-h-14 justify-center rounded-2xl font-extrabold"
+          color="neutral"
+          icon="i-lucide-pencil"
+          type="button"
+          variant="subtle"
+          @click="$emit('edit', phrase)"
+        >
+          Ändern
+        </UButton>
+        <UButton
+          class="min-h-14 justify-center rounded-2xl font-extrabold"
+          color="error"
+          icon="i-lucide-trash-2"
+          type="button"
+          variant="subtle"
+          @click="$emit('delete', phrase)"
+        >
+          Löschen
+        </UButton>
+      </div>
+    </UCard>
   </div>
 </template>
