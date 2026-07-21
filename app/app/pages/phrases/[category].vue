@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { Category, Phrase } from '~/types/speech'
+import type { Phrase } from '~/types/speech'
 
 const route = useRoute()
 const category = computed(() => decodeURIComponent(String(route.params.category || '')))
 const status = ref('')
-const categories = ref<Category[]>([])
-const phrases = ref<Phrase[]>([])
 const formState = reactive({ text: '' })
 const editing = ref<Phrase>()
 const isSaving = ref(false)
 const phraseToDelete = ref<Phrase>()
 const isDeleting = ref(false)
+const { categories, byCategory, loadPhrases } = usePhrases()
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
+const phrases = computed(() => byCategory(category.value))
 const formLabel = computed(() => editing.value ? 'Satz ändern' : 'Neuer Satz')
 const submitLabel = computed(() => editing.value ? 'Änderung speichern' : 'Satz hinzufügen')
 const isDeleteModalOpen = computed(() => Boolean(phraseToDelete.value))
@@ -21,9 +21,7 @@ watch(category, loadData, { immediate: true })
 
 async function loadData() {
   try {
-    const data = await usePhrases()
-    categories.value = data.categories
-    phrases.value = data.byCategory(category.value)
+    await loadPhrases()
   } catch {
     status.value = 'Phrasen konnten nicht geladen werden.'
   }
@@ -56,7 +54,7 @@ async function savePhrase() {
       status.value = 'Satz hinzugefügt.'
     }
     resetForm()
-    await loadData()
+    await loadPhrases({ force: true })
   } catch {
     status.value = 'Satz konnte nicht gespeichert werden.'
   } finally {
@@ -81,7 +79,7 @@ async function confirmDelete() {
     await $fetch(`/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
     status.value = 'Satz gelöscht.'
     phraseToDelete.value = undefined
-    await loadData()
+    await loadPhrases({ force: true })
   } catch {
     status.value = 'Satz konnte nicht gelöscht werden.'
   } finally {

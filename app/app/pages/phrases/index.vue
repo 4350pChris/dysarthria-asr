@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import type { Category } from '~/types/speech'
-
 const status = ref('')
 const formState = reactive({ name: '' })
-const categories = ref<Category[]>([])
 const isSaving = ref(false)
+const { categories, loadPhrases } = usePhrases()
 
 onMounted(loadCategories)
 
 async function loadCategories() {
   try {
-    categories.value = (await usePhrases()).categories
+    await loadPhrases()
   } catch {
     status.value = 'Phrasen konnten nicht geladen werden.'
   }
@@ -26,7 +24,7 @@ async function createCategory() {
     await $fetch('/api/categories', { method: 'POST', body: form })
     formState.name = ''
     status.value = 'Kategorie gespeichert.'
-    await loadCategories()
+    await loadPhrases({ force: true })
   } catch {
     status.value = 'Kategorie konnte nicht gespeichert werden.'
   } finally {
