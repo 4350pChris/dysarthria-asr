@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { Category, Phrase } from '~/types/speech'
 
-const config = useRuntimeConfig()
 const route = useRoute()
-const apiBase = config.public.apiBase as string
 const category = computed(() => decodeURIComponent(String(route.params.category || '')))
 const status = ref('')
 const categories = ref<Category[]>([])
@@ -50,11 +48,11 @@ async function savePhrase() {
   form.append('text', text)
   try {
     if (editing.value) {
-      await $fetch(`${apiBase}/api/phrases/${editing.value.id}`, { method: 'PATCH', body: form })
+      await $fetch(`/api/phrases/${editing.value.id}`, { method: 'PATCH', body: form })
       status.value = 'Satz gespeichert.'
     } else if (currentCategory.value) {
       form.append('category_id', String(currentCategory.value.id))
-      await $fetch(`${apiBase}/api/phrases`, { method: 'POST', body: form })
+      await $fetch('/api/phrases', { method: 'POST', body: form })
       status.value = 'Satz hinzugefügt.'
     }
     resetForm()
@@ -80,7 +78,7 @@ async function confirmDelete() {
   if (!phraseToDelete.value || isDeleting.value) return
   isDeleting.value = true
   try {
-    await $fetch(`${apiBase}/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
+    await $fetch(`/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
     status.value = 'Satz gelöscht.'
     phraseToDelete.value = undefined
     await loadData()

@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
 
-const config = useRuntimeConfig()
 const route = useRoute()
-const apiBase = config.public.apiBase as string
 
 const recorder = shallowRef<MediaRecorder>()
 const chunks = ref<Blob[]>([])
@@ -77,7 +75,7 @@ async function transcribe(blob: Blob) {
   form.append('audio', blob, 'recording.webm')
 
   try {
-    const response = await fetch(`${apiBase}/api/transcribe`, { method: 'POST', body: form })
+    const response = await fetch('/api/transcribe', { method: 'POST', body: form })
     if (!response.ok) throw new Error('Erkennung fehlgeschlagen.')
     result.value = await response.json()
     selected.value = result.value?.suggestions[0]
@@ -116,7 +114,7 @@ async function saveAttempt() {
   form.append('suggestion_score', top?.score ? String(top.score) : '')
   form.append('was_understandable', 'true')
   try {
-    await fetch(`${apiBase}/api/speech-attempts`, { method: 'POST', body: form })
+    await fetch('/api/speech-attempts', { method: 'POST', body: form })
     hasSaved.value = true
   } finally {
     isSaving.value = false

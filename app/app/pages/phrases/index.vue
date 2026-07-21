@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { Category } from '~/types/speech'
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase as string
-
 const status = ref('')
 const formState = reactive({ name: '' })
 const categories = ref<Category[]>([])
@@ -26,7 +23,7 @@ async function createCategory() {
   const form = new FormData()
   form.append('name', name)
   try {
-    await $fetch(`${apiBase}/api/categories`, { method: 'POST', body: form })
+    await $fetch('/api/categories', { method: 'POST', body: form })
     formState.name = ''
     status.value = 'Kategorie gespeichert.'
     await loadCategories()
