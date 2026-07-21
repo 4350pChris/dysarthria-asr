@@ -5,6 +5,7 @@ import os
 import uuid
 import csv
 import io
+import sqlite3
 from difflib import SequenceMatcher
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,18 @@ DATA_DIR = ROOT / "data"
 AUDIO_DIR = DATA_DIR / "audio"
 CORRECTIONS_FILE = DATA_DIR / "corrections.jsonl"
 PHRASES_FILE = DATA_DIR / "phrases.csv"
+DB_FILE = DATA_DIR / "app.sqlite"
+CATEGORY_TRANSLATIONS = {
+    "greetings": "Begrüßung",
+    "requests": "Wünsche",
+    "care": "Pflege",
+    "clarification": "Verständigung",
+    "comfort": "Komfort",
+    "objects": "Dinge",
+    "locations": "Orte",
+    "social": "Soziales",
+    "daily": "Alltag",
+}
 CORRECTION_FIELDS = [
     "created_at",
     "audio_id",
@@ -49,6 +62,59 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+def connect_db() -> sqlite3.Connection:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(DB_FILE)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
+
+
+def init_db() -> None:
+    with connect_db() as db:
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                sort_order INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS phrases (
+                id INTEGER PRIMARY KEY,
+                category_id INTEGER NOT NULL REFERENCES categories(id),
+                text TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                active INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        count = db.execute("SELECT COUNT(*) FROM phrases").fetchone()[0]
+        for old, new in CATEGORY_TRANSLATIONS.items():
+            db.execute("UPDATE OR IGNORE categories SET name = ? WHERE name = ?", (new, old))
+        if count or not PHRASES_FILE.exists():
+            return
+        with PHRASES_FILE.open(newline="", encoding="utf-8") as f:
+            for sort_order, row in enumerate(csv.DictReader(f), start=1):
+                category = row["category"].strip()
+                text = row["text"].strip()
+                db.execute(
+                    "INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)",
+                    (category, sort_order),
+                )
+                category_id = db.execute("SELECT id FROM categories WHERE name = ?", (category,)).fetchone()[0]
+                db.execute(
+                    "INSERT INTO phrases (category_id, text, sort_order) VALUES (?, ?, ?)",
+                    (category_id, text, sort_order),
+                )
+
+
+init_db()
+
+
 def read_corrections() -> list[dict]:
     if not CORRECTIONS_FILE.exists():
         return []
@@ -64,13 +130,25 @@ def normalize_text(text: str) -> str:
 
 
 def read_phrases() -> list[dict]:
-    if not PHRASES_FILE.exists():
-        return []
-    with PHRASES_FILE.open(newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    for index, row in enumerate(rows, start=1):
-        row.setdefault("number", f"{index:03}")
-    return rows
+    with connect_db() as db:
+        rows = db.execute(
+            """
+            SELECT phrases.id, categories.name AS category, phrases.text
+            FROM phrases
+            JOIN categories ON categories.id = phrases.category_id
+            WHERE phrases.active = 1
+            ORDER BY categories.sort_order, phrases.sort_order, phrases.id
+            """
+        ).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "number": str(row["id"]),
+            "category": row["category"],
+            "text": row["text"],
+        }
+        for row in rows
+    ]
 
 
 def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
