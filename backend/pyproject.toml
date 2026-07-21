@@ -1,0 +1,14 @@
+[project]
+name = "dysarthria-asr-backend"
+version = "0.1.0"
+description = "Local FastAPI backend for dysarthria ASR experiments"
+requires-python = ">=3.14"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "python-multipart",
+  "faster-whisper"
+]
+
+[tool.uv]
+package = false
