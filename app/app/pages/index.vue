@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { Suggestion, TranscriptionResult } from '~/types/speech'
+import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
 
 const config = useRuntimeConfig()
+const route = useRoute()
 const apiBase = config.public.apiBase as string
 
 const formState = reactive({})
@@ -16,10 +17,35 @@ const isSaving = ref(false)
 const hasSaved = ref(false)
 
 const suggestions = computed(() => result.value?.suggestions ?? [])
-const hasResult = computed(() => Boolean(result.value))
+const hasSelection = computed(() => Boolean(selected.value))
+
+onMounted(selectRoutePhrase)
 
 function setSelection(suggestion: Suggestion) {
   selected.value = suggestion
+}
+
+function selectPhrase(phrase: Phrase) {
+  result.value = undefined
+  selected.value = {
+    phrase_number: phrase.number,
+    text: phrase.text,
+    score: 1
+  }
+  hasSaved.value = false
+  status.value = 'Direkt ausgewählt.'
+}
+
+async function selectRoutePhrase() {
+  const number = String(route.query.phrase || '')
+  if (!number) return
+  try {
+    const { byNumber } = await usePhrases()
+    const phrase = byNumber(number)
+    if (phrase) selectPhrase(phrase)
+  } catch {
+    status.value = 'Phrase konnte nicht geladen werden.'
+  }
 }
 
 async function startRecording() {
@@ -122,7 +148,7 @@ async function saveAttempt() {
         </p>
 
         <section
-          v-if="hasResult"
+          v-if="hasSelection"
           class="space-y-4"
         >
           <MatchedPhrase
@@ -135,6 +161,19 @@ async function saveAttempt() {
             @select="setSelection"
           />
         </section>
+
+        <UButton
+          class="min-h-24 justify-center rounded-2xl text-xl font-extrabold"
+          block
+          color="neutral"
+          icon="i-lucide-layout-grid"
+          size="xl"
+          to="/phrases"
+          variant="subtle"
+          :ui="{ leadingIcon: 'size-8', base: 'flex-col gap-2' }"
+        >
+          Satz auswählen
+        </UButton>
       </UForm>
     </UContainer>
   </UMain>

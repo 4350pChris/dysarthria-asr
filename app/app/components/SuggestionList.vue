@@ -25,6 +25,7 @@ defineEmits<{
       class="justify-start rounded-2xl py-4 text-left"
       block
       color="neutral"
+      type="button"
       variant="outline"
       :class="selected?.phrase_number === suggestion.phrase_number ? 'ring-4 ring-primary/20 border-primary' : ''"
       @click="$emit('select', suggestion)"

@@ -4,6 +4,12 @@ export type Suggestion = {
   score: number
 }
 
+export type Phrase = {
+  number: string
+  category: string
+  text: string
+}
+
 export type TranscriptionResult = {
   audio_id: string
   audio_path: string

@@ -18,6 +18,7 @@ defineEmits<{
     color="primary"
     icon="i-lucide-mic"
     size="xl"
+    type="button"
     :disabled="isBusy"
     :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
     @click="$emit('start')"
@@ -32,6 +33,7 @@ defineEmits<{
     color="error"
     icon="i-lucide-square"
     size="xl"
+    type="button"
     :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
     @click="$emit('stop')"
   >
