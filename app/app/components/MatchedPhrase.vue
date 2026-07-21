@@ -12,6 +12,11 @@ defineEmits<{
 function confidence(suggestion?: Suggestion) {
   return suggestion ? Math.round(suggestion.score * 100) : 0
 }
+
+function sourceLabel(suggestion?: Suggestion) {
+  if (!suggestion) return ''
+  return suggestion.source === 'generated' ? 'Baustein' : 'Gespeichert'
+}
 </script>
 
 <template>
@@ -19,6 +24,7 @@ function confidence(suggestion?: Suggestion) {
     <UCard>
       <p class="text-sm font-semibold text-muted">
         Vorschlag {{ confidence(selected) }}%
+        <span v-if="selected"> · {{ sourceLabel(selected) }}</span>
       </p>
       <UButton
         class="mt-2 justify-start p-0 text-left text-3xl font-bold leading-tight"

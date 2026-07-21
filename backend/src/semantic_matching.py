@@ -22,8 +22,8 @@ def phrase_embeddings(cache_key: tuple[tuple[int, str], ...]):
     return model().encode(phrases, normalize_embeddings=True)
 
 
-def semantic_scores(text: str, phrases: Sequence[dict]) -> dict[int, float]:
-    cache_key = tuple((phrase["id"], phrase.get("text", "")) for phrase in phrases)
+def semantic_scores(text: str, phrases: Sequence[dict]) -> dict[str, float]:
+    cache_key = tuple((str(phrase["id"]), phrase.get("text", "")) for phrase in phrases)
     if not cache_key:
         return {}
 

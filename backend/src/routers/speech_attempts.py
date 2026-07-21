@@ -16,29 +16,23 @@ router = APIRouter(prefix="/api")
 @router.post("/speech-attempts")
 async def add_speech_attempt(
     audio_id: str = Form(...),
-    source: str = Form("browser_recording"),
-    phrase_id: str = Form(""),
-    expected_text: str = Form(""),
     raw_transcript: str = Form(""),
-    corrected_text: str = Form(...),
-    suggested_phrase_id: str = Form(""),
+    target_text: str = Form(...),
+    selected_candidate_id: str = Form(""),
+    selected_candidate_source: str = Form(""),
+    suggested_candidate_id: str = Form(""),
     suggested_text: str = Form(""),
     suggestion_score: str = Form(""),
-    was_understandable: bool = Form(False),
-    notes: str = Form(""),
 ) -> dict:
     return create_speech_attempt(
         audio_id=audio_id,
-        source=source,
-        phrase_id=phrase_id,
-        expected_text=expected_text,
         raw_transcript=raw_transcript,
-        corrected_text=corrected_text,
-        suggested_phrase_id=suggested_phrase_id,
+        target_text=target_text,
+        selected_candidate_id=selected_candidate_id,
+        selected_candidate_source=selected_candidate_source,
+        suggested_candidate_id=suggested_candidate_id,
         suggested_text=suggested_text,
         suggestion_score=suggestion_score,
-        was_understandable=was_understandable,
-        notes=notes,
     )
 
 

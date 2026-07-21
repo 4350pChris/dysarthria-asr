@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Form
 
+from ..candidates import read_generated_candidates
 from ..phrases import (
     create_category,
     create_phrase,
@@ -22,6 +23,11 @@ def list_phrases() -> list[dict]:
 @router.get("/categories")
 def list_categories() -> list[dict]:
     return read_categories()
+
+
+@router.get("/candidates/generated")
+def list_generated_candidates() -> list[dict]:
+    return read_generated_candidates()
 
 
 @router.post("/categories")

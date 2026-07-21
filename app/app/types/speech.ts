@@ -1,5 +1,6 @@
 export type Suggestion = {
-  phrase_id: number
+  id: string
+  source: 'phrase' | 'generated'
   text: string
   score: number
 }

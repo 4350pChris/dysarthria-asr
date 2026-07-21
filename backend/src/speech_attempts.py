@@ -14,16 +14,13 @@ SPEECH_ATTEMPT_FIELDS = [
     "created_at",
     "audio_id",
     "audio_file",
-    "source",
-    "phrase_id",
-    "expected_text",
     "raw_transcript",
-    "corrected_text",
-    "suggested_phrase_id",
+    "target_text",
+    "selected_candidate_id",
+    "selected_candidate_source",
+    "suggested_candidate_id",
     "suggested_text",
     "suggestion_score",
-    "was_understandable",
-    "notes",
 ]
 
 
@@ -33,16 +30,13 @@ def read_speech_attempts(limit: int | None = None) -> list[dict]:
             speech_attempts.created_at,
             speech_attempts.audio_id,
             audio_samples.file_path AS audio_file,
-            speech_attempts.source,
-            speech_attempts.phrase_id,
-            speech_attempts.expected_text,
             speech_attempts.raw_transcript,
-            speech_attempts.corrected_text,
-            speech_attempts.suggested_phrase_id,
+            speech_attempts.target_text,
+            speech_attempts.selected_candidate_id,
+            speech_attempts.selected_candidate_source,
+            speech_attempts.suggested_candidate_id,
             speech_attempts.suggested_text,
-            speech_attempts.suggestion_score,
-            speech_attempts.was_understandable,
-            speech_attempts.notes
+            speech_attempts.suggestion_score
         FROM speech_attempts
         JOIN audio_samples ON audio_samples.id = speech_attempts.audio_id
         ORDER BY speech_attempts.created_at DESC, speech_attempts.id DESC
@@ -54,35 +48,24 @@ def read_speech_attempts(limit: int | None = None) -> list[dict]:
         args = ()
     with connect_db() as db:
         rows = db.execute(query, args).fetchall()
-    return [
-        {
-            **dict(row),
-            "was_understandable": bool(row["was_understandable"]),
-        }
-        for row in rows
-    ]
+    return [dict(row) for row in rows]
 
 
 def create_speech_attempt(
     audio_id: str,
-    source: str,
-    phrase_id: str,
-    expected_text: str,
     raw_transcript: str,
-    corrected_text: str,
-    suggested_phrase_id: str,
+    target_text: str,
+    selected_candidate_id: str,
+    selected_candidate_source: str,
+    suggested_candidate_id: str,
     suggested_text: str,
     suggestion_score: str,
-    was_understandable: bool,
-    notes: str,
 ) -> dict:
-    if not corrected_text.strip():
-        raise HTTPException(status_code=400, detail="Corrected text is required.")
+    if not target_text.strip():
+        raise HTTPException(status_code=400, detail="Target text is required.")
 
     created_at = datetime.now(timezone.utc).isoformat()
     try:
-        parsed_phrase_id = int(phrase_id) if phrase_id else None
-        parsed_suggested_phrase_id = int(suggested_phrase_id) if suggested_phrase_id else None
         parsed_score = float(suggestion_score) if suggestion_score else None
     except ValueError as error:
         raise HTTPException(status_code=400, detail="Invalid speech attempt metadata.") from error
@@ -94,32 +77,26 @@ def create_speech_attempt(
             """
             INSERT INTO speech_attempts (
                 audio_id,
-                source,
-                phrase_id,
-                expected_text,
                 raw_transcript,
-                corrected_text,
-                suggested_phrase_id,
+                target_text,
+                selected_candidate_id,
+                selected_candidate_source,
+                suggested_candidate_id,
                 suggested_text,
                 suggestion_score,
-                was_understandable,
-                notes,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 audio_id,
-                source,
-                parsed_phrase_id,
-                expected_text,
                 raw_transcript,
-                corrected_text,
-                parsed_suggested_phrase_id,
+                target_text,
+                selected_candidate_id,
+                selected_candidate_source,
+                suggested_candidate_id,
                 suggested_text,
                 parsed_score,
-                int(was_understandable),
-                notes,
                 created_at,
             ),
         )
@@ -141,40 +118,22 @@ def export_speech_attempts_csv() -> Response:
 def analyze_speech_attempts() -> dict:
     records = read_speech_attempts()
     total = len(records)
-    understandable = sum(1 for row in records if row.get("was_understandable"))
     exact = sum(
         1
         for row in records
         if normalize_text(row.get("raw_transcript", ""))
-        == normalize_text(row.get("expected_text", ""))
+        == normalize_text(row.get("target_text", ""))
     )
-    fuzzy_top_1 = sum(
+    top_1 = sum(
         1
         for row in records
-        if row.get("phrase_id")
-        and row.get("phrase_id") == row.get("suggested_phrase_id")
+        if row.get("selected_candidate_id")
+        and row.get("selected_candidate_id") == row.get("suggested_candidate_id")
     )
-    by_phrase = {}
-    for row in records:
-        key = row.get("phrase_id") or "?"
-        item = by_phrase.setdefault(
-            key,
-            {"phrase_id": key, "expected_text": row.get("expected_text", ""), "attempts": 0, "failures": 0},
-        )
-        item["attempts"] += 1
-        if not row.get("was_understandable"):
-            item["failures"] += 1
-    worst_phrases = sorted(
-        by_phrase.values(),
-        key=lambda item: (-item["failures"], -item["attempts"], str(item["phrase_id"])),
-    )[:10]
     return {
         "total": total,
-        "understandable": understandable,
-        "understandable_rate": understandable / total if total else 0,
         "exact_matches": exact,
         "exact_match_rate": exact / total if total else 0,
-        "fuzzy_top_1_matches": fuzzy_top_1,
-        "fuzzy_top_1_rate": fuzzy_top_1 / total if total else 0,
-        "worst_phrases": worst_phrases,
+        "top_1_matches": top_1,
+        "top_1_rate": top_1 / total if total else 0,
     }

@@ -1,15 +1,10 @@
 from __future__ import annotations
 
 import sqlite3
-from difflib import SequenceMatcher
 
 from fastapi import HTTPException
 
 from .database import connect_db
-from .semantic_matching import semantic_scores
-from .text import normalize_text
-
-FUZZY_FALLBACK_THRESHOLD = 0.72
 
 def read_phrases() -> list[dict]:
     with connect_db() as db:
@@ -19,7 +14,7 @@ def read_phrases() -> list[dict]:
             FROM phrases
             JOIN categories ON categories.id = phrases.category_id
             WHERE phrases.active = 1
-            ORDER BY categories.name COLLATE NOCASE, phrases.sort_order, phrases.id
+            ORDER BY categories.name COLLATE NOCASE, phrases.id
             """
         ).fetchall()
     return [
@@ -45,55 +40,15 @@ def read_categories() -> list[dict]:
         ).fetchall()
     return [dict(row) for row in rows]
 
-
-def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
-    normalized = normalize_text(text)
-    if not normalized:
-        return []
-    phrases = read_phrases()
-    scored = []
-    for phrase in phrases:
-        score = SequenceMatcher(None, normalized, normalize_text(phrase.get("text", ""))).ratio()
-        scored.append(
-            {
-                "phrase_id": phrase["id"],
-                "text": phrase.get("text", ""),
-                "score": round(score, 3),
-            }
-        )
-
-    best_fuzzy_item = max(scored, key=lambda item: item["score"], default=None)
-    best_fuzzy = best_fuzzy_item["score"] if best_fuzzy_item else 0
-    if best_fuzzy < FUZZY_FALLBACK_THRESHOLD:
-        scored = apply_semantic_fallback(text, phrases, scored)
-
-    suggestions = sorted(
-        scored, key=lambda item: item["score"], reverse=True)[:limit]
-    return suggestions
-
-
-def apply_semantic_fallback(text: str, phrases: list[dict], scored: list[dict]) -> list[dict]:
-    try:
-        semantic_by_id = semantic_scores(text, phrases)
-    except Exception:
-        return scored
-
-    for item in scored:
-        semantic_score = semantic_by_id.get(item["phrase_id"], 0)
-        item["score"] = round(max(item["score"], semantic_score), 3)
-    return scored
-
-
 def create_category(name: str) -> dict:
     clean_name = name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Category name is required.")
     with connect_db() as db:
-        sort_order = db.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM categories").fetchone()[0]
         try:
             cursor = db.execute(
-                "INSERT INTO categories (name, sort_order) VALUES (?, ?)",
-                (clean_name, sort_order),
+                "INSERT INTO categories (name) VALUES (?)",
+                (clean_name,),
             )
         except sqlite3.IntegrityError as error:
             raise HTTPException(status_code=409, detail="Category already exists.") from error
@@ -108,13 +63,9 @@ def create_phrase(category_id: int, text: str) -> dict:
         category = db.execute("SELECT id FROM categories WHERE id = ?", (category_id,)).fetchone()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found.")
-        sort_order = db.execute(
-            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM phrases WHERE category_id = ?",
-            (category_id,),
-        ).fetchone()[0]
         cursor = db.execute(
-            "INSERT INTO phrases (category_id, text, sort_order) VALUES (?, ?, ?)",
-            (category_id, clean_text, sort_order),
+            "INSERT INTO phrases (category_id, text) VALUES (?, ?)",
+            (category_id, clean_text),
         )
         return {"id": cursor.lastrowid, "category_id": category_id, "text": clean_text}
 

@@ -7,9 +7,9 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from ..audio_samples import create_audio_sample
 from ..asr import transcribe_german
+from ..candidates import candidate_suggestions
 from ..math_normalizer import normalize_german_math
 from ..paths import AUDIO_DIR, ROOT
-from ..phrases import phrase_suggestions
 
 router = APIRouter(prefix="/api")
 
@@ -28,7 +28,6 @@ async def transcribe(audio: UploadFile = File(...)) -> dict:
     create_audio_sample(
         id=audio_id,
         file_path=relative_audio_path,
-        original_filename=audio.filename or "",
         content_type=audio.content_type or "",
     )
 
@@ -41,5 +40,5 @@ async def transcribe(audio: UploadFile = File(...)) -> dict:
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
         "math_text": math.math_text,
-        "suggestions": phrase_suggestions(transcript),
+        "suggestions": candidate_suggestions(transcript),
     }

@@ -28,11 +28,6 @@
       </label>
 
       <label>
-        Erwarteter Satz
-        <input id="expected" placeholder="Was gesagt werden sollte" />
-      </label>
-
-      <label>
         Rohe ASR-Erkennung
         <textarea id="raw" readonly placeholder="Die Erkennung erscheint hier"></textarea>
       </label>
@@ -43,18 +38,8 @@
       </section>
 
       <label>
-        Korrigierter Satz
-        <textarea id="corrected" placeholder="Den gemeinten Satz eingeben"></textarea>
-      </label>
-
-      <label>
-        Notizen
-        <input id="notes" placeholder="Optional: Kategorie, Geräusche, Sicherheit" />
-      </label>
-
-      <label class="checkbox">
-        <input id="understandable" type="checkbox" />
-        Rohe ASR war verständlich
+        Zieltext
+        <textarea id="target" placeholder="Den gemeinten Satz eingeben"></textarea>
       </label>
 
       <button id="save" disabled>Korrektur speichern</button>
@@ -64,22 +49,9 @@
         <h2>Analyse</h2>
         <div class="metrics">
           <div><strong id="total">0</strong><span>Versuche</span></div>
-          <div><strong id="understandableRate">0%</strong><span>verständlich</span></div>
           <div><strong id="exactRate">0%</strong><span>exakt erkannt</span></div>
-          <div><strong id="fuzzyRate">0%</strong><span>Fuzzy Top 1</span></div>
+          <div><strong id="topRate">0%</strong><span>Top 1</span></div>
         </div>
-        <h3>Häufige Probleme</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Nr.</th>
-              <th>Satz</th>
-              <th>Fehler</th>
-              <th>Versuche</th>
-            </tr>
-          </thead>
-          <tbody id="worstPhrases"></tbody>
-        </table>
       </section>
 
       <section class="review">
@@ -90,11 +62,9 @@
         <table>
           <thead>
             <tr>
-              <th>Nr.</th>
-              <th>Erwartet</th>
               <th>Rohe ASR</th>
-              <th>Korrigiert</th>
-              <th>OK</th>
+              <th>Zieltext</th>
+              <th>Vorschlag</th>
             </tr>
           </thead>
           <tbody id="speechAttempts"></tbody>

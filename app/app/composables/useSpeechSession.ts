@@ -17,7 +17,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const suggestions = computed(() => result.value?.suggestions ?? [])
   const hasSelection = computed(() => Boolean(selected.value))
   const hasMathResult = computed(() => mode.value === 'math' && Boolean(result.value?.math_text))
-  const selectedIndex = computed(() => suggestions.value.findIndex(suggestion => suggestion.phrase_id === selected.value?.phrase_id))
+  const selectedIndex = computed(() => suggestions.value.findIndex(suggestion => suggestion.id === selected.value?.id))
   const outputText = computed(() => mode.value === 'math' ? result.value?.math_text : selected.value?.text)
 
   const silenceDetection = useSilenceDetection(stopRecording)
@@ -36,7 +36,8 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   function selectPhrase(phrase: Phrase) {
     result.value = undefined
     selected.value = {
-      phrase_id: phrase.id,
+      id: `phrase:${phrase.id}`,
+      source: 'phrase',
       text: phrase.text,
       score: 1
     }
@@ -125,15 +126,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     const top = result.value.suggestions[0]
     const form = new FormData()
     form.append('audio_id', result.value.audio_id)
-    form.append('source', mode.value === 'math' ? 'friend_app_math' : 'friend_app')
-    form.append('phrase_id', selected.value ? String(selected.value.phrase_id) : '')
-    form.append('expected_text', correctedText)
     form.append('raw_transcript', result.value.raw_transcript)
-    form.append('corrected_text', correctedText)
-    form.append('suggested_phrase_id', top?.phrase_id ? String(top.phrase_id) : '')
+    form.append('target_text', correctedText)
+    form.append('selected_candidate_id', selected.value?.id || '')
+    form.append('selected_candidate_source', selected.value?.source || '')
+    form.append('suggested_candidate_id', top?.id || '')
     form.append('suggested_text', top?.text || '')
     form.append('suggestion_score', top?.score ? String(top.score) : '')
-    form.append('was_understandable', 'true')
     try {
       await fetch('/api/speech-attempts', { method: 'POST', body: form })
       hasSaved.value = true
