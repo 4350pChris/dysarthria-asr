@@ -13,7 +13,6 @@ def read_phrases() -> list[dict]:
             SELECT phrases.id, categories.name AS category, phrases.text
             FROM phrases
             JOIN categories ON categories.id = phrases.category_id
-            WHERE phrases.active = 1
             ORDER BY categories.name COLLATE NOCASE, phrases.id
             """
         ).fetchall()
@@ -33,7 +32,7 @@ def read_categories() -> list[dict]:
             """
             SELECT categories.id, categories.name, COUNT(phrases.id) AS phrase_count
             FROM categories
-            LEFT JOIN phrases ON phrases.category_id = categories.id AND phrases.active = 1
+            LEFT JOIN phrases ON phrases.category_id = categories.id
             GROUP BY categories.id
             ORDER BY categories.name COLLATE NOCASE, categories.id
             """
@@ -83,7 +82,85 @@ def update_phrase(phrase_id: int, text: str) -> dict:
 
 def delete_phrase(phrase_id: int) -> dict:
     with connect_db() as db:
-        cursor = db.execute("UPDATE phrases SET active = 0 WHERE id = ?", (phrase_id,))
+        cursor = db.execute("DELETE FROM phrases WHERE id = ?", (phrase_id,))
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Phrase not found.")
         return {"ok": True}
+
+
+def read_grammar() -> list[dict]:
+    with connect_db() as db:
+        slots = db.execute("SELECT id, name FROM grammar_slots ORDER BY id").fetchall()
+        patterns = db.execute(
+            """
+            SELECT id, slot_id, template
+            FROM grammar_patterns
+            ORDER BY id
+            """
+        ).fetchall()
+        values = db.execute(
+            """
+            SELECT id, slot_id, value
+            FROM grammar_slot_values
+            ORDER BY id
+            """
+        ).fetchall()
+    return [
+        {
+            "id": slot["id"],
+            "name": slot["name"],
+            "patterns": [
+                {"id": row["id"], "template": row["template"]}
+                for row in patterns
+                if row["slot_id"] == slot["id"]
+            ],
+            "values": [
+                {"id": row["id"], "value": row["value"]}
+                for row in values
+                if row["slot_id"] == slot["id"]
+            ],
+        }
+        for slot in slots
+    ]
+
+
+def update_grammar_pattern(pattern_id: int, template: str) -> dict:
+    clean_template = template.strip()
+    if not clean_template:
+        raise HTTPException(status_code=400, detail="Template is required.")
+    with connect_db() as db:
+        pattern = db.execute(
+            """
+            SELECT grammar_slots.name
+            FROM grammar_patterns
+            JOIN grammar_slots ON grammar_slots.id = grammar_patterns.slot_id
+            WHERE grammar_patterns.id = ?
+            """,
+            (pattern_id,),
+        ).fetchone()
+        if not pattern:
+            raise HTTPException(status_code=404, detail="Grammar pattern not found.")
+
+        marker = "{" + pattern["name"] + "}"
+        if clean_template.count(marker) != 1:
+            raise HTTPException(status_code=400, detail="Template must contain the grammar slot once.")
+
+        cursor = db.execute(
+            "UPDATE grammar_patterns SET template = ? WHERE id = ?",
+            (clean_template, pattern_id),
+        )
+    return {"id": pattern_id, "template": clean_template}
+
+
+def update_grammar_value(value_id: int, value: str) -> dict:
+    clean_value = value.strip()
+    if not clean_value:
+        raise HTTPException(status_code=400, detail="Value is required.")
+    with connect_db() as db:
+        cursor = db.execute(
+            "UPDATE grammar_slot_values SET value = ? WHERE id = ?",
+            (clean_value, value_id),
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Grammar value not found.")
+    return {"id": value_id, "value": clean_value}

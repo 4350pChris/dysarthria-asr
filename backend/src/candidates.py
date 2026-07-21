@@ -22,7 +22,6 @@ def read_generated_candidates() -> list[dict]:
             FROM grammar_patterns
             JOIN grammar_slots ON grammar_slots.id = grammar_patterns.slot_id
             JOIN grammar_slot_values ON grammar_slot_values.slot_id = grammar_slots.id
-            WHERE grammar_patterns.active = 1 AND grammar_slot_values.active = 1
             ORDER BY grammar_patterns.id, grammar_slot_values.id
             """
         ).fetchall()
@@ -44,7 +43,6 @@ def read_candidates() -> list[dict]:
             """
             SELECT phrases.id, phrases.text
             FROM phrases
-            WHERE phrases.active = 1
             ORDER BY phrases.id
             """
         ).fetchall()

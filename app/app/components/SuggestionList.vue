@@ -1,23 +1,28 @@
 <script setup lang="ts">
-import type { Suggestion } from "~/types/speech";
+import type { Suggestion } from '~/types/speech'
 
 defineProps<{
-  suggestions: Suggestion[];
-  selected?: Suggestion;
-}>();
+  suggestions: Suggestion[]
+  selected?: Suggestion
+}>()
 
 defineEmits<{
-  select: [suggestion: Suggestion];
-}>();
+  select: [suggestion: Suggestion]
+}>()
 
 function sourceLabel(suggestion: Suggestion) {
-  return suggestion.source === "generated" ? "Baustein" : "Gespeichert";
+  return suggestion.source === 'generated' ? 'Baustein' : 'Gespeichert'
 }
 </script>
 
 <template>
-  <section v-if="suggestions.length > 1" class="space-y-2">
-    <p class="text-sm font-semibold text-muted">Andere Vorschläge</p>
+  <section
+    v-if="suggestions.length > 1"
+    class="space-y-2"
+  >
+    <p class="text-sm font-semibold text-muted">
+      Andere Vorschläge
+    </p>
     <UButton
       v-for="suggestion in suggestions"
       :key="suggestion.id"

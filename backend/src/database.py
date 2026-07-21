@@ -170,8 +170,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS phrases (
                 id INTEGER PRIMARY KEY,
                 category_id INTEGER NOT NULL REFERENCES categories(id),
-                text TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1
+                text TEXT NOT NULL
             )
             """
         )
@@ -214,8 +213,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS grammar_patterns (
                 id INTEGER PRIMARY KEY,
                 slot_id INTEGER NOT NULL REFERENCES grammar_slots(id),
-                template TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1
+                template TEXT NOT NULL
             )
             """
         )
@@ -224,8 +222,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS grammar_slot_values (
                 id INTEGER PRIMARY KEY,
                 slot_id INTEGER NOT NULL REFERENCES grammar_slots(id),
-                value TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1
+                value TEXT NOT NULL
             )
             """
         )
