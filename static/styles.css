@@ -111,8 +111,22 @@ h3 {
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.suggestions {
+  margin: 18px 0;
+}
+
+#suggestions {
+  display: grid;
+  gap: 8px;
+}
+
+.suggestion {
+  width: 100%;
+  text-align: left;
 }
 
 .metrics div {

@@ -5,6 +5,7 @@ import os
 import uuid
 import csv
 import io
+from difflib import SequenceMatcher
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -29,6 +30,9 @@ CORRECTION_FIELDS = [
     "expected_text",
     "raw_transcript",
     "corrected_text",
+    "suggested_phrase_number",
+    "suggested_text",
+    "suggestion_score",
     "was_understandable",
     "notes",
 ]
@@ -48,7 +52,34 @@ def read_corrections() -> list[dict]:
 
 
 def normalize_text(text: str) -> str:
-    return " ".join(text.casefold().strip().rstrip(".!?").split())
+    return " ".join(text.casefold().replace("’", "'").strip().rstrip(".!?").split())
+
+
+def read_phrases() -> list[dict]:
+    if not PHRASES_FILE.exists():
+        return []
+    with PHRASES_FILE.open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    for index, row in enumerate(rows, start=1):
+        row.setdefault("number", f"{index:03}")
+    return rows
+
+
+def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
+    normalized = normalize_text(text)
+    if not normalized:
+        return []
+    scored = []
+    for phrase in read_phrases():
+        score = SequenceMatcher(None, normalized, normalize_text(phrase.get("text", ""))).ratio()
+        scored.append(
+            {
+                "phrase_number": phrase["number"],
+                "text": phrase.get("text", ""),
+                "score": round(score, 3),
+            }
+        )
+    return sorted(scored, key=lambda item: item["score"], reverse=True)[:limit]
 
 
 @app.get("/")
@@ -72,6 +103,7 @@ async def transcribe(audio: UploadFile = File(...)) -> dict:
         "audio_id": audio_id,
         "audio_path": str(audio_path.relative_to(ROOT)),
         "raw_transcript": transcript,
+        "suggestions": phrase_suggestions(transcript),
     }
 
 
@@ -84,6 +116,9 @@ async def save_correction(
     expected_text: str = Form(""),
     raw_transcript: str = Form(""),
     corrected_text: str = Form(...),
+    suggested_phrase_number: str = Form(""),
+    suggested_text: str = Form(""),
+    suggestion_score: str = Form(""),
     was_understandable: bool = Form(False),
     notes: str = Form(""),
 ) -> dict:
@@ -97,6 +132,9 @@ async def save_correction(
         "expected_text": expected_text,
         "raw_transcript": raw_transcript,
         "corrected_text": corrected_text,
+        "suggested_phrase_number": suggested_phrase_number,
+        "suggested_text": suggested_text,
+        "suggestion_score": suggestion_score,
         "was_understandable": was_understandable,
         "notes": notes,
     }
@@ -135,6 +173,12 @@ def analyze_corrections() -> dict:
         if normalize_text(row.get("raw_transcript", ""))
         == normalize_text(row.get("expected_text", ""))
     )
+    fuzzy_top_1 = sum(
+        1
+        for row in records
+        if row.get("phrase_number")
+        and row.get("phrase_number") == row.get("suggested_phrase_number")
+    )
     by_phrase = {}
     for row in records:
         key = row.get("phrase_number") or "?"
@@ -155,16 +199,15 @@ def analyze_corrections() -> dict:
         "understandable_rate": understandable / total if total else 0,
         "exact_matches": exact,
         "exact_match_rate": exact / total if total else 0,
+        "fuzzy_top_1_matches": fuzzy_top_1,
+        "fuzzy_top_1_rate": fuzzy_top_1 / total if total else 0,
         "worst_phrases": worst_phrases,
     }
 
 
 @app.get("/api/phrases")
 def list_phrases() -> list[dict]:
-    if not PHRASES_FILE.exists():
-        return []
-    with PHRASES_FILE.open(newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+    return read_phrases()
 
 
 if os.getenv("DYSARTHRIA_ASR_DEV"):

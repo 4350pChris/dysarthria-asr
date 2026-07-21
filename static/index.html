@@ -37,6 +37,11 @@
         <textarea id="raw" readonly placeholder="Die Erkennung erscheint hier"></textarea>
       </label>
 
+      <section id="suggestionsSection" class="suggestions" hidden>
+        <h2>Vorschläge</h2>
+        <div id="suggestions"></div>
+      </section>
+
       <label>
         Korrigierter Satz
         <textarea id="corrected" placeholder="Den gemeinten Satz eingeben"></textarea>
@@ -61,6 +66,7 @@
           <div><strong id="total">0</strong><span>Versuche</span></div>
           <div><strong id="understandableRate">0%</strong><span>verständlich</span></div>
           <div><strong id="exactRate">0%</strong><span>exakt erkannt</span></div>
+          <div><strong id="fuzzyRate">0%</strong><span>Fuzzy Top 1</span></div>
         </div>
         <h3>Häufige Probleme</h3>
         <table>

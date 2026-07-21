@@ -2,6 +2,7 @@ let recorder;
 let chunks = [];
 let lastResult;
 let source = "browser_recording";
+let phrases = [];
 
 const recordButton = document.querySelector("#record");
 const stopButton = document.querySelector("#stop");
@@ -11,6 +12,8 @@ const upload = document.querySelector("#upload");
 const phrase = document.querySelector("#phrase");
 const expected = document.querySelector("#expected");
 const raw = document.querySelector("#raw");
+const suggestionsSection = document.querySelector("#suggestionsSection");
+const suggestions = document.querySelector("#suggestions");
 const corrected = document.querySelector("#corrected");
 const notes = document.querySelector("#notes");
 const understandable = document.querySelector("#understandable");
@@ -19,6 +22,7 @@ const corrections = document.querySelector("#corrections");
 const total = document.querySelector("#total");
 const understandableRate = document.querySelector("#understandableRate");
 const exactRate = document.querySelector("#exactRate");
+const fuzzyRate = document.querySelector("#fuzzyRate");
 const worstPhrases = document.querySelector("#worstPhrases");
 
 function setStatus(message) {
@@ -37,6 +41,8 @@ function clearAttempt() {
   lastResult = undefined;
   upload.value = "";
   raw.value = "";
+  suggestions.replaceChildren();
+  suggestionsSection.hidden = true;
   notes.value = "";
   understandable.checked = false;
   saveButton.disabled = true;
@@ -91,6 +97,7 @@ speakButton.addEventListener("click", () => {
 
 saveButton.addEventListener("click", async () => {
   const form = new FormData();
+  const topSuggestion = lastResult.suggestions?.[0] || {};
   form.append("audio_id", lastResult.audio_id);
   form.append("audio_path", lastResult.audio_path);
   form.append("source", source);
@@ -98,6 +105,9 @@ saveButton.addEventListener("click", async () => {
   form.append("expected_text", expected.value);
   form.append("raw_transcript", raw.value);
   form.append("corrected_text", corrected.value);
+  form.append("suggested_phrase_number", topSuggestion.phrase_number || "");
+  form.append("suggested_text", topSuggestion.text || "");
+  form.append("suggestion_score", topSuggestion.score || "");
   form.append("was_understandable", understandable.checked ? "true" : "false");
   form.append("notes", notes.value);
 
@@ -129,7 +139,14 @@ async function transcribe(blob, filename = "recording.webm") {
     }
     lastResult = await response.json();
     raw.value = lastResult.raw_transcript;
-    corrected.value = phrase.value || lastResult.raw_transcript;
+    renderSuggestions(lastResult.suggestions || []);
+    if (phrase.value) {
+      corrected.value = phrase.value;
+    } else if (lastResult.suggestions?.[0]?.score >= 0.8) {
+      selectPhrase(lastResult.suggestions[0].phrase_number, lastResult.suggestions[0].text);
+    } else {
+      corrected.value = lastResult.raw_transcript;
+    }
     saveButton.disabled = false;
     speakButton.disabled = false;
     setStatus(`Audio gespeichert als ${lastResult.audio_path}`);
@@ -140,10 +157,31 @@ async function transcribe(blob, filename = "recording.webm") {
   }
 }
 
+function selectPhrase(number, text) {
+  phrase.value = text;
+  phrase.selectedIndex = phrases.findIndex((item) => item.number === number) + 1;
+  expected.value = text;
+  corrected.value = text;
+}
+
+function renderSuggestions(items) {
+  suggestionsSection.hidden = items.length === 0;
+  suggestions.replaceChildren(
+    ...items.map((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "suggestion";
+      button.textContent = `${item.phrase_number} ${Math.round(item.score * 100)}% - ${item.text}`;
+      button.addEventListener("click", () => selectPhrase(item.phrase_number, item.text));
+      return button;
+    }),
+  );
+}
+
 async function loadPhrases() {
   const response = await fetch("/api/phrases");
   if (!response.ok) return;
-  const phrases = await response.json();
+  phrases = await response.json();
   phrases.forEach((item, index) => {
     const number = item.number || phraseNumber(index);
     const option = document.createElement("option");
@@ -184,6 +222,7 @@ async function loadAnalysis() {
   total.textContent = analysis.total;
   understandableRate.textContent = percent(analysis.understandable_rate);
   exactRate.textContent = percent(analysis.exact_match_rate);
+  fuzzyRate.textContent = percent(analysis.fuzzy_top_1_rate);
   worstPhrases.replaceChildren(
     ...analysis.worst_phrases.map((row) => {
       const tr = document.createElement("tr");
