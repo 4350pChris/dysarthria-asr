@@ -24,6 +24,7 @@ DATA_DIR = ROOT / "data"
 AUDIO_DIR = DATA_DIR / "audio"
 CORRECTIONS_FILE = DATA_DIR / "corrections.jsonl"
 PHRASES_FILE = DATA_DIR / "phrases.csv"
+SEED_PHRASES_FILE = ROOT / "seed" / "phrases.csv"
 DB_FILE = DATA_DIR / "app.sqlite"
 CATEGORY_TRANSLATIONS = {
     "greetings": "Begrüßung",
@@ -95,9 +96,10 @@ def init_db() -> None:
         count = db.execute("SELECT COUNT(*) FROM phrases").fetchone()[0]
         for old, new in CATEGORY_TRANSLATIONS.items():
             db.execute("UPDATE OR IGNORE categories SET name = ? WHERE name = ?", (new, old))
-        if count or not PHRASES_FILE.exists():
+        seed_file = PHRASES_FILE if PHRASES_FILE.exists() else SEED_PHRASES_FILE
+        if count or not seed_file.exists():
             return
-        with PHRASES_FILE.open(newline="", encoding="utf-8") as f:
+        with seed_file.open(newline="", encoding="utf-8") as f:
             for sort_order, row in enumerate(csv.DictReader(f), start=1):
                 category = row["category"].strip()
                 text = row["text"].strip()
