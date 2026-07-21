@@ -10,8 +10,6 @@ from .semantic_matching import semantic_scores
 from .text import normalize_text
 
 FUZZY_FALLBACK_THRESHOLD = 0.72
-SEMANTIC_WEIGHT = 0.65
-
 
 def read_phrases() -> list[dict]:
     with connect_db() as db:
@@ -64,11 +62,14 @@ def phrase_suggestions(text: str, limit: int = 3) -> list[dict]:
             }
         )
 
-    best_fuzzy = max((item["score"] for item in scored), default=0)
+    best_fuzzy_item = max(scored, key=lambda item: item["score"], default=None)
+    best_fuzzy = best_fuzzy_item["score"] if best_fuzzy_item else 0
     if best_fuzzy < FUZZY_FALLBACK_THRESHOLD:
         scored = apply_semantic_fallback(text, phrases, scored)
 
-    return sorted(scored, key=lambda item: item["score"], reverse=True)[:limit]
+    suggestions = sorted(
+        scored, key=lambda item: item["score"], reverse=True)[:limit]
+    return suggestions
 
 
 def apply_semantic_fallback(text: str, phrases: list[dict], scored: list[dict]) -> list[dict]:
@@ -79,7 +80,7 @@ def apply_semantic_fallback(text: str, phrases: list[dict], scored: list[dict]) 
 
     for item in scored:
         semantic_score = semantic_by_id.get(item["phrase_id"], 0)
-        item["score"] = round(max(item["score"], semantic_score * SEMANTIC_WEIGHT), 3)
+        item["score"] = round(max(item["score"], semantic_score), 3)
     return scored
 
 

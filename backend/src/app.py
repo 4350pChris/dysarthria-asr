@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -10,7 +13,14 @@ from .paths import STATIC_DIR
 from .routers import phrases, speech_attempts, transcription
 
 
+def configure_logging() -> None:
+    level = os.getenv("LOG_LEVEL", "INFO").upper()
+    logging.basicConfig(level=level)
+    logging.getLogger("src").setLevel(level)
+
+
 def create_app() -> FastAPI:
+    configure_logging()
     init_db()
 
     app = FastAPI(title="Dysarthria ASR Prototype")
