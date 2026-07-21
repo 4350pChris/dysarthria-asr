@@ -8,3 +8,4 @@ data/corrections.jsonl
 data/*.sqlite
 data/voice_samples
 
+index.db

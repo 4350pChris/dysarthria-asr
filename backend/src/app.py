@@ -10,13 +10,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .asr import transcribe_german
 
-ROOT = Path(__file__).resolve().parents[1]
-STATIC_DIR = ROOT / "static"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+ROOT = BACKEND_DIR.parents[0]
+STATIC_DIR = BACKEND_DIR / "static"
 DATA_DIR = ROOT / "data"
 AUDIO_DIR = DATA_DIR / "audio"
 CORRECTIONS_FILE = DATA_DIR / "corrections.jsonl"
@@ -38,6 +40,12 @@ CORRECTION_FIELDS = [
 ]
 
 app = FastAPI(title="Dysarthria ASR Prototype")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 

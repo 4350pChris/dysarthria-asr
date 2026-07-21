@@ -1,0 +1,40 @@
+<script setup lang="ts">
+defineProps<{
+  isRecording: boolean
+  isBusy: boolean
+}>()
+
+defineEmits<{
+  start: []
+  stop: []
+}>()
+</script>
+
+<template>
+  <UButton
+    v-if="!isRecording"
+    class="min-h-60 justify-center rounded-3xl text-3xl font-extrabold shadow-2xl"
+    block
+    color="primary"
+    icon="i-lucide-mic"
+    size="xl"
+    :disabled="isBusy"
+    :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
+    @click="$emit('start')"
+  >
+    Aufnehmen
+  </UButton>
+
+  <UButton
+    v-else
+    class="min-h-60 justify-center rounded-3xl text-3xl font-extrabold shadow-2xl"
+    block
+    color="error"
+    icon="i-lucide-square"
+    size="xl"
+    :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
+    @click="$emit('stop')"
+  >
+    Stopp
+  </UButton>
+</template>
