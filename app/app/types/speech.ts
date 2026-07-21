@@ -20,5 +20,8 @@ export type TranscriptionResult = {
   audio_id: string
   audio_path: string
   raw_transcript: string
+  math_corrected_text: string
+  math_number_text: string
+  math_text: string
   suggestions: Suggestion[]
 }

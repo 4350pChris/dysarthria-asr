@@ -7,7 +7,8 @@ dependencies = [
   "fastapi",
   "uvicorn[standard]",
   "python-multipart",
-  "faster-whisper"
+  "faster-whisper",
+  "text2num>=3.0.2",
 ]
 
 [tool.uv]

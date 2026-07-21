@@ -13,7 +13,7 @@ defineEmits<{
 <template>
   <UButton
     v-if="!isRecording"
-    class="min-h-60 rounded-3xl text-3xl font-extrabold shadow-2xl"
+    class="min-h-60 rounded-3xl text-3xl font-extrabold shadow-lg"
     block
     color="primary"
     icon="i-lucide-mic"
@@ -28,7 +28,7 @@ defineEmits<{
 
   <UButton
     v-else
-    class="min-h-60 justify-center rounded-3xl text-3xl font-extrabold shadow-2xl"
+    class="min-h-60 justify-center rounded-3xl text-3xl font-extrabold shadow-lg"
     block
     color="error"
     icon="i-lucide-square"
