@@ -89,12 +89,6 @@ async function saveAttempt() {
   await fetch(`${apiBase}/api/corrections`, { method: 'POST', body: form })
 }
 
-function reset() {
-  result.value = undefined
-  selected.value = undefined
-  status.value = ''
-}
-
 function submit() {}
 </script>
 
@@ -105,7 +99,7 @@ function submit() {}
 
       <UForm
         :state="formState"
-        class="flex flex-1 flex-col justify-center gap-5"
+        class="flex flex-1 flex-col justify-start gap-5"
         @submit="submit"
       >
         <RecordControl
@@ -126,7 +120,6 @@ function submit() {}
           <MatchedPhrase
             :selected="selected"
             @speak="speak"
-            @reset="reset"
           />
 
           <SuggestionList

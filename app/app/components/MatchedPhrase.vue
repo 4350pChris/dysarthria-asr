@@ -32,25 +32,12 @@ function confidence(suggestion?: Suggestion) {
         block
         color="primary"
         icon="i-lucide-volume-2"
+        label="Vorlesen"
         size="xl"
         :disabled="!selected"
         :ui="{ leadingIcon: 'size-7', base: 'flex-col gap-1.5' }"
         @click="$emit('speak')"
-      >
-        Vorlesen
-      </UButton>
-      <UButton
-        class="min-h-24 justify-center rounded-2xl text-lg font-extrabold"
-        block
-        color="neutral"
-        icon="i-lucide-rotate-ccw"
-        size="xl"
-        variant="subtle"
-        :ui="{ leadingIcon: 'size-7', base: 'flex-col gap-1.5' }"
-        @click="$emit('reset')"
-      >
-        Nochmal
-      </UButton>
+      />
     </div>
   </section>
 </template>
