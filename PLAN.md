@@ -13,7 +13,7 @@ The first question is not "can we train a model?" The first question is:
 Target flow:
 
 ```text
-record audio -> German ASR -> manual correction -> German TTS -> save example
+record audio -> German ASR -> select phrase -> German TTS -> save speech attempt
 ```
 
 ## Current Prototype
@@ -22,10 +22,10 @@ The repo currently contains a small FastAPI + browser prototype:
 
 - `static/index.html`: record/correct/speak UI
 - `static/app.js`: browser `MediaRecorder`, API calls, German browser TTS
-- `src/app.py`: upload, transcribe, save corrections
+- `src/app.py`: FastAPI app setup and router registration
 - `src/asr.py`: `faster-whisper` German transcription wrapper
 - `data/audio/`: local recorded clips, ignored by git
-- `data/corrections.jsonl`: local correction records, ignored by git
+- `data/app.sqlite`: phrases, audio sample metadata, and speech attempts
 
 Run it with:
 
@@ -53,7 +53,7 @@ Do first:
 - short phrases
 - in-person use
 - text output plus German TTS playback
-- save every audio/transcript/correction pair
+- save every audio/transcript/speech-attempt pair
 
 Do not do yet:
 
@@ -126,7 +126,7 @@ Decision rule:
 
 1. Add a phrase list screen or importable CSV.
 2. Add `expected_text` and `was_understandable` to saved records.
-3. Add a corrections review page showing recent attempts.
+3. Add a speech-attempt review page showing recent attempts.
 4. Add fuzzy matching against known phrases.
 5. Add simple personal vocabulary/substitution rules.
 6. Export results as CSV for analysis.

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from ..audio_samples import create_audio_sample
 from ..asr import transcribe_german
 from ..paths import AUDIO_DIR, ROOT
 from ..phrases import phrase_suggestions
@@ -22,11 +23,18 @@ async def transcribe(audio: UploadFile = File(...)) -> dict:
     if not contents:
         raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
     audio_path.write_bytes(contents)
+    relative_audio_path = str(audio_path.relative_to(ROOT))
+    create_audio_sample(
+        id=audio_id,
+        file_path=relative_audio_path,
+        original_filename=audio.filename or "",
+        content_type=audio.content_type or "",
+    )
 
     transcript = transcribe_german(audio_path)
     return {
         "audio_id": audio_id,
-        "audio_path": str(audio_path.relative_to(ROOT)),
+        "audio_path": relative_audio_path,
         "raw_transcript": transcript,
         "suggestions": phrase_suggestions(transcript),
     }

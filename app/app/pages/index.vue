@@ -106,7 +106,6 @@ async function saveAttempt() {
   const top = result.value.suggestions[0]
   const form = new FormData()
   form.append('audio_id', result.value.audio_id)
-  form.append('audio_path', result.value.audio_path)
   form.append('source', 'friend_app')
   form.append('phrase_id', String(selected.value.phrase_id))
   form.append('expected_text', selected.value.text)
@@ -117,7 +116,7 @@ async function saveAttempt() {
   form.append('suggestion_score', top?.score ? String(top.score) : '')
   form.append('was_understandable', 'true')
   try {
-    await fetch(`${apiBase}/api/corrections`, { method: 'POST', body: form })
+    await fetch(`${apiBase}/api/speech-attempts`, { method: 'POST', body: form })
     hasSaved.value = true
   } finally {
     isSaving.value = false

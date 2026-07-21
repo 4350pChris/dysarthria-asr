@@ -8,7 +8,7 @@ The goal is measurement first:
 2. transcribe with an existing German-capable ASR model
 3. manually correct the result
 4. speak the corrected text with German TTS
-5. save audio/transcript/correction pairs for later analysis
+5. save audio/transcript/speech-attempt pairs for later analysis
 
 ## Setup
 
@@ -34,12 +34,12 @@ The first transcription downloads the `small` Whisper model used by
 Local test data is intentionally not committed:
 
 - `data/audio/`: recorded audio clips
-- `data/corrections.jsonl`: correction records
+- `data/app.sqlite`: phrases, audio sample metadata, and speech attempts
 
 The starter phrase list is committed at `data/phrases.csv`. Edit or replace it
 with your own `category,text` rows before structured testing.
 
-Each correction record stores:
+Each speech attempt stores:
 
 - timestamp
 - audio id

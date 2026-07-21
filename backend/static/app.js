@@ -18,7 +18,7 @@ const corrected = document.querySelector("#corrected");
 const notes = document.querySelector("#notes");
 const understandable = document.querySelector("#understandable");
 const status = document.querySelector("#status");
-const corrections = document.querySelector("#corrections");
+const speechAttempts = document.querySelector("#speechAttempts");
 const total = document.querySelector("#total");
 const understandableRate = document.querySelector("#understandableRate");
 const exactRate = document.querySelector("#exactRate");
@@ -95,7 +95,6 @@ saveButton.addEventListener("click", async () => {
   const form = new FormData();
   const topSuggestion = lastResult.suggestions?.[0] || {};
   form.append("audio_id", lastResult.audio_id);
-  form.append("audio_path", lastResult.audio_path);
   form.append("source", source);
   form.append("phrase_id", phrase.selectedOptions[0]?.dataset.id || "");
   form.append("expected_text", expected.value);
@@ -107,13 +106,13 @@ saveButton.addEventListener("click", async () => {
   form.append("was_understandable", understandable.checked ? "true" : "false");
   form.append("notes", notes.value);
 
-  const response = await fetch("/api/corrections", { method: "POST", body: form });
+  const response = await fetch("/api/speech-attempts", { method: "POST", body: form });
   if (!response.ok) {
     setStatus("Korrektur konnte nicht gespeichert werden.");
     return;
   }
   setStatus("Gespeichert.");
-  await loadCorrections();
+  await loadSpeechAttempts();
   await loadAnalysis();
 });
 
@@ -187,11 +186,11 @@ async function loadPhrases() {
   });
 }
 
-async function loadCorrections() {
-  const response = await fetch("/api/corrections");
+async function loadSpeechAttempts() {
+  const response = await fetch("/api/speech-attempts");
   if (!response.ok) return;
   const rows = await response.json();
-  corrections.replaceChildren(
+  speechAttempts.replaceChildren(
     ...rows.map((row) => {
       const tr = document.createElement("tr");
       for (const value of [
@@ -237,5 +236,5 @@ async function loadAnalysis() {
 }
 
 loadPhrases();
-loadCorrections();
+loadSpeechAttempts();
 loadAnalysis();

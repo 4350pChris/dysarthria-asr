@@ -48,6 +48,36 @@ def init_db() -> None:
             )
             """
         )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audio_samples (
+                id TEXT PRIMARY KEY,
+                file_path TEXT NOT NULL,
+                original_filename TEXT NOT NULL DEFAULT '',
+                content_type TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS speech_attempts (
+                id INTEGER PRIMARY KEY,
+                audio_id TEXT NOT NULL REFERENCES audio_samples(id),
+                source TEXT NOT NULL DEFAULT '',
+                phrase_id INTEGER REFERENCES phrases(id),
+                expected_text TEXT NOT NULL DEFAULT '',
+                raw_transcript TEXT NOT NULL DEFAULT '',
+                corrected_text TEXT NOT NULL,
+                suggested_phrase_id INTEGER REFERENCES phrases(id),
+                suggested_text TEXT NOT NULL DEFAULT '',
+                suggestion_score REAL,
+                was_understandable INTEGER NOT NULL DEFAULT 0,
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
         count = db.execute("SELECT COUNT(*) FROM phrases").fetchone()[0]
         for old, new in CATEGORY_TRANSLATIONS.items():
             db.execute("UPDATE OR IGNORE categories SET name = ? WHERE name = ?", (new, old))

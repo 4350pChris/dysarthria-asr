@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
 from .paths import STATIC_DIR
-from .routers import corrections, phrases, transcription
+from .routers import phrases, speech_attempts, transcription
 
 
 def create_app() -> FastAPI:
@@ -22,7 +22,7 @@ def create_app() -> FastAPI:
     )
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(transcription.router)
-    app.include_router(corrections.router)
+    app.include_router(speech_attempts.router)
     app.include_router(phrases.router)
 
     @app.get("/")
