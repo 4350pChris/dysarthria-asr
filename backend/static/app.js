@@ -166,7 +166,7 @@ function renderSuggestions(items) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "suggestion";
-      button.textContent = `${item.phrase_id} ${Math.round(item.score * 100)}% - ${item.text}`;
+      button.textContent = `${Math.round(item.score * 100)}% - ${item.text}`;
       button.addEventListener("click", () => selectPhrase(item.phrase_id, item.text));
       return button;
     }),

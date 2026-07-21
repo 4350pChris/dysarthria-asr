@@ -30,8 +30,7 @@ defineEmits<{
       :class="selected?.phrase_id === suggestion.phrase_id ? 'ring-4 ring-primary/20 border-primary' : ''"
       @click="$emit('select', suggestion)"
     >
-      <span class="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3">
-        <span class="font-extrabold text-slate-500">{{ suggestion.phrase_id }}</span>
+      <span class="grid w-full grid-cols-[1fr_auto] items-center gap-3">
         <strong class="text-base text-slate-950">{{ suggestion.text }}</strong>
         <small class="font-extrabold text-slate-500">{{ Math.round(suggestion.score * 100) }}%</small>
       </span>
