@@ -11,10 +11,20 @@ const phrases = ref<Phrase[]>([])
 const formState = reactive({ text: '' })
 const editing = ref<Phrase>()
 const isSaving = ref(false)
+const phraseToDelete = ref<Phrase>()
+const isDeleting = ref(false)
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
 const formLabel = computed(() => editing.value ? 'Satz ändern' : 'Neuer Satz')
 const submitLabel = computed(() => editing.value ? 'Änderung speichern' : 'Satz hinzufügen')
+const isDeleteModalOpen = computed({
+  get: () => Boolean(phraseToDelete.value),
+  set: (isOpen) => {
+    if (!isOpen && !isDeleting.value) {
+      phraseToDelete.value = undefined
+    }
+  },
+})
 
 onMounted(loadData)
 
@@ -63,13 +73,22 @@ async function savePhrase() {
   }
 }
 
-async function deletePhrase(phrase: Phrase) {
+function requestDelete(phrase: Phrase) {
+  phraseToDelete.value = phrase
+}
+
+async function confirmDelete() {
+  if (!phraseToDelete.value || isDeleting.value) return
+  isDeleting.value = true
   try {
-    await $fetch(`${apiBase}/api/phrases/${phrase.id}`, { method: 'DELETE' })
+    await $fetch(`${apiBase}/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
     status.value = 'Satz gelöscht.'
+    phraseToDelete.value = undefined
     await loadData()
   } catch {
     status.value = 'Satz konnte nicht gelöscht werden.'
+  } finally {
+    isDeleting.value = false
   }
 }
 </script>
@@ -118,7 +137,7 @@ async function deletePhrase(phrase: Phrase) {
             size="xl"
           />
         </UFormField>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid gap-3">
           <UButton
             class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
             block
@@ -146,8 +165,48 @@ async function deletePhrase(phrase: Phrase) {
       <PhraseGrid
         :phrases="phrases"
         @edit="startEdit"
-        @delete="deletePhrase"
+        @delete="requestDelete"
       />
+
+      <UModal
+        v-model:open="isDeleteModalOpen"
+        title="Satz löschen?"
+        description="Dieser Satz wird aus der Liste entfernt."
+        :close="false"
+      >
+        <template #body>
+          <p class="text-xl font-bold leading-snug text-slate-950">
+            {{ phraseToDelete?.text }}
+          </p>
+        </template>
+
+        <template #footer>
+          <div class="grid w-full gap-3">
+            <UButton
+              block
+              class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+              color="error"
+              icon="i-lucide-trash-2"
+              label="Ja, löschen"
+              size="xl"
+              type="button"
+              :loading="isDeleting"
+              @click="confirmDelete"
+            />
+            <UButton
+              block
+              class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+              color="neutral"
+              icon="i-lucide-x"
+              label="Abbrechen"
+              size="xl"
+              type="button"
+              variant="subtle"
+              @click="phraseToDelete = undefined"
+            />
+          </div>
+        </template>
+      </UModal>
     </UContainer>
   </UMain>
 </template>
