@@ -6,4 +6,5 @@ __pycache__/
 data/audio/
 data/corrections.jsonl
 data/*.sqlite
+data/voice_samples
 
