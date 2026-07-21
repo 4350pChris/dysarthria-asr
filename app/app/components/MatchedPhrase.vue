@@ -5,6 +5,10 @@ defineProps<{
   selected?: Suggestion
 }>()
 
+defineEmits<{
+  copy: []
+}>()
+
 function confidence(suggestion?: Suggestion) {
   return suggestion ? Math.round(suggestion.score * 100) : 0
 }
@@ -16,9 +20,16 @@ function confidence(suggestion?: Suggestion) {
       <p class="text-sm font-semibold text-slate-500">
         Vorschlag {{ confidence(selected) }}%
       </p>
-      <p class="mt-2 text-3xl font-bold leading-tight">
+      <UButton
+        class="mt-2 justify-start p-0 text-left text-3xl font-bold leading-tight"
+        color="neutral"
+        :disabled="!selected"
+        type="button"
+        variant="link"
+        @click="$emit('copy')"
+      >
         {{ selected?.text || "Kein Vorschlag" }}
-      </p>
+      </UButton>
     </UCard>
 
     <UButton

@@ -18,6 +18,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const hasSelection = computed(() => Boolean(selected.value))
   const hasMathResult = computed(() => mode.value === 'math' && Boolean(result.value?.math_text))
   const selectedIndex = computed(() => suggestions.value.findIndex(suggestion => suggestion.phrase_id === selected.value?.phrase_id))
+  const outputText = computed(() => mode.value === 'math' ? result.value?.math_text : selected.value?.text)
 
   const silenceDetection = useSilenceDetection(stopRecording)
 
@@ -98,17 +99,27 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   function speakSelected() {
-    const text = mode.value === 'math' ? result.value?.math_text : selected.value?.text
-    if (!text) return
+    if (!outputText.value) return
     speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
+    const utterance = new SpeechSynthesisUtterance(outputText.value)
     utterance.lang = 'de-DE'
     speechSynthesis.speak(utterance)
     void saveAttempt()
   }
 
+  async function copySelected() {
+    if (!outputText.value) return
+    try {
+      await navigator.clipboard.writeText(outputText.value)
+      status.value = 'Kopiert.'
+      void saveAttempt()
+    } catch {
+      status.value = 'Kopieren nicht möglich.'
+    }
+  }
+
   async function saveAttempt() {
-    const correctedText = mode.value === 'math' ? result.value?.math_text : selected.value?.text
+    const correctedText = outputText.value
     if (!result.value || !correctedText || hasSaved.value || isSaving.value) return
     isSaving.value = true
     const top = result.value.suggestions[0]
@@ -141,11 +152,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     hasSelection,
     hasMathResult,
     selectedIndex,
+    outputText,
     setSelection,
     selectSuggestionAt,
     selectPhrase,
     startRecording,
     stopRecording,
-    speakSelected
+    speakSelected,
+    copySelected
   }
 }

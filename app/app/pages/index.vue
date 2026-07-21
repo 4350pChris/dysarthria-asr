@@ -28,13 +28,13 @@ async function selectRoutePhrase() {
 function speakHelp() {
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(
-    'Sag aufnehmen. Sprich deinen Satz. Ich stoppe automatisch, wenn es ruhig ist. Danach sag vorlesen. Sag weiter für den nächsten Vorschlag. Sag zurück für den vorherigen Vorschlag.'
+    'Sag aufnehmen. Sprich deinen Satz. Ich stoppe automatisch, wenn es ruhig ist. Danach sag vorlesen oder kopieren. Sag weiter für den nächsten Vorschlag. Sag zurück für den vorherigen Vorschlag.'
   )
   utterance.lang = 'de-DE'
   speechSynthesis.speak(utterance)
 }
 
-function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'next' | 'previous' | 'help') {
+function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'next' | 'previous' | 'help') {
   if (command === 'start' && !speech.isRecording.value && !speech.isBusy.value) {
     shouldResumeVoiceCommands.value = voiceCommands.isListening.value
     voiceCommands.stop()
@@ -43,6 +43,8 @@ function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'next' | 'prev
     speech.stopRecording()
   } else if (command === 'speak' && (speech.selected.value || speech.result.value?.math_text)) {
     submit()
+  } else if (command === 'copy' && speech.outputText.value) {
+    void speech.copySelected()
   } else if (command === 'next') {
     speech.selectSuggestionAt(speech.selectedIndex.value + 1)
   } else if (command === 'previous') {
@@ -116,6 +118,7 @@ function submit() {
         >
           <MatchedPhrase
             :selected="speech.selected.value"
+            @copy="speech.copySelected"
           />
 
           <SuggestionList
@@ -129,6 +132,7 @@ function submit() {
           v-if="speech.hasMathResult.value && speech.result.value"
           :math-text="speech.result.value.math_text"
           :corrected-text="speech.result.value.math_corrected_text"
+          @copy="speech.copySelected"
         />
 
         <UButton

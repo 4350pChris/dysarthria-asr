@@ -3,6 +3,10 @@ defineProps<{
   mathText: string
   correctedText: string
 }>()
+
+defineEmits<{
+  copy: []
+}>()
 </script>
 
 <template>
@@ -11,9 +15,15 @@ defineProps<{
       <p class="text-sm font-semibold text-slate-500">
         Mathe
       </p>
-      <p class="mt-2 text-4xl font-bold leading-tight">
+      <UButton
+        class="mt-2 justify-start p-0 text-left text-4xl font-bold leading-tight"
+        color="neutral"
+        type="button"
+        variant="link"
+        @click="$emit('copy')"
+      >
         {{ mathText }}
-      </p>
+      </UButton>
       <p class="mt-3 text-base font-semibold text-slate-500">
         {{ correctedText }}
       </p>

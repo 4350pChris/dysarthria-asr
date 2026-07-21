@@ -1,4 +1,4 @@
-type VoiceCommand = 'start' | 'stop' | 'speak' | 'next' | 'previous' | 'help'
+type VoiceCommand = 'start' | 'stop' | 'speak' | 'copy' | 'next' | 'previous' | 'help'
 
 type SpeechRecognitionEvent = Event & {
   results: SpeechRecognitionResultList
@@ -30,6 +30,7 @@ const COMMANDS: Record<VoiceCommand, string[]> = {
   start: ['aufnehmen', 'aufnahme', 'start', 'los'],
   stop: ['stopp', 'stop', 'anhalten', 'fertig'],
   speak: ['vorlesen', 'sagen', 'sprich', 'sprechen'],
+  copy: ['kopieren', 'kopie', 'abschreiben'],
   next: ['weiter', 'nächster', 'nächste', 'nein'],
   previous: ['zurück', 'vorheriger', 'vorherige'],
   help: ['hilfe', 'befehle']
@@ -39,6 +40,7 @@ const COMMAND_LABELS: Record<VoiceCommand, string> = {
   start: 'Aufnehmen',
   stop: 'Stopp',
   speak: 'Vorlesen',
+  copy: 'Kopieren',
   next: 'Weiter',
   previous: 'Zurück',
   help: 'Hilfe'
