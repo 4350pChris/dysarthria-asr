@@ -12,6 +12,8 @@ const selected = ref<Suggestion>()
 const status = ref('')
 const isRecording = ref(false)
 const isBusy = ref(false)
+const isSaving = ref(false)
+const hasSaved = ref(false)
 
 const suggestions = computed(() => result.value?.suggestions ?? [])
 const hasResult = computed(() => Boolean(result.value))
@@ -25,6 +27,7 @@ async function startRecording() {
   chunks.value = []
   result.value = undefined
   selected.value = undefined
+  hasSaved.value = false
   status.value = ''
   recorder.value = new MediaRecorder(stream)
   recorder.value.ondataavailable = event => chunks.value.push(event.data)
@@ -53,6 +56,7 @@ async function transcribe(blob: Blob) {
     if (!response.ok) throw new Error('Erkennung fehlgeschlagen.')
     result.value = await response.json()
     selected.value = result.value?.suggestions[0]
+    hasSaved.value = false
     status.value = selected.value ? 'Meinst du das?' : 'Kein Vorschlag gefunden.'
   } catch (error) {
     status.value = error instanceof Error ? error.message : 'Erkennung fehlgeschlagen.'
@@ -72,7 +76,8 @@ function submit() {
 }
 
 async function saveAttempt() {
-  if (!result.value || !selected.value) return
+  if (!result.value || !selected.value || hasSaved.value || isSaving.value) return
+  isSaving.value = true
   const top = result.value.suggestions[0]
   const form = new FormData()
   form.append('audio_id', result.value.audio_id)
@@ -86,7 +91,12 @@ async function saveAttempt() {
   form.append('suggested_text', top?.text || '')
   form.append('suggestion_score', top?.score ? String(top.score) : '')
   form.append('was_understandable', 'true')
-  await fetch(`${apiBase}/api/corrections`, { method: 'POST', body: form })
+  try {
+    await fetch(`${apiBase}/api/corrections`, { method: 'POST', body: form })
+    hasSaved.value = true
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
 
