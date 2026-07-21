@@ -56,6 +56,21 @@ MATH_WORDS = [
     "größer",
     "kleiner",
     "gleich",
+    "ist",
+    "ergibt",
+    "komma",
+    "prozent",
+    "halb",
+    "drittel",
+    "viertel",
+    "fünftel",
+    "sechstel",
+    "siebtel",
+    "achtel",
+    "neuntel",
+    "zehntel",
+    "bruch",
+    "pi",
     "x",
     "y",
     "a",
@@ -81,6 +96,15 @@ NUMBER_WORDS = {
 }
 
 REPLACEMENTS = [
+    (r"\bist gleich\b", "="),
+    (r"\bergibt\b", "="),
+    (r"\bbruch ([\w.]+) durch ([\w.]+)\b", r"\1/\2"),
+    (
+        r"\b([\w.]+) (halb|drittel|viertel|fünftel|sechstel|siebtel|achtel|neuntel|zehntel)\b",
+        lambda match: fraction(match.group(1), match.group(2)),
+    ),
+    (r"\b([\w.]+) komma ([\w.]+)\b", r"\1,\2"),
+    (r"\b([\w.,]+) prozent\b", r"\1%"),
     (r"\bgeteilt durch\b", "/"),
     (r"\bgrößer gleich\b", "≥"),
     (r"\bkleiner gleich\b", "≤"),
@@ -90,12 +114,25 @@ REPLACEMENTS = [
     (r"\bplus\b", "+"),
     (r"\bminus\b", "-"),
     (r"\bmal\b", "*"),
+    (r"\bpi\b", "π"),
     (r"\bklammer auf\b", "("),
     (r"\bklammer zu\b", ")"),
     (r"\bwurzel (aus|von) ([\w.]+)\b", r"√\2"),
     (r"\b(\w+) quadrat\b", r"\1²"),
     (r"\b(\w+) hoch (\w+)\b", r"\1^\2"),
 ]
+
+DENOMINATORS = {
+    "halb": "2",
+    "drittel": "3",
+    "viertel": "4",
+    "fünftel": "5",
+    "sechstel": "6",
+    "siebtel": "7",
+    "achtel": "8",
+    "neuntel": "9",
+    "zehntel": "10",
+}
 
 
 @dataclass
@@ -134,9 +171,14 @@ def compact_math_text(text: str) -> str:
         .replace(" )", ")")
         .replace("√ ", "√")
         .replace(" ^ ", "^")
+        .replace("- ", "-")
         .replace("²", "²")
         .rstrip(".!? ")
     )
+
+
+def fraction(numerator: str, denominator_word: str) -> str:
+    return f"{numerator}/{DENOMINATORS[denominator_word]}"
 
 
 def replace_remaining_number_words(text: str) -> str:
@@ -163,3 +205,9 @@ def normalize_german_math(text: str) -> MathNormalization:
 if __name__ == "__main__":
     assert normalize_german_math("zwei hoch vier.").math_text == "2^4"
     assert normalize_german_math("wurzel von sechzehn.").math_text == "√16"
+    assert normalize_german_math("ein halb.").math_text == "1/2"
+    assert normalize_german_math("bruch drei durch vier.").math_text == "3/4"
+    assert normalize_german_math("zwei komma fünf.").math_text == "2,5"
+    assert normalize_german_math("fünf prozent.").math_text == "5%"
+    assert normalize_german_math("x ist gleich minus fünf.").math_text == "x = -5"
+    assert normalize_german_math("zwei pi.").math_text == "2 π"
