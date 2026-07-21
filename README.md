@@ -29,6 +29,22 @@ Open <http://127.0.0.1:8000>.
 The first transcription downloads the `small` Whisper model used by
 `faster-whisper`.
 
+## Test
+
+Backend:
+
+```sh
+cd backend
+uv run pytest
+```
+
+Frontend:
+
+```sh
+cd app
+pnpm test
+```
+
 ## Data
 
 Local test data is intentionally not committed:

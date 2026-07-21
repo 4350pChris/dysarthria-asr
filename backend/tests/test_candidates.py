@@ -70,7 +70,3 @@ class CandidateTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(any(item["text"] == "Ich möchte Kaffee." for item in response.json()))
-
-
-if __name__ == "__main__":
-    unittest.main()

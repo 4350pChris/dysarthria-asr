@@ -200,14 +200,3 @@ def normalize_german_math(text: str) -> MathNormalization:
         number_text=number_text,
         math_text=compact_math_text(math_text),
     )
-
-
-if __name__ == "__main__":
-    assert normalize_german_math("zwei hoch vier.").math_text == "2^4"
-    assert normalize_german_math("wurzel von sechzehn.").math_text == "√16"
-    assert normalize_german_math("ein halb.").math_text == "1/2"
-    assert normalize_german_math("bruch drei durch vier.").math_text == "3/4"
-    assert normalize_german_math("zwei komma fünf.").math_text == "2,5"
-    assert normalize_german_math("fünf prozent.").math_text == "5%"
-    assert normalize_german_math("x ist gleich minus fünf.").math_text == "x = -5"
-    assert normalize_german_math("zwei pi.").math_text == "2 π"
