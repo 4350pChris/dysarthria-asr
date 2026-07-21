@@ -5,7 +5,6 @@ const config = useRuntimeConfig()
 const route = useRoute()
 const apiBase = config.public.apiBase as string
 
-const formState = reactive({})
 const recorder = shallowRef<MediaRecorder>()
 const chunks = ref<Blob[]>([])
 const result = ref<TranscriptionResult>()
@@ -132,7 +131,7 @@ async function saveAttempt() {
       <SpeakerHeader />
 
       <UForm
-        :state="formState"
+        :state="{}"
         class="flex flex-1 flex-col justify-start gap-5"
         @submit="submit"
       >

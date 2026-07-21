@@ -13,15 +13,15 @@ export default defineConfig({
           environmentOptions: {
             nuxt: {
               rootDir: fileURLToPath(new URL('.', import.meta.url)),
-              domEnvironment: 'happy-dom',
-            },
-          },
-        },
-      }),
+              domEnvironment: 'happy-dom'
+            }
+          }
+        }
+      })
     ],
     coverage: {
       enabled: true,
-      provider: 'v8',
-    },
-  },
+      provider: 'v8'
+    }
+  }
 })

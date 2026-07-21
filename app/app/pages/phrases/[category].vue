@@ -17,16 +17,9 @@ const isDeleting = ref(false)
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
 const formLabel = computed(() => editing.value ? 'Satz ändern' : 'Neuer Satz')
 const submitLabel = computed(() => editing.value ? 'Änderung speichern' : 'Satz hinzufügen')
-const isDeleteModalOpen = computed({
-  get: () => Boolean(phraseToDelete.value),
-  set: (isOpen) => {
-    if (!isOpen && !isDeleting.value) {
-      phraseToDelete.value = undefined
-    }
-  },
-})
+const isDeleteModalOpen = computed(() => Boolean(phraseToDelete.value))
 
-onMounted(loadData)
+watch(category, loadData, { immediate: true })
 
 async function loadData() {
   try {
@@ -75,6 +68,12 @@ async function savePhrase() {
 
 function requestDelete(phrase: Phrase) {
   phraseToDelete.value = phrase
+}
+
+function closeDeleteModal(isOpen: boolean) {
+  if (!isOpen && !isDeleting.value) {
+    phraseToDelete.value = undefined
+  }
 }
 
 async function confirmDelete() {
@@ -169,10 +168,11 @@ async function confirmDelete() {
       />
 
       <UModal
-        v-model:open="isDeleteModalOpen"
+        :open="isDeleteModalOpen"
         title="Satz löschen?"
         description="Dieser Satz wird aus der Liste entfernt."
         :close="false"
+        @update:open="closeDeleteModal"
       >
         <template #body>
           <p class="text-xl font-bold leading-snug text-slate-950">

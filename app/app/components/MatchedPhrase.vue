@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { Suggestion } from "~/types/speech";
+import type { Suggestion } from '~/types/speech'
 
 defineProps<{
-  selected?: Suggestion;
-}>();
+  selected?: Suggestion
+}>()
 
 function confidence(suggestion?: Suggestion) {
-  return suggestion ? Math.round(suggestion.score * 100) : 0;
+  return suggestion ? Math.round(suggestion.score * 100) : 0
 }
 </script>
 
