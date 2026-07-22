@@ -10,7 +10,7 @@ from fastapi.responses import Response
 
 from .database import connect_db
 
-AUDIO_SOURCES = {"app_recording", "whatsapp_upload", "manual_upload"}
+AUDIO_SOURCES = {"app_recording", "whatsapp_upload"}
 LABEL_STATUSES = {"draft", "labeled", "skipped"}
 EXPORT_FIELDS = [
     "audio_id",
@@ -36,8 +36,7 @@ def create_audio_clip(
     file_path: str,
     original_filename: str = "",
     content_type: str = "",
-    source: str = "manual_upload",
-    duration_seconds: float | None = None,
+    source: str = "whatsapp_upload",
 ) -> dict:
     if source not in AUDIO_SOURCES:
         raise HTTPException(status_code=400, detail="Invalid audio source.")
@@ -50,18 +49,16 @@ def create_audio_clip(
                 file_path,
                 original_filename,
                 content_type,
-                duration_seconds,
                 source,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 id,
                 file_path,
                 original_filename,
                 content_type,
-                duration_seconds,
                 source,
                 created_at,
             ),
@@ -71,7 +68,6 @@ def create_audio_clip(
         "file_path": file_path,
         "original_filename": original_filename,
         "content_type": content_type,
-        "duration_seconds": duration_seconds,
         "source": source,
         "created_at": created_at,
     }
@@ -132,7 +128,6 @@ def read_label_item(audio_id: str) -> dict:
                 audio_clips.source,
                 audio_clips.original_filename,
                 audio_clips.content_type,
-                audio_clips.duration_seconds,
                 audio_clips.created_at,
                 transcription_labels.asr_text,
                 transcription_labels.transcript,
@@ -181,7 +176,6 @@ def read_label_items(
                 audio_clips.source,
                 audio_clips.original_filename,
                 audio_clips.content_type,
-                audio_clips.duration_seconds,
                 audio_clips.created_at,
                 transcription_labels.asr_text,
                 transcription_labels.transcript,

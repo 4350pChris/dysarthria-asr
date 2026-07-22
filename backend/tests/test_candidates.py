@@ -87,27 +87,6 @@ def test_init_db_preserves_existing_labels_and_seed_rows(initialized_db: Path) -
     assert len(read_generated_candidates()) == generated_count
 
 
-def test_init_db_drops_legacy_attempt_tables(initialized_db: Path) -> None:
-    from src.database import connect_db
-
-    with connect_db() as db:
-        db.execute("CREATE TABLE speech_attempts (id INTEGER PRIMARY KEY)")
-        db.execute("CREATE TABLE audio_samples (id TEXT PRIMARY KEY)")
-
-    init_db()
-
-    with connect_db() as db:
-        legacy = db.execute(
-            """
-            SELECT name
-            FROM sqlite_master
-            WHERE type = 'table' AND name IN ('speech_attempts', 'audio_samples')
-            """
-        ).fetchall()
-
-    assert legacy == []
-
-
 def test_read_candidates_deduplicates_generated_text_when_phrase_exists(initialized_db: Path) -> None:
     category = read_categories()[0]
     create_phrase(category["id"], "Ich möchte Kaffee.")

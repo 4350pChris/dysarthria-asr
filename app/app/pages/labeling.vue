@@ -10,7 +10,6 @@ const sourceOptions = [
   { label: "Alle Quellen", value: "all" },
   { label: "App-Aufnahmen", value: "app_recording" },
   { label: "WhatsApp", value: "whatsapp_upload" },
-  { label: "Manuell", value: "manual_upload" },
 ];
 const statusOptions = [
   { label: "Entwürfe", value: "draft" },
@@ -278,10 +277,10 @@ function handleKeydown(event: KeyboardEvent) {
           />
         </UFormField>
 
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid gap-3 grid-cols-3">
           <UButton
             block
-            class="min-h-12 justify-center font-extrabold"
+            class="font-extrabold"
             color="neutral"
             icon="i-lucide-chevron-left"
             size="lg"
@@ -292,13 +291,13 @@ function handleKeydown(event: KeyboardEvent) {
             Zurück
           </UButton>
           <p
-            class="flex min-h-12 items-center justify-center text-sm font-semibold text-muted"
+            class="flex items-center justify-center text-sm font-semibold text-muted"
           >
             {{ currentIndex + 1 }} / {{ items.length }}
           </p>
           <UButton
             block
-            class="min-h-12 justify-center font-extrabold"
+            class="font-extrabold"
             color="neutral"
             icon="i-lucide-chevron-right"
             size="lg"

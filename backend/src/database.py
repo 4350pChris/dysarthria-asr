@@ -158,7 +158,6 @@ def connect_db() -> sqlite3.Connection:
 
 def init_db() -> None:
     with connect_db() as db:
-        drop_legacy_tables(db)
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS categories (
@@ -184,8 +183,7 @@ def init_db() -> None:
                 file_path TEXT NOT NULL,
                 original_filename TEXT NOT NULL DEFAULT '',
                 content_type TEXT NOT NULL DEFAULT '',
-                duration_seconds REAL,
-                source TEXT NOT NULL DEFAULT 'upload',
+                source TEXT NOT NULL CHECK (source IN ('app_recording', 'whatsapp_upload')),
                 created_at TEXT NOT NULL
             )
             """
@@ -249,11 +247,6 @@ def init_db() -> None:
                     "INSERT OR IGNORE INTO phrases (category_id, text) VALUES (?, ?)",
                     (category_id, text),
                 )
-
-
-def drop_legacy_tables(db: sqlite3.Connection) -> None:
-    db.execute("DROP TABLE IF EXISTS speech_attempts")
-    db.execute("DROP TABLE IF EXISTS audio_samples")
 
 
 def seed_grammar(db: sqlite3.Connection) -> None:
