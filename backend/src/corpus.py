@@ -197,11 +197,6 @@ def read_label_items(
     return items
 
 
-def next_label_item(source: str | None = None) -> dict | None:
-    items = read_label_items(source=source, status="draft", limit=1)
-    return items[0] if items else None
-
-
 def label_counts() -> dict:
     with connect_db() as db:
         rows = db.execute(

@@ -14,7 +14,6 @@ from ..corpus import (
     create_audio_clip,
     export_labels_csv,
     label_counts,
-    next_label_item,
     read_label_items,
     upsert_transcription_label,
 )
@@ -31,10 +30,6 @@ def is_audio_upload(audio: UploadFile) -> bool:
     return content_type.startswith("audio/") or suffix in AUDIO_EXTENSIONS
 
 
-def is_zip_upload(audio: UploadFile) -> bool:
-    return Path(audio.filename or "").suffix.lower() == ".zip"
-
-
 def chat_sender(line: str) -> str:
     message = line.split(" - ", 1)[-1]
     return message.split(":", 1)[0].strip() if ":" in message else ""
@@ -43,22 +38,22 @@ def chat_sender(line: str) -> str:
 def audio_names_for_sender(archive: zipfile.ZipFile, target_sender: str) -> set[str]:
     names = archive.namelist()
     chat_name = next((name for name in names if Path(name).name.lower().endswith(".txt")), "")
-    audio_basenames = {
-        Path(name).name
-        for name in names
-        if Path(name).suffix.lower() in AUDIO_EXTENSIONS
-    }
     if not target_sender.strip() or not chat_name:
-        return audio_basenames
+        return {
+            Path(name).name
+            for name in names
+            if Path(name).suffix.lower() in AUDIO_EXTENSIONS
+        }
 
     selected = set()
     target = target_sender.casefold().strip()
     text = archive.read(chat_name).decode("utf-8", errors="replace")
     for line in text.splitlines():
-        sender = chat_sender(line).casefold()
-        if sender != target:
+        if chat_sender(line).casefold() != target:
             continue
-        selected.update(name for name in audio_basenames if name in line)
+        filename = Path(line.rsplit(" ", 1)[-1]).name
+        if Path(filename).suffix.lower() in AUDIO_EXTENSIONS:
+            selected.add(filename)
     return selected
 
 
@@ -121,7 +116,7 @@ async def import_audio(
         contents = await audio.read()
         if not contents:
             raise HTTPException(status_code=400, detail="Upload non-empty audio files.")
-        if is_zip_upload(audio):
+        if Path(audio.filename or "").suffix.lower() == ".zip":
             items.extend(import_zip(contents, target_sender))
             continue
         if not is_audio_upload(audio):
@@ -141,12 +136,6 @@ def list_items(
         "items": read_label_items(source=source, status=status, unsure=unsure, limit=limit),
         "counts": label_counts(),
     }
-
-
-@router.get("/items/next")
-def get_next_item(source: str | None = None) -> dict:
-    return {"item": next_label_item(source=source), "counts": label_counts()}
-
 
 @router.patch("/items/{audio_id}")
 async def update_item(

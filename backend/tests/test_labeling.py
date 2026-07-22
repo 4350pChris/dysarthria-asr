@@ -157,28 +157,3 @@ def test_labeling_update_and_default_export_include_only_training_rows(
     assert "Kaffee bitte." in text
     assert "Unsicher." not in text
 
-
-def test_next_item_returns_oldest_draft(initialized_db: Path, monkeypatch) -> None:
-    monkeypatch.setattr(labeling, "ROOT", initialized_db)
-    monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
-    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: Path(audio_path).stem)
-
-    from src.app import create_app
-
-    client = TestClient(create_app())
-    imported = client.post(
-        "/api/labeling/import",
-        files=[
-            ("files", ("first.ogg", b"audio one", "audio/ogg")),
-            ("files", ("second.ogg", b"audio two", "audio/ogg")),
-        ],
-    ).json()["items"]
-    client.patch(
-        f"/api/labeling/items/{imported[0]['audio_id']}",
-        data={"transcript": "skip", "status": "skipped", "unsure": "false", "notes": ""},
-    )
-
-    response = client.get("/api/labeling/items/next")
-
-    assert response.status_code == 200
-    assert response.json()["item"]["audio_id"] == imported[1]["audio_id"]

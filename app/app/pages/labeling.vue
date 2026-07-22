@@ -18,7 +18,6 @@ const statusOptions = [
   { label: "Alle", value: "all" },
 ];
 
-const audio = ref<HTMLAudioElement>();
 const files = ref<File[] | null>(null);
 const currentIndex = ref(0);
 const targetSender = ref("");
@@ -60,14 +59,6 @@ const audioUrl = computed(() =>
   current.value ? `/api/labeling/audio/${current.value.audio_id}` : "",
 );
 
-onMounted(() => {
-  window.addEventListener("keydown", handleKeydown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("keydown", handleKeydown);
-});
-
 watch(
   current,
   (item) => {
@@ -93,13 +84,12 @@ async function importFiles() {
   files.value.forEach((file) => form.append("files", file));
   form.append("target_sender", targetSender.value.trim());
   try {
-    const response = await $fetch<ItemsResponse & { imported: number }>(
-      "/api/labeling/import",
-      { method: "POST", body: form },
-    );
+    await $fetch<ItemsResponse & { imported: number }>("/api/labeling/import", {
+      method: "POST",
+      body: form,
+    });
     files.value = null;
     await refreshItems();
-  } catch {
   } finally {
     isBusy.value = false;
   }
@@ -130,21 +120,6 @@ function moveCurrent(delta: number) {
   if (!items.value.length) return;
   currentIndex.value =
     (currentIndex.value + delta + items.value.length) % items.value.length;
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  const target = event.target as HTMLElement;
-  const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-    event.preventDefault();
-    void save("labeled");
-  } else if (event.key === "Escape") {
-    unsure.value = !unsure.value;
-  } else if (event.code === "Space" && !isTyping && audio.value) {
-    event.preventDefault();
-    if (audio.value.paused) void audio.value.play();
-    else audio.value.pause();
-  }
 }
 </script>
 
@@ -253,7 +228,7 @@ function handleKeydown(event: KeyboardEvent) {
           <span>{{ current.original_filename || current.audio_file }}</span>
         </div>
 
-        <audio ref="audio" class="w-full" controls :src="audioUrl" />
+        <audio class="w-full" controls :src="audioUrl" />
 
         <div>
           <p class="text-sm font-semibold text-muted">ASR-Entwurf</p>
