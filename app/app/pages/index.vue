@@ -29,13 +29,13 @@ async function selectRoutePhrase() {
 function speakHelp() {
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(
-    'Sag aufnehmen. Sprich deinen Satz. Ich stoppe automatisch, wenn es ruhig ist. Danach sag vorlesen oder kopieren. Sag Mathe für den Mathemodus. Sag Sätze für den Satzmodus. Sag weiter für den nächsten Vorschlag. Sag zurück für den vorherigen Vorschlag.'
+    'Sag aufnehmen. Sprich deinen Satz. Ich stoppe automatisch, wenn es ruhig ist. Danach sag vorlesen, kopieren oder teilen. Sag Mathe für den Mathemodus. Sag Sätze für den Satzmodus. Sag weiter für den nächsten Vorschlag. Sag zurück für den vorherigen Vorschlag.'
   )
   utterance.lang = 'de-DE'
   speechSynthesis.speak(utterance)
 }
 
-function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help') {
+function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help') {
   if (command === 'start' && !speech.isRecording.value && !speech.isBusy.value) {
     shouldResumeVoiceCommands.value = voiceCommands.isListening.value
     voiceCommands.stop()
@@ -46,6 +46,8 @@ function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'phra
     submit()
   } else if (command === 'copy' && speech.outputText.value) {
     void speech.copySelected()
+  } else if (command === 'share' && speech.outputText.value) {
+    void speech.shareSelected()
   } else if (command === 'phrasesMode') {
     mode.value = 'phrases'
     speech.status.value = 'Satzmodus.'

@@ -1,4 +1,4 @@
-type VoiceCommand = 'start' | 'stop' | 'speak' | 'copy' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help'
+type VoiceCommand = 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help'
 
 type SpeechRecognitionEvent = Event & {
   results: SpeechRecognitionResultList
@@ -31,6 +31,7 @@ const COMMANDS: Record<VoiceCommand, string[]> = {
   stop: ['stopp', 'stop', 'anhalten', 'fertig'],
   speak: ['vorlesen', 'sagen', 'sprich', 'sprechen'],
   copy: ['kopieren', 'kopie', 'abschreiben'],
+  share: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'],
   phrasesMode: ['sätze', 'satzmodus', 'sätze modus'],
   mathMode: ['mathe', 'mathemodus', 'mathe modus'],
   next: ['weiter', 'nächster', 'nächste', 'nein'],
@@ -43,6 +44,7 @@ const COMMAND_LABELS: Record<VoiceCommand, string> = {
   stop: 'Stopp',
   speak: 'Vorlesen',
   copy: 'Kopieren',
+  share: 'Teilen',
   phrasesMode: 'Sätze',
   mathMode: 'Mathe',
   next: 'Weiter',
