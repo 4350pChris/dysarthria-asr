@@ -49,22 +49,22 @@
         <h2>Analyse</h2>
         <div class="metrics">
           <div><strong id="total">0</strong><span>Versuche</span></div>
-          <div><strong id="exactRate">0%</strong><span>exakt erkannt</span></div>
-          <div><strong id="topRate">0%</strong><span>Top 1</span></div>
+          <div><strong id="exactRate">0</strong><span>gelabelt</span></div>
+          <div><strong id="topRate">0</strong><span>offen</span></div>
         </div>
       </section>
 
       <section class="review">
         <div class="review-header">
           <h2>Letzte Versuche</h2>
-          <a class="button" href="/api/speech-attempts.csv" download>CSV exportieren</a>
+          <a class="button" href="/api/labeling/export.csv?all=true" download>CSV exportieren</a>
         </div>
         <table>
           <thead>
             <tr>
               <th>Rohe ASR</th>
               <th>Zieltext</th>
-              <th>Vorschlag</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="speechAttempts"></tbody>

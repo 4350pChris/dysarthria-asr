@@ -158,6 +158,18 @@ function submit() {
         >
           Satz auswählen
         </UButton>
+
+        <UButton
+          class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+          block
+          color="neutral"
+          icon="i-lucide-list-checks"
+          size="xl"
+          to="/labeling"
+          variant="subtle"
+        >
+          Aufnahmen prüfen
+        </UButton>
       </UForm>
     </UContainer>
   </UMain>

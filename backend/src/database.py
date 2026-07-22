@@ -158,6 +158,7 @@ def connect_db() -> sqlite3.Connection:
 
 def init_db() -> None:
     with connect_db() as db:
+        drop_legacy_tables(db)
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS categories (
@@ -178,27 +179,28 @@ def init_db() -> None:
         )
         db.execute(
             """
-            CREATE TABLE IF NOT EXISTS audio_samples (
+            CREATE TABLE IF NOT EXISTS audio_clips (
                 id TEXT PRIMARY KEY,
                 file_path TEXT NOT NULL,
+                original_filename TEXT NOT NULL DEFAULT '',
                 content_type TEXT NOT NULL DEFAULT '',
+                duration_seconds REAL,
+                source TEXT NOT NULL DEFAULT 'upload',
                 created_at TEXT NOT NULL
             )
             """
         )
         db.execute(
             """
-            CREATE TABLE IF NOT EXISTS speech_attempts (
+            CREATE TABLE IF NOT EXISTS transcription_labels (
                 id INTEGER PRIMARY KEY,
-                audio_id TEXT NOT NULL REFERENCES audio_samples(id),
-                raw_transcript TEXT NOT NULL DEFAULT '',
-                target_text TEXT NOT NULL,
-                selected_candidate_id TEXT NOT NULL DEFAULT '',
-                selected_candidate_source TEXT NOT NULL DEFAULT '',
-                suggested_candidate_id TEXT NOT NULL DEFAULT '',
-                suggested_text TEXT NOT NULL DEFAULT '',
-                suggestion_score REAL,
-                created_at TEXT NOT NULL
+                audio_id TEXT NOT NULL UNIQUE REFERENCES audio_clips(id) ON DELETE CASCADE,
+                asr_text TEXT NOT NULL DEFAULT '',
+                transcript TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'labeled', 'skipped')),
+                unsure INTEGER NOT NULL DEFAULT 0,
+                notes TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL
             )
             """
         )
@@ -247,6 +249,11 @@ def init_db() -> None:
                     "INSERT OR IGNORE INTO phrases (category_id, text) VALUES (?, ?)",
                     (category_id, text),
                 )
+
+
+def drop_legacy_tables(db: sqlite3.Connection) -> None:
+    db.execute("DROP TABLE IF EXISTS speech_attempts")
+    db.execute("DROP TABLE IF EXISTS audio_samples")
 
 
 def seed_grammar(db: sqlite3.Connection) -> None:

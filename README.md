@@ -2,7 +2,7 @@
 
 German dysarthria ASR prototype for one speaker.
 
-The app records short utterances, transcribes them with Whisper, suggests likely German phrases, speaks the selected text with browser TTS, and stores audio/transcript pairs for later analysis. The current user-facing app is the Nuxt frontend in `app/`; the FastAPI backend also still serves the older static prototype at `/`.
+The app records short utterances, transcribes them with Whisper, suggests likely German phrases, speaks the selected text with browser TTS, and stores every recording in a unified audio corpus for later labeling. The current user-facing app is the Nuxt frontend in `app/`; the FastAPI backend also still serves the older static prototype at `/`.
 
 ## Current Features
 
@@ -14,8 +14,9 @@ The app records short utterances, transcribes them with Whisper, suggests likely
 - Copy and share actions for recognized text
 - Native Web Share first, WhatsApp link fallback
 - Voice commands for recording, reading, copying, sharing, mode switching, and suggestion navigation
-- Persistent SQLite storage for audio metadata and speech attempts
-- CSV export and simple attempt analysis endpoints
+- Persistent SQLite storage for a unified audio corpus and transcription labels
+- Dedicated labeling page for reviewing app recordings and WhatsApp uploads
+- CSV export for reviewed training labels
 
 ## Project Layout
 
@@ -23,7 +24,7 @@ The app records short utterances, transcribes them with Whisper, suggests likely
 - `app/`: Nuxt frontend used by the deployed app
 - `data/phrases.csv`: editable starter phrase list
 - `data/audio/`: recorded audio clips, not committed
-- `data/app.sqlite`: SQLite database, not committed
+- `data/app.sqlite`: SQLite database with phrases, grammar rows, audio clips, and labels, not committed
 
 ## Backend Setup
 
@@ -70,6 +71,7 @@ NUXT_API_BASE=https://example.com pnpm dev
 3. Tap `Aufnehmen`, speak, and wait for automatic silence stop.
 4. Use the top suggestion, choose another suggestion, or switch to math mode.
 5. Use `Vorlesen`, `WhatsApp`, or tap the recognized text to copy it.
+6. Review saved clips later at `/labeling` before using them for training.
 
 The WhatsApp action uses `navigator.share()` when available. If native sharing is unavailable or fails, it opens a new WhatsApp tab with the recognized text prefilled. The app never silently sends a message.
 
@@ -97,24 +99,38 @@ Browser speech recognition support varies. Chrome-compatible browsers are the ma
 Local runtime data is intentionally not committed:
 
 - `data/audio/`: uploaded or recorded audio clips
-- `data/app.sqlite`: categories, phrases, grammar seed rows, audio sample metadata, and speech attempts
+- `data/app.sqlite`: categories, phrases, grammar seed rows, audio clips, and transcription labels
 
-The database is no longer dropped on app restart. `init_db()` creates missing tables and seeds missing starter rows without deleting existing speech attempts.
+The database is no longer dropped on app restart. `init_db()` creates missing tables and seeds missing starter rows without deleting existing labels.
 
 The starter phrase list is committed at `data/phrases.csv`. Edit or replace it with `category,text` rows before structured testing.
+
+## Labeling
+
+Open `/labeling` to import WhatsApp voice messages and review all saved recordings.
+Both WhatsApp uploads and clips from `Aufnehmen` use the same corpus tables.
+ASR output is only a draft; a clip is training-ready only after it is marked
+`labeled` and is not marked `unsure`.
+
+Default export:
+
+- `GET /api/labeling/export.csv`: reviewed, non-unsure labels with transcripts
+- `GET /api/labeling/export.csv?all=true`: all labels, including drafts and skipped clips
 
 ## API
 
 Main backend endpoints:
 
 - `POST /api/transcribe`
+- `POST /api/labeling/import`
+- `GET /api/labeling/items`
+- `GET /api/labeling/items/next`
+- `GET /api/labeling/audio/{audio_id}`
+- `PATCH /api/labeling/items/{audio_id}`
+- `GET /api/labeling/export.csv`
 - `GET /api/phrases`
 - `POST /api/phrases`
 - `DELETE /api/phrases/{phrase_id}`
-- `GET /api/speech-attempts`
-- `POST /api/speech-attempts`
-- `GET /api/speech-attempts.csv`
-- `GET /api/analysis`
 - `GET /api/candidates/generated`
 
 ## Tests

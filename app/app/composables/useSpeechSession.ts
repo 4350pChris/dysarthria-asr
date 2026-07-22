@@ -168,18 +168,16 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     if (!result.value || !correctedText || hasSaved.value || isSaving.value)
       return;
     isSaving.value = true;
-    const top = result.value.suggestions[0];
     const form = new FormData();
-    form.append("audio_id", result.value.audio_id);
-    form.append("raw_transcript", result.value.raw_transcript);
-    form.append("target_text", correctedText);
-    form.append("selected_candidate_id", selected.value?.id || "");
-    form.append("selected_candidate_source", selected.value?.source || "");
-    form.append("suggested_candidate_id", top?.id || "");
-    form.append("suggested_text", top?.text || "");
-    form.append("suggestion_score", top?.score ? String(top.score) : "");
+    form.append("transcript", correctedText);
+    form.append("status", "draft");
+    form.append("unsure", "false");
+    form.append("notes", "Provisional app selection.");
     try {
-      await fetch("/api/speech-attempts", { method: "POST", body: form });
+      await fetch(`/api/labeling/items/${result.value.audio_id}`, {
+        method: "PATCH",
+        body: form,
+      });
       hasSaved.value = true;
     } finally {
       isSaving.value = false;

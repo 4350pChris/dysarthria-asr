@@ -5,14 +5,13 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from src.audio_samples import create_audio_sample
 from src.candidates import candidate_suggestions, read_candidates, read_generated_candidates
+from src.corpus import create_audio_clip, label_counts, read_label_items, upsert_transcription_label
 from src.database import init_db
 from src.phrases import create_phrase, read_categories
-from src.speech_attempts import analyze_speech_attempts, create_speech_attempt, read_speech_attempts
 
 
-def test_generated_candidates_rank_and_attempts_save_training_label(initialized_db: Path) -> None:
+def test_generated_candidates_rank_and_labels_save_provisional_transcript(initialized_db: Path) -> None:
     generated = read_generated_candidates()
     assert any(item["text"] == "Ich möchte Kaffee." for item in generated)
     assert any(item["text"] == "Wo ist meine Brille?" for item in generated)
@@ -39,68 +38,74 @@ def test_generated_candidates_rank_and_attempts_save_training_label(initialized_
     assert suggestions[0]["id"]
 
     audio_id = uuid4().hex
-    create_audio_sample(audio_id, "data/audio/test.webm", "audio/webm")
-    create_speech_attempt(
+    create_audio_clip(audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
+    upsert_transcription_label(
         audio_id=audio_id,
-        raw_transcript="ich möchte kaffee",
-        target_text="Ich möchte Kaffee.",
-        selected_candidate_id=suggestions[0]["id"],
-        selected_candidate_source=suggestions[0]["source"],
-        suggested_candidate_id=suggestions[0]["id"],
-        suggested_text=suggestions[0]["text"],
-        suggestion_score=str(suggestions[0]["score"]),
+        asr_text="ich möchte kaffee",
+        transcript="Ich möchte Kaffee.",
     )
 
-    attempts = read_speech_attempts()
-    assert attempts[0]["audio_id"] == audio_id
-    assert attempts[0]["target_text"] == "Ich möchte Kaffee."
+    labels = read_label_items()
+    assert labels[0]["audio_id"] == audio_id
+    assert labels[0]["transcript"] == "Ich möchte Kaffee."
+    assert labels[0]["status"] == "draft"
 
 
-def test_speech_attempt_analysis_tracks_exact_and_top_candidate(initialized_db: Path) -> None:
+def test_label_counts_track_status(initialized_db: Path) -> None:
     audio_id = uuid4().hex
-    create_audio_sample(audio_id, "data/audio/test.webm", "audio/webm")
-    create_speech_attempt(
+    create_audio_clip(audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
+    upsert_transcription_label(
         audio_id=audio_id,
-        raw_transcript="Ich möchte Kaffee.",
-        target_text="ich möchte kaffee",
-        selected_candidate_id="generated:1:2",
-        selected_candidate_source="generated",
-        suggested_candidate_id="generated:1:2",
-        suggested_text="Ich möchte Kaffee.",
-        suggestion_score="0.98",
+        asr_text="Ich möchte Kaffee.",
+        transcript="ich möchte kaffee",
+        status="labeled",
     )
 
-    analysis = analyze_speech_attempts()
-    assert analysis == {
+    assert label_counts() == {
         "total": 1,
-        "exact_matches": 1,
-        "exact_match_rate": 1,
-        "top_1_matches": 1,
-        "top_1_rate": 1,
+        "draft": 0,
+        "labeled": 1,
+        "skipped": 0,
     }
 
 
-def test_init_db_preserves_existing_attempts_and_seed_rows(initialized_db: Path) -> None:
+def test_init_db_preserves_existing_labels_and_seed_rows(initialized_db: Path) -> None:
     category_count = len(read_categories())
     generated_count = len(read_generated_candidates())
     audio_id = uuid4().hex
-    create_audio_sample(audio_id, "data/audio/test.webm", "audio/webm")
-    create_speech_attempt(
+    create_audio_clip(audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
+    upsert_transcription_label(
         audio_id=audio_id,
-        raw_transcript="Ich möchte Kaffee.",
-        target_text="Ich möchte Kaffee.",
-        selected_candidate_id="generated:1:2",
-        selected_candidate_source="generated",
-        suggested_candidate_id="generated:1:2",
-        suggested_text="Ich möchte Kaffee.",
-        suggestion_score="0.98",
+        asr_text="Ich möchte Kaffee.",
+        transcript="Ich möchte Kaffee.",
     )
 
     init_db()
 
-    assert read_speech_attempts()[0]["audio_id"] == audio_id
+    assert read_label_items()[0]["audio_id"] == audio_id
     assert len(read_categories()) == category_count
     assert len(read_generated_candidates()) == generated_count
+
+
+def test_init_db_drops_legacy_attempt_tables(initialized_db: Path) -> None:
+    from src.database import connect_db
+
+    with connect_db() as db:
+        db.execute("CREATE TABLE speech_attempts (id INTEGER PRIMARY KEY)")
+        db.execute("CREATE TABLE audio_samples (id TEXT PRIMARY KEY)")
+
+    init_db()
+
+    with connect_db() as db:
+        legacy = db.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name IN ('speech_attempts', 'audio_samples')
+            """
+        ).fetchall()
+
+    assert legacy == []
 
 
 def test_read_candidates_deduplicates_generated_text_when_phrase_exists(initialized_db: Path) -> None:

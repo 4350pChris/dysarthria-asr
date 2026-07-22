@@ -26,3 +26,22 @@ export type TranscriptionResult = {
   math_text: string
   suggestions: Suggestion[]
 }
+
+export type LabelStatus = 'draft' | 'labeled' | 'skipped'
+export type AudioSource = 'app_recording' | 'whatsapp_upload' | 'manual_upload'
+
+export type LabelItem = {
+  audio_id: string
+  audio_file: string
+  source: AudioSource
+  original_filename: string
+  content_type: string
+  duration_seconds: number | null
+  created_at: string
+  asr_text: string
+  transcript: string
+  status: LabelStatus
+  unsure: boolean
+  notes: string
+  updated_at: string
+}

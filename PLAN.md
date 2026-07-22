@@ -25,7 +25,7 @@ The repo currently contains a small FastAPI + browser prototype:
 - `src/app.py`: FastAPI app setup and router registration
 - `src/asr.py`: `faster-whisper` German transcription wrapper
 - `data/audio/`: local recorded clips, ignored by git
-- `data/app.sqlite`: phrases, audio sample metadata, and speech attempts
+- `data/app.sqlite`: phrases, audio clips, transcription labels, and grammar data
 
 Run it with:
 
@@ -126,7 +126,7 @@ Decision rule:
 
 1. Add a phrase list screen or importable CSV.
 2. Add `expected_text` and `was_understandable` to saved records.
-3. Add a speech-attempt review page showing recent attempts.
+3. Extend the labeling page with richer review metrics.
 4. Add fuzzy matching against known phrases.
 5. Add simple personal vocabulary/substitution rules.
 6. Export results as CSV for analysis.

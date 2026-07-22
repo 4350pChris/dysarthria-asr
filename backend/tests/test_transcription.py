@@ -30,8 +30,18 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
     assert body["suggestions"][0]["text"] == "Ich möchte Kaffee."
 
     with database.connect_db() as db:
-        audio = db.execute("SELECT file_path, content_type FROM audio_samples").fetchone()
-    assert dict(audio) == {"file_path": body["audio_path"], "content_type": "audio/webm"}
+        audio = db.execute("SELECT file_path, content_type, source FROM audio_clips").fetchone()
+        label = db.execute("SELECT asr_text, transcript, status FROM transcription_labels").fetchone()
+    assert dict(audio) == {
+        "file_path": body["audio_path"],
+        "content_type": "audio/webm",
+        "source": "app_recording",
+    }
+    assert dict(label) == {
+        "asr_text": "ich möchte kaffee",
+        "transcript": "",
+        "status": "draft",
+    }
 
 
 def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> None:

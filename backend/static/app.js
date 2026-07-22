@@ -85,17 +85,12 @@ speakButton.addEventListener("click", () => {
 
 saveButton.addEventListener("click", async () => {
   const form = new FormData();
-  const topSuggestion = lastResult.suggestions?.[0] || {};
-  form.append("audio_id", lastResult.audio_id);
-  form.append("raw_transcript", raw.value);
-  form.append("target_text", target.value);
-  form.append("selected_candidate_id", selectedCandidate?.id || "");
-  form.append("selected_candidate_source", selectedCandidate?.source || "");
-  form.append("suggested_candidate_id", topSuggestion.id || "");
-  form.append("suggested_text", topSuggestion.text || "");
-  form.append("suggestion_score", topSuggestion.score || "");
+  form.append("transcript", target.value);
+  form.append("status", "draft");
+  form.append("unsure", "false");
+  form.append("notes", "Provisional app selection.");
 
-  const response = await fetch("/api/speech-attempts", { method: "POST", body: form });
+  const response = await fetch(`/api/labeling/items/${lastResult.audio_id}`, { method: "PATCH", body: form });
   if (!response.ok) {
     setStatus("Korrektur konnte nicht gespeichert werden.");
     return;
@@ -180,16 +175,17 @@ async function loadPhrases() {
 }
 
 async function loadSpeechAttempts() {
-  const response = await fetch("/api/speech-attempts");
+  const response = await fetch("/api/labeling/items?limit=50");
   if (!response.ok) return;
-  const rows = await response.json();
+  const body = await response.json();
+  const rows = body.items || [];
   speechAttempts.replaceChildren(
     ...rows.map((row) => {
       const tr = document.createElement("tr");
       for (const value of [
-        row.raw_transcript || "",
-        row.target_text || "",
-        row.suggested_text || "",
+        row.asr_text || "",
+        row.transcript || "",
+        row.status || "",
       ]) {
         const td = document.createElement("td");
         td.textContent = value;
@@ -201,12 +197,12 @@ async function loadSpeechAttempts() {
 }
 
 async function loadAnalysis() {
-  const response = await fetch("/api/analysis");
+  const response = await fetch("/api/labeling/items?limit=1");
   if (!response.ok) return;
-  const analysis = await response.json();
-  total.textContent = analysis.total;
-  exactRate.textContent = percent(analysis.exact_match_rate);
-  topRate.textContent = percent(analysis.top_1_rate);
+  const body = await response.json();
+  total.textContent = body.counts.total;
+  exactRate.textContent = body.counts.labeled;
+  topRate.textContent = body.counts.draft;
 }
 
 loadPhrases();
