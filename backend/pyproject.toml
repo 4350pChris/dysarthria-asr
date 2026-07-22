@@ -8,8 +8,11 @@ dependencies = [
   "uvicorn[standard]",
   "python-multipart",
   "faster-whisper",
+  "huggingface-hub",
+  "numpy",
+  "onnxruntime",
   "text2num>=3.0.2",
-  "sentence-transformers>=5.0.0",
+  "tokenizers",
 ]
 
 [dependency-groups]

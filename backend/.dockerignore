@@ -1,5 +1,11 @@
 .venv
 .uv-cache
+.pytest_cache
 __pycache__
 *.pyc
 .DS_Store
+reports
+data
+.cache
+*.sqlite
+*.db
