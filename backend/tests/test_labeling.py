@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import zipfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -56,6 +58,66 @@ def test_import_accepts_ogg_with_octet_stream_content_type(
 
     assert response.status_code == 200
     assert response.json()["imported"] == 1
+
+
+def test_import_whatsapp_zip_filters_audio_by_sender(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: Path(audio_path).name)
+    export = io.BytesIO()
+    with zipfile.ZipFile(export, "w") as archive:
+        archive.writestr(
+            "_chat.txt",
+            "\n".join(
+                [
+                    "22.07.2026, 10:00 - Target Person: 00000001-AUDIO-2026-07-22-10-00-00.opus",
+                    "22.07.2026, 10:01 - Friend: 00000002-AUDIO-2026-07-22-10-01-00.opus",
+                ]
+            ),
+        )
+        archive.writestr("00000001-AUDIO-2026-07-22-10-00-00.opus", b"target audio")
+        archive.writestr("00000002-AUDIO-2026-07-22-10-01-00.opus", b"friend audio")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/labeling/import",
+        data={"target_sender": "Target Person"},
+        files=[("files", ("whatsapp.zip", export.getvalue(), "application/zip"))],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["imported"] == 1
+    with database.connect_db() as db:
+        row = db.execute("SELECT original_filename FROM audio_clips").fetchone()
+    assert row["original_filename"] == "00000001-AUDIO-2026-07-22-10-00-00.opus"
+
+
+def test_import_whatsapp_zip_without_sender_imports_all_audio(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: "")
+    export = io.BytesIO()
+    with zipfile.ZipFile(export, "w") as archive:
+        archive.writestr("_chat.txt", "")
+        archive.writestr("one.opus", b"one")
+        archive.writestr("two.ogg", b"two")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/labeling/import",
+        files=[("files", ("whatsapp.zip", export.getvalue(), "application/zip"))],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["imported"] == 2
 
 
 def test_labeling_update_and_default_export_include_only_training_rows(
