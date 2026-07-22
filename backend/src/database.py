@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import sqlite3
+from typing import Literal
 
 from .paths import DATA_DIR, DB_FILE, PHRASES_FILE, SEED_PHRASES_FILE
 
@@ -141,9 +142,10 @@ GRAMMAR_SEED = {
 
 
 class ClosingConnection(sqlite3.Connection):
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> Literal[False]:
         super().__exit__(exc_type, exc_value, traceback)
         self.close()
+        return False
 
 
 def connect_db() -> sqlite3.Connection:
@@ -156,7 +158,6 @@ def connect_db() -> sqlite3.Connection:
 
 def init_db() -> None:
     with connect_db() as db:
-        reset_db(db)
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS categories (
@@ -170,7 +171,8 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS phrases (
                 id INTEGER PRIMARY KEY,
                 category_id INTEGER NOT NULL REFERENCES categories(id),
-                text TEXT NOT NULL
+                text TEXT NOT NULL,
+                UNIQUE (category_id, text)
             )
             """
         )
@@ -213,7 +215,8 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS grammar_patterns (
                 id INTEGER PRIMARY KEY,
                 slot_id INTEGER NOT NULL REFERENCES grammar_slots(id),
-                template TEXT NOT NULL
+                template TEXT NOT NULL,
+                UNIQUE (slot_id, template)
             )
             """
         )
@@ -222,7 +225,8 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS grammar_slot_values (
                 id INTEGER PRIMARY KEY,
                 slot_id INTEGER NOT NULL REFERENCES grammar_slots(id),
-                value TEXT NOT NULL
+                value TEXT NOT NULL,
+                UNIQUE (slot_id, value)
             )
             """
         )
@@ -240,38 +244,25 @@ def init_db() -> None:
                 )
                 category_id = db.execute("SELECT id FROM categories WHERE name = ?", (category,)).fetchone()[0]
                 db.execute(
-                    "INSERT INTO phrases (category_id, text) VALUES (?, ?)",
+                    "INSERT OR IGNORE INTO phrases (category_id, text) VALUES (?, ?)",
                     (category_id, text),
                 )
 
 
-def reset_db(db: sqlite3.Connection) -> None:
-    for table in [
-        "speech_attempts",
-        "audio_samples",
-        "grammar_slot_values",
-        "grammar_patterns",
-        "grammar_slots",
-        "phrases",
-        "categories",
-    ]:
-        db.execute(f"DROP TABLE IF EXISTS {table}")
-
-
 def seed_grammar(db: sqlite3.Connection) -> None:
     for slot_name, data in GRAMMAR_SEED.items():
-        cursor = db.execute(
-            "INSERT INTO grammar_slots (name) VALUES (?)",
+        db.execute(
+            "INSERT OR IGNORE INTO grammar_slots (name) VALUES (?)",
             (slot_name,),
         )
-        slot_id = cursor.lastrowid
+        slot_id = db.execute("SELECT id FROM grammar_slots WHERE name = ?", (slot_name,)).fetchone()[0]
         for template in data["patterns"]:
             db.execute(
-                "INSERT INTO grammar_patterns (slot_id, template) VALUES (?, ?)",
+                "INSERT OR IGNORE INTO grammar_patterns (slot_id, template) VALUES (?, ?)",
                 (slot_id, template),
             )
         for value in data["values"]:
             db.execute(
-                "INSERT INTO grammar_slot_values (slot_id, value) VALUES (?, ?)",
+                "INSERT OR IGNORE INTO grammar_slot_values (slot_id, value) VALUES (?, ?)",
                 (slot_id, value),
             )

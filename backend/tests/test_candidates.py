@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from src.audio_samples import create_audio_sample
 from src.candidates import candidate_suggestions, read_candidates, read_generated_candidates
+from src.database import init_db
 from src.phrases import create_phrase, read_categories
 from src.speech_attempts import analyze_speech_attempts, create_speech_attempt, read_speech_attempts
 
@@ -77,6 +78,29 @@ def test_speech_attempt_analysis_tracks_exact_and_top_candidate(initialized_db: 
         "top_1_matches": 1,
         "top_1_rate": 1,
     }
+
+
+def test_init_db_preserves_existing_attempts_and_seed_rows(initialized_db: Path) -> None:
+    category_count = len(read_categories())
+    generated_count = len(read_generated_candidates())
+    audio_id = uuid4().hex
+    create_audio_sample(audio_id, "data/audio/test.webm", "audio/webm")
+    create_speech_attempt(
+        audio_id=audio_id,
+        raw_transcript="Ich möchte Kaffee.",
+        target_text="Ich möchte Kaffee.",
+        selected_candidate_id="generated:1:2",
+        selected_candidate_source="generated",
+        suggested_candidate_id="generated:1:2",
+        suggested_text="Ich möchte Kaffee.",
+        suggestion_score="0.98",
+    )
+
+    init_db()
+
+    assert read_speech_attempts()[0]["audio_id"] == audio_id
+    assert len(read_categories()) == category_count
+    assert len(read_generated_candidates()) == generated_count
 
 
 def test_read_candidates_deduplicates_generated_text_when_phrase_exists(initialized_db: Path) -> None:
