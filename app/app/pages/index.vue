@@ -126,6 +126,7 @@ function submit() {
           <MatchedPhrase
             :selected="speech.selected.value"
             @copy="speech.copySelected"
+            @share="speech.shareSelected"
           />
 
           <SuggestionList
@@ -140,6 +141,7 @@ function submit() {
           :math-text="speech.result.value.math_text"
           :corrected-text="speech.result.value.math_corrected_text"
           @copy="speech.copySelected"
+          @share="speech.shareSelected"
         />
 
         <UButton
