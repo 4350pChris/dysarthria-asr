@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
   packages: write
 
 env:
@@ -16,7 +17,53 @@ env:
   BACKEND_IMAGE: ghcr.io/4350pchris/dysarthria-asr-backend
 
 jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install backend dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Run backend tests
+        run: |
+          mkdir -p reports
+          uv run pytest --junitxml=reports/backend-pytest.xml
+
+      - name: Upload backend test report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: backend-pytest-report
+          path: backend/reports/backend-pytest.xml
+          if-no-files-found: error
+
+      - name: Summarize backend tests
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Backend pytest
+          path: backend/reports/backend-pytest.xml
+          reporter: java-junit
+          fail-on-error: false
+
   build-and-push:
+    needs: backend-tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
