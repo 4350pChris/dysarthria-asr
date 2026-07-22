@@ -6,7 +6,8 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from src.audio_samples import create_audio_sample
-from src.candidates import candidate_suggestions, read_generated_candidates
+from src.candidates import candidate_suggestions, read_candidates, read_generated_candidates
+from src.phrases import create_phrase, read_categories
 from src.speech_attempts import analyze_speech_attempts, create_speech_attempt, read_speech_attempts
 
 
@@ -76,6 +77,16 @@ def test_speech_attempt_analysis_tracks_exact_and_top_candidate(initialized_db: 
         "top_1_matches": 1,
         "top_1_rate": 1,
     }
+
+
+def test_read_candidates_deduplicates_generated_text_when_phrase_exists(initialized_db: Path) -> None:
+    category = read_categories()[0]
+    create_phrase(category["id"], "Ich möchte Kaffee.")
+
+    matches = [item for item in read_candidates() if item["text"] == "Ich möchte Kaffee."]
+
+    assert len(matches) == 1
+    assert matches[0]["source"] == "phrase"
 
 
 def test_generated_candidates_endpoint(initialized_db: Path) -> None:

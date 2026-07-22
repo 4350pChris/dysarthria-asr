@@ -54,7 +54,8 @@ def read_candidates() -> list[dict]:
         }
         for row in rows
     ]
-    return phrase_candidates + read_generated_candidates()
+    candidates = phrase_candidates + read_generated_candidates()
+    return list({normalize_text(candidate["text"]): candidate for candidate in reversed(candidates)}.values())
 
 
 def candidate_suggestions(text: str, limit: int = 5) -> list[dict]:
