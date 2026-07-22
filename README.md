@@ -1,35 +1,123 @@
 # dysarthria-asr
 
-Basic local prototype for testing German ASR with one dysarthric speaker.
+German dysarthria ASR prototype for one speaker.
 
-The goal is measurement first:
+The app records short utterances, transcribes them with Whisper, suggests likely German phrases, speaks the selected text with browser TTS, and stores audio/transcript pairs for later analysis. The current user-facing app is the Nuxt frontend in `app/`; the FastAPI backend also still serves the older static prototype at `/`.
 
-1. record short German phrases
-2. transcribe with an existing German-capable ASR model
-3. manually correct the result
-4. speak the corrected text with German TTS
-5. save audio/transcript/speech-attempt pairs for later analysis
+## Current Features
 
-## Setup
+- Push-to-talk recording with automatic silence stop
+- German ASR via `faster-whisper` using the `small` model on CPU
+- Phrase suggestions from saved phrases plus generated grammar candidates
+- Math mode for spoken German arithmetic
+- Browser TTS for the selected recognized text
+- Copy and share actions for recognized text
+- Native Web Share first, WhatsApp link fallback
+- Voice commands for recording, reading, copying, sharing, mode switching, and suggestion navigation
+- Persistent SQLite storage for audio metadata and speech attempts
+- CSV export and simple attempt analysis endpoints
+
+## Project Layout
+
+- `backend/`: FastAPI API, ASR integration, SQLite persistence, static prototype
+- `app/`: Nuxt frontend used by the deployed app
+- `data/phrases.csv`: editable starter phrase list
+- `data/audio/`: recorded audio clips, not committed
+- `data/app.sqlite`: SQLite database, not committed
+
+## Backend Setup
 
 ```sh
 cd backend
 uv sync
 ```
 
-## Run
+Run the backend:
 
 ```sh
 cd backend
 uv run uvicorn src.app:app --reload
 ```
 
-Open <http://127.0.0.1:8000>.
+The backend listens on <http://127.0.0.1:8000>. The first transcription downloads the `small` Whisper model used by `faster-whisper`.
 
-The first transcription downloads the `small` Whisper model used by
-`faster-whisper`.
+## Frontend Setup
 
-## Test
+```sh
+cd app
+pnpm install
+```
+
+Run the Nuxt app:
+
+```sh
+cd app
+pnpm dev
+```
+
+Open <http://localhost:3000>. The frontend proxies `/api/*` to the backend configured by `NUXT_API_BASE`, defaulting to `http://127.0.0.1:8000`.
+
+To point the frontend at a different backend:
+
+```sh
+NUXT_API_BASE=https://example.com pnpm dev
+```
+
+## Usage
+
+1. Start the backend and frontend.
+2. Open the Nuxt app.
+3. Tap `Aufnehmen`, speak, and wait for automatic silence stop.
+4. Use the top suggestion, choose another suggestion, or switch to math mode.
+5. Use `Vorlesen`, `WhatsApp`, or tap the recognized text to copy it.
+
+The WhatsApp action uses `navigator.share()` when available. If native sharing is unavailable or fails, it opens a new WhatsApp tab with the recognized text prefilled. The app never silently sends a message.
+
+## Voice Commands
+
+Start voice control with `Sprachsteuerung starten`.
+
+Recognized commands include:
+
+- `aufnehmen`, `aufnahme`, `start`, `los`
+- `stopp`, `stop`, `anhalten`, `fertig`
+- `vorlesen`, `sagen`, `sprich`, `sprechen`
+- `kopieren`, `kopie`, `abschreiben`
+- `teilen`, `senden`, `schicken`, `whatsapp`, `verschicken`
+- `sätze`, `satzmodus`, `sätze modus`
+- `mathe`, `mathemodus`, `mathe modus`
+- `weiter`, `nächster`, `nächste`, `nein`
+- `zurück`, `vorheriger`, `vorherige`
+- `hilfe`, `befehle`
+
+Browser speech recognition support varies. Chrome-compatible browsers are the main target for voice control.
+
+## Data And Persistence
+
+Local runtime data is intentionally not committed:
+
+- `data/audio/`: uploaded or recorded audio clips
+- `data/app.sqlite`: categories, phrases, grammar seed rows, audio sample metadata, and speech attempts
+
+The database is no longer dropped on app restart. `init_db()` creates missing tables and seeds missing starter rows without deleting existing speech attempts.
+
+The starter phrase list is committed at `data/phrases.csv`. Edit or replace it with `category,text` rows before structured testing.
+
+## API
+
+Main backend endpoints:
+
+- `POST /api/transcribe`
+- `GET /api/phrases`
+- `POST /api/phrases`
+- `DELETE /api/phrases/{phrase_id}`
+- `GET /api/speech-attempts`
+- `POST /api/speech-attempts`
+- `GET /api/speech-attempts.csv`
+- `GET /api/analysis`
+- `GET /api/candidates/generated`
+
+## Tests
 
 Backend:
 
@@ -42,32 +130,24 @@ Frontend:
 
 ```sh
 cd app
+pnpm typecheck
 pnpm test
 ```
 
-## Data
+## Docker
 
-Local test data is intentionally not committed:
+Build and run the backend:
 
-- `data/audio/`: recorded audio clips
-- `data/app.sqlite`: phrases, audio sample metadata, and speech attempts
+```sh
+cd backend
+docker build -t dysarthria-asr-backend .
+docker run --rm -p 8000:8000 dysarthria-asr-backend
+```
 
-The starter phrase list is committed at `data/phrases.csv`. Edit or replace it
-with your own `category,text` rows before structured testing.
+Build and run the frontend:
 
-Each speech attempt stores:
-
-- timestamp
-- audio id
-- audio file
-- expected German text
-- raw ASR transcript
-- corrected German text
-- whether the raw ASR was understandable
-- optional notes
-
-## First Test Set
-
-Start with 100-200 useful German phrases and record each 3-5 times. Keep the
-first run quiet, short, and push-to-talk. Decide whether to continue only after
-checking how much of the raw ASR output is recoverable.
+```sh
+cd app
+docker build -t dysarthria-asr-app .
+docker run --rm -p 3000:3000 -e NUXT_API_BASE=http://host.docker.internal:8000 dysarthria-asr-app
+```
