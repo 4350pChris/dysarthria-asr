@@ -1,125 +1,124 @@
 <script setup lang="ts">
-import type { AudioSource, LabelItem, LabelStatus } from "~/types/speech";
+import type { AudioSource, LabelItem, LabelStatus } from '~/types/speech'
 
 type ItemsResponse = {
-  items: LabelItem[];
-  counts: Record<LabelStatus | "total", number>;
-};
+  items: LabelItem[]
+  counts: Record<LabelStatus | 'total', number>
+}
 
 const sourceOptions = [
-  { label: "Alle Quellen", value: "all" },
-  { label: "App-Aufnahmen", value: "app_recording" },
-  { label: "WhatsApp", value: "whatsapp_upload" },
-];
+  { label: 'Alle Quellen', value: 'all' },
+  { label: 'App-Aufnahmen', value: 'app_recording' },
+  { label: 'WhatsApp', value: 'whatsapp_upload' }
+]
 const statusOptions = [
-  { label: "Entwürfe", value: "draft" },
-  { label: "Gelabelt", value: "labeled" },
-  { label: "Übersprungen", value: "skipped" },
-  { label: "Alle", value: "all" },
-];
+  { label: 'Entwürfe', value: 'draft' },
+  { label: 'Gelabelt', value: 'labeled' },
+  { label: 'Übersprungen', value: 'skipped' },
+  { label: 'Alle', value: 'all' }
+]
 
-const files = ref<File[] | null>(null);
-const currentIndex = ref(0);
-const targetSender = ref("");
-const sourceFilter = ref<AudioSource | "all">("all");
-const statusFilter = ref<LabelStatus | "all">("draft");
-const unsureOnly = ref(false);
-const transcript = ref("");
-const notes = ref("");
-const unsure = ref(false);
-const isBusy = ref(false);
-const isSaving = ref(false);
+const files = ref<File[] | null>(null)
+const currentIndex = ref(0)
+const targetSender = ref('')
+const sourceFilter = ref<AudioSource | 'all'>('all')
+const statusFilter = ref<LabelStatus | 'all'>('draft')
+const unsureOnly = ref(false)
+const transcript = ref('')
+const notes = ref('')
+const unsure = ref(false)
+const isBusy = ref(false)
+const isSaving = ref(false)
 
-const emptyCounts: Record<LabelStatus | "total", number> = {
+const emptyCounts: Record<LabelStatus | 'total', number> = {
   draft: 0,
   labeled: 0,
   skipped: 0,
-  total: 0,
-};
+  total: 0
+}
 
 const itemsQuery = computed(() => ({
-  ...(sourceFilter.value !== "all" ? { source: sourceFilter.value } : {}),
-  ...(statusFilter.value !== "all" ? { status: statusFilter.value } : {}),
-  ...(unsureOnly.value ? { unsure: true } : {}),
-}));
+  ...(sourceFilter.value !== 'all' ? { source: sourceFilter.value } : {}),
+  ...(statusFilter.value !== 'all' ? { status: statusFilter.value } : {}),
+  ...(unsureOnly.value ? { unsure: true } : {})
+}))
 
 const {
   data: itemsData,
-  error: itemsError,
-  refresh: refreshItems,
-} = await useFetch<ItemsResponse>("/api/labeling/items", {
+  refresh: refreshItems
+} = await useFetch<ItemsResponse>('/api/labeling/items', {
   query: itemsQuery,
-  default: () => ({ items: [], counts: emptyCounts }),
-});
+  default: () => ({ items: [], counts: emptyCounts })
+})
 
-const items = computed(() => itemsData.value.items);
-const counts = computed(() => itemsData.value.counts);
-const current = computed(() => items.value[currentIndex.value]);
+const items = computed(() => itemsData.value.items)
+const counts = computed(() => itemsData.value.counts)
+const current = computed(() => items.value[currentIndex.value])
 const audioUrl = computed(() =>
-  current.value ? `/api/labeling/audio/${current.value.audio_id}` : "",
-);
+  current.value ? `/api/labeling/audio/${current.value.audio_id}` : ''
+)
 
 watch(
   current,
   (item) => {
-    transcript.value = item?.transcript || item?.asr_text || "";
-    notes.value = item?.notes || "";
-    unsure.value = Boolean(item?.unsure);
+    transcript.value = item?.transcript || item?.asr_text || ''
+    notes.value = item?.notes || ''
+    unsure.value = Boolean(item?.unsure)
   },
-  { immediate: true },
-);
+  { immediate: true }
+)
 
 watch([sourceFilter, statusFilter, unsureOnly], () => {
-  currentIndex.value = 0;
-});
+  currentIndex.value = 0
+})
 
 watch(items, (nextItems) => {
-  if (currentIndex.value >= nextItems.length) currentIndex.value = 0;
-});
+  if (currentIndex.value >= nextItems.length) currentIndex.value = 0
+})
 
 async function importFiles() {
-  if (!files.value?.length || isBusy.value) return;
-  isBusy.value = true;
-  const form = new FormData();
-  files.value.forEach((file) => form.append("files", file));
-  form.append("target_sender", targetSender.value.trim());
+  if (!files.value?.length || isBusy.value) return
+  isBusy.value = true
+  const form = new FormData()
+  files.value.forEach(file => form.append('files', file))
+  form.append('target_sender', targetSender.value.trim())
   try {
-    await $fetch<ItemsResponse & { imported: number }>("/api/labeling/import", {
-      method: "POST",
-      body: form,
-    });
-    files.value = null;
-    await refreshItems();
+    await $fetch<ItemsResponse & { imported: number }>('/api/labeling/import', {
+      method: 'POST',
+      body: form
+    })
+    files.value = null
+    await refreshItems()
   } finally {
-    isBusy.value = false;
+    isBusy.value = false
   }
 }
 
 async function save(nextStatus: LabelStatus) {
-  if (!current.value || isSaving.value) return;
-  isSaving.value = true;
-  const form = new FormData();
-  form.append("transcript", transcript.value.trim());
-  form.append("status", nextStatus);
-  form.append("unsure", String(unsure.value));
-  form.append("notes", notes.value.trim());
+  if (!current.value || isSaving.value) return
+  isSaving.value = true
+  const form = new FormData()
+  form.append('transcript', transcript.value.trim())
+  form.append('status', nextStatus)
+  form.append('unsure', String(unsure.value))
+  form.append('notes', notes.value.trim())
   try {
     await $fetch(`/api/labeling/items/${current.value.audio_id}`, {
-      method: "PATCH",
-      body: form,
-    });
-    await refreshItems();
-    if (currentIndex.value < items.value.length - 1) currentIndex.value += 1;
-    else currentIndex.value = 0;
+      method: 'PATCH',
+      body: form
+    })
+    await refreshItems()
+    if (currentIndex.value < items.value.length - 1) currentIndex.value += 1
+    else currentIndex.value = 0
   } finally {
-    isSaving.value = false;
+    isSaving.value = false
   }
 }
 
 function moveCurrent(delta: number) {
-  if (!items.value.length) return;
-  currentIndex.value =
-    (currentIndex.value + delta + items.value.length) % items.value.length;
+  if (!items.value.length) return
+  currentIndex.value
+    = (currentIndex.value + delta + items.value.length) % items.value.length
 }
 </script>
 
@@ -149,7 +148,9 @@ function moveCurrent(delta: number) {
       </div>
 
       <header>
-        <p class="text-sm font-semibold text-muted">Audio-Labels</p>
+        <p class="text-sm font-semibold text-muted">
+          Audio-Labels
+        </p>
         <h1 class="mt-1 text-3xl font-bold tracking-normal">
           Aufnahmen prüfen
         </h1>
@@ -218,7 +219,10 @@ function moveCurrent(delta: number) {
         {{ counts.skipped }} übersprungen
       </p>
 
-      <section v-if="current" class="space-y-4">
+      <section
+        v-if="current"
+        class="space-y-4"
+      >
         <div
           class="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted"
         >
@@ -228,10 +232,16 @@ function moveCurrent(delta: number) {
           <span>{{ current.original_filename || current.audio_file }}</span>
         </div>
 
-        <audio class="w-full" controls :src="audioUrl" />
+        <audio
+          class="w-full"
+          controls
+          :src="audioUrl"
+        />
 
         <div>
-          <p class="text-sm font-semibold text-muted">ASR-Entwurf</p>
+          <p class="text-sm font-semibold text-muted">
+            ASR-Entwurf
+          </p>
           <p
             class="mt-1 min-h-12 rounded-lg border border-default bg-muted p-3 text-lg"
           >
@@ -250,7 +260,10 @@ function moveCurrent(delta: number) {
           />
         </UFormField>
 
-        <UCheckbox v-model="unsure" label="Unsicher" />
+        <UCheckbox
+          v-model="unsure"
+          label="Unsicher"
+        />
 
         <UFormField label="Notizen">
           <LazyUTextarea
