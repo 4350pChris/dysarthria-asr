@@ -4,7 +4,17 @@ import {
   type SpeechRecognition
 } from '../utils/speechRecognition'
 
-type VoiceCommand = 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help'
+export type VoiceCommand
+  = | 'start'
+    | 'stop'
+    | 'speak'
+    | 'copy'
+    | 'share'
+    | 'phrasesMode'
+    | 'mathMode'
+    | 'next'
+    | 'previous'
+    | 'help'
 
 const COMMANDS: Record<VoiceCommand, string[]> = {
   start: ['aufnehmen', 'aufnahme', 'start', 'los'],
@@ -67,7 +77,10 @@ function similarity(left: string, right: string) {
 function matchCommand(text: string) {
   let best: { command: VoiceCommand, score: number } | undefined
 
-  for (const [command, phrases] of Object.entries(COMMANDS) as [VoiceCommand, string[]][]) {
+  for (const [command, phrases] of Object.entries(COMMANDS) as [
+    VoiceCommand,
+    string[]
+  ][]) {
     for (const phrase of phrases) {
       const score = similarity(text, phrase)
       if (!best || score > best.score) {
@@ -79,7 +92,9 @@ function matchCommand(text: string) {
   return best && best.score >= 0.72 ? best : undefined
 }
 
-export function useVoiceCommands(onCommand: (command: VoiceCommand, transcript: string) => void) {
+export function useVoiceCommands(
+  onCommand: (command: VoiceCommand, transcript: string) => void
+) {
   const isSupported = ref(false)
   const isListening = ref(false)
   const transcript = ref('')
@@ -89,7 +104,8 @@ export function useVoiceCommands(onCommand: (command: VoiceCommand, transcript: 
   function start() {
     recognition.value = createSpeechRecognition(true)
     if (!recognition.value) {
-      status.value = 'Sprachsteuerung wird von diesem Browser nicht unterstützt.'
+      status.value
+        = 'Sprachsteuerung wird von diesem Browser nicht unterstützt.'
       return
     }
 

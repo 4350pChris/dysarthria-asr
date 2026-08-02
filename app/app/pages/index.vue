@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { VoiceCommand } from '~/composables/useVoiceCommands'
+
 const route = useRoute()
 
 const mode = ref<'phrases' | 'math'>('phrases')
@@ -34,7 +36,7 @@ function speakHelp() {
   speechSynthesis.speak(utterance)
 }
 
-function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help') {
+function handleVoiceCommand(command: VoiceCommand) {
   if (command === 'start') {
     startRecording()
   } else if (command === 'stop' && speech.isRecording.value) {
