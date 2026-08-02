@@ -1,30 +1,10 @@
+import {
+  createSpeechRecognition,
+  supportsSpeechRecognition,
+  type SpeechRecognition
+} from '../utils/speechRecognition'
+
 type VoiceCommand = 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help'
-
-type SpeechRecognitionEvent = Event & {
-  results: SpeechRecognitionResultList
-}
-
-type SpeechRecognitionErrorEvent = Event & {
-  error: string
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognition
-
-type SpeechRecognition = EventTarget & {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  onend: (() => void) | null
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
-  onresult: ((event: SpeechRecognitionEvent) => void) | null
-  start: () => void
-  stop: () => void
-}
-
-type WindowWithSpeechRecognition = Window & {
-  SpeechRecognition?: SpeechRecognitionConstructor
-  webkitSpeechRecognition?: SpeechRecognitionConstructor
-}
 
 const COMMANDS: Record<VoiceCommand, string[]> = {
   start: ['aufnehmen', 'aufnahme', 'start', 'los'],
@@ -107,18 +87,12 @@ export function useVoiceCommands(onCommand: (command: VoiceCommand, transcript: 
   const recognition = shallowRef<SpeechRecognition>()
 
   function start() {
-    const SpeechRecognition = (window as WindowWithSpeechRecognition).SpeechRecognition
-      || (window as WindowWithSpeechRecognition).webkitSpeechRecognition
-
-    if (!SpeechRecognition) {
+    recognition.value = createSpeechRecognition(true)
+    if (!recognition.value) {
       status.value = 'Sprachsteuerung wird von diesem Browser nicht unterstützt.'
       return
     }
 
-    recognition.value = new SpeechRecognition()
-    recognition.value.continuous = true
-    recognition.value.interimResults = false
-    recognition.value.lang = 'de-DE'
     recognition.value.onresult = (event) => {
       const result = event.results[event.results.length - 1]
       if (!result) return
@@ -151,8 +125,7 @@ export function useVoiceCommands(onCommand: (command: VoiceCommand, transcript: 
   }
 
   onMounted(() => {
-    const speechWindow = window as WindowWithSpeechRecognition
-    isSupported.value = Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition)
+    isSupported.value = supportsSpeechRecognition()
   })
 
   onBeforeUnmount(stop)

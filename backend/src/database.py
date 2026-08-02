@@ -194,6 +194,7 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY,
                 audio_id TEXT NOT NULL UNIQUE REFERENCES audio_clips(id) ON DELETE CASCADE,
                 asr_text TEXT NOT NULL DEFAULT '',
+                asr_source TEXT NOT NULL DEFAULT 'server',
                 transcript TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'labeled', 'skipped')),
                 unsure INTEGER NOT NULL DEFAULT 0,
@@ -202,6 +203,15 @@ def init_db() -> None:
             )
             """
         )
+        label_columns = {
+            row["name"]
+            for row in db.execute("PRAGMA table_info(transcription_labels)")
+        }
+        if "asr_source" not in label_columns:
+            db.execute(
+                "ALTER TABLE transcription_labels "
+                "ADD COLUMN asr_source TEXT NOT NULL DEFAULT 'server'"
+            )
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS grammar_slots (

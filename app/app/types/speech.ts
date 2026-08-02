@@ -20,6 +20,7 @@ export type Category = {
 export type TranscriptionResult = {
   audio_id: string
   audio_path: string
+  recognition_source: 'browser' | 'server'
   raw_transcript: string
   math_corrected_text: string
   math_number_text: string
@@ -38,6 +39,7 @@ export type LabelItem = {
   content_type: string
   created_at: string
   asr_text: string
+  asr_source: 'browser' | 'server'
   transcript: string
   status: LabelStatus
   unsure: boolean

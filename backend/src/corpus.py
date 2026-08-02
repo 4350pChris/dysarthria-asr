@@ -11,6 +11,7 @@ from fastapi.responses import Response
 from .database import connect_db
 
 AUDIO_SOURCES = {"app_recording", "whatsapp_upload"}
+ASR_SOURCES = {"browser", "server"}
 LABEL_STATUSES = {"draft", "labeled", "skipped"}
 EXPORT_FIELDS = [
     "audio_id",
@@ -76,6 +77,7 @@ def create_audio_clip(
 def upsert_transcription_label(
     audio_id: str,
     asr_text: str | None = None,
+    asr_source: str | None = None,
     transcript: str | None = None,
     status: str = "draft",
     unsure: bool = False,
@@ -83,6 +85,8 @@ def upsert_transcription_label(
 ) -> dict:
     if status not in LABEL_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid label status.")
+    if asr_source is not None and asr_source not in ASR_SOURCES:
+        raise HTTPException(status_code=400, detail="Invalid ASR source.")
     updated_at = now()
     with connect_db() as db:
         audio = db.execute("SELECT id FROM audio_clips WHERE id = ?", (audio_id,)).fetchone()
@@ -100,6 +104,9 @@ def upsert_transcription_label(
         if asr_text is not None:
             fields.append("asr_text = ?")
             args.append(asr_text)
+        if asr_source is not None:
+            fields.append("asr_source = ?")
+            args.append(asr_source)
         if transcript is not None:
             fields.append("transcript = ?")
             args.append(transcript)
@@ -130,6 +137,7 @@ def read_label_item(audio_id: str) -> dict:
                 audio_clips.content_type,
                 audio_clips.created_at,
                 transcription_labels.asr_text,
+                transcription_labels.asr_source,
                 transcription_labels.transcript,
                 transcription_labels.status,
                 transcription_labels.unsure,
@@ -178,6 +186,7 @@ def read_label_items(
                 audio_clips.content_type,
                 audio_clips.created_at,
                 transcription_labels.asr_text,
+                transcription_labels.asr_source,
                 transcription_labels.transcript,
                 transcription_labels.status,
                 transcription_labels.unsure,

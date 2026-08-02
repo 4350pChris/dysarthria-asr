@@ -2,12 +2,12 @@
 
 German dysarthria ASR prototype for one speaker.
 
-The app records short utterances, transcribes them with Whisper, suggests likely German phrases, speaks the selected text with browser TTS, and stores every recording in a unified audio corpus for later labeling. The current user-facing app is the Nuxt frontend in `app/`; the FastAPI backend also still serves the older static prototype at `/`.
+The app records short utterances, uses supported browser speech recognition first, suggests likely German phrases, speaks the selected text with browser TTS, and stores every recording in a unified audio corpus for later labeling. If browser recognition has no result, the server uses Whisper. The current user-facing app is the Nuxt frontend in `app/`; the FastAPI backend also still serves the older static prototype at `/`.
 
 ## Current Features
 
 - Push-to-talk recording with automatic silence stop
-- German ASR via `faster-whisper` using the `small` model on CPU
+- Browser speech recognition first, with German `faster-whisper` (`small` on CPU) as fallback
 - Phrase suggestions from saved phrases plus generated grammar candidates
 - Math mode for spoken German arithmetic
 - Browser TTS for the selected recognized text
@@ -92,7 +92,7 @@ Recognized commands include:
 - `zurück`, `vorheriger`, `vorherige`
 - `hilfe`, `befehle`
 
-Browser speech recognition support varies. Chrome-compatible browsers are the main target for voice control.
+Browser speech recognition support varies. Each saved label records whether the browser or the server produced its ASR text.
 
 ## Data And Persistence
 

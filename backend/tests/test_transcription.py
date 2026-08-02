@@ -31,7 +31,9 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
 
     with database.connect_db() as db:
         audio = db.execute("SELECT file_path, content_type, source FROM audio_clips").fetchone()
-        label = db.execute("SELECT asr_text, transcript, status FROM transcription_labels").fetchone()
+        label = db.execute(
+            "SELECT asr_text, asr_source, transcript, status FROM transcription_labels"
+        ).fetchone()
     assert dict(audio) == {
         "file_path": body["audio_path"],
         "content_type": "audio/webm",
@@ -39,9 +41,40 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
     }
     assert dict(label) == {
         "asr_text": "ich möchte kaffee",
+        "asr_source": "server",
         "transcript": "",
         "status": "draft",
     }
+
+
+def test_transcribe_uses_browser_transcript_when_available(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(transcription, "ROOT", initialized_db)
+    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(
+        transcription,
+        "transcribe_german",
+        lambda audio_path: (_ for _ in ()).throw(AssertionError("Server ASR must not run")),
+    )
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/transcribe",
+        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
+        data={"browser_transcript": "ich möchte kaffee"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["raw_transcript"] == "ich möchte kaffee"
+    assert body["recognition_source"] == "browser"
+
+    with database.connect_db() as db:
+        label = db.execute("SELECT asr_text, asr_source FROM transcription_labels").fetchone()
+    assert dict(label) == {"asr_text": "ich möchte kaffee", "asr_source": "browser"}
 
 
 def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> None:

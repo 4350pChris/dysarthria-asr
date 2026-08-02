@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
@@ -15,7 +15,10 @@ router = APIRouter(prefix="/api")
 
 
 @router.post("/transcribe")
-async def transcribe(audio: UploadFile = File(...)) -> dict:
+async def transcribe(
+    audio: UploadFile = File(...),
+    browser_transcript: str | None = Form(default=None),
+) -> dict:
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(audio.filename or "").suffix or ".webm"
     audio_id = uuid.uuid4().hex
@@ -33,12 +36,20 @@ async def transcribe(audio: UploadFile = File(...)) -> dict:
         source="app_recording",
     )
 
-    transcript = transcribe_german(audio_path)
-    upsert_transcription_label(audio_id=audio_id, asr_text=transcript)
+    transcript = (browser_transcript or "").strip()
+    recognition_source = "browser" if transcript else "server"
+    if not transcript:
+        transcript = transcribe_german(audio_path)
+    upsert_transcription_label(
+        audio_id=audio_id,
+        asr_text=transcript,
+        asr_source=recognition_source,
+    )
     math = normalize_german_math(transcript)
     return {
         "audio_id": audio_id,
         "audio_path": relative_audio_path,
+        "recognition_source": recognition_source,
         "raw_transcript": transcript,
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
