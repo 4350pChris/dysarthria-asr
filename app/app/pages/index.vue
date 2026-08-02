@@ -1,7 +1,6 @@
 <script setup lang="ts">
 const route = useRoute()
 
-const shouldResumeVoiceCommands = ref(false)
 const mode = ref<'phrases' | 'math'>('phrases')
 const modeOptions = [
   { label: 'Sätze', value: 'phrases' },
@@ -37,9 +36,7 @@ function speakHelp() {
 
 function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help') {
   if (command === 'start' && !speech.isRecording.value && !speech.isBusy.value) {
-    shouldResumeVoiceCommands.value = voiceCommands.isListening.value
-    voiceCommands.stop()
-    void speech.startRecording().finally(resumeVoiceCommands)
+    startRecording()
   } else if (command === 'stop' && speech.isRecording.value) {
     speech.stopRecording()
   } else if (command === 'speak' && (speech.selected.value || speech.result.value?.math_text)) {
@@ -63,10 +60,15 @@ function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'shar
   }
 }
 
-function resumeVoiceCommands() {
-  if (!shouldResumeVoiceCommands.value) return
-  shouldResumeVoiceCommands.value = false
-  voiceCommands.start()
+function startRecording() {
+  if (speech.isRecording.value || speech.isBusy.value) return
+  const shouldResumeVoiceCommands = voiceCommands.isListening.value
+  voiceCommands.stop()
+  void speech.startRecording().finally(() => {
+    if (shouldResumeVoiceCommands) {
+      voiceCommands.start()
+    }
+  })
 }
 
 function submit() {
@@ -87,7 +89,7 @@ function submit() {
         <RecordControl
           :is-recording="speech.isRecording.value"
           :is-busy="speech.isBusy.value"
-          @start="speech.startRecording"
+          @start="startRecording"
           @stop="speech.stopRecording"
         />
 
