@@ -35,7 +35,7 @@ function speakHelp() {
 }
 
 function handleVoiceCommand(command: 'start' | 'stop' | 'speak' | 'copy' | 'share' | 'phrasesMode' | 'mathMode' | 'next' | 'previous' | 'help') {
-  if (command === 'start' && !speech.isRecording.value && !speech.isBusy.value) {
+  if (command === 'start') {
     startRecording()
   } else if (command === 'stop' && speech.isRecording.value) {
     speech.stopRecording()
