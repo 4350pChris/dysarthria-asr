@@ -1,0 +1,10 @@
+{
+  "eslint.nodePath": "app/node_modules",
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [
+    {
+      "directory": "app",
+      "changeProcessCWD": true
+    }
+  ]
+}
