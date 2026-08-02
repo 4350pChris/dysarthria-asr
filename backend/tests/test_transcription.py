@@ -26,6 +26,7 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
     assert response.status_code == 200
     body = response.json()
     assert body["raw_transcript"] == "ich möchte kaffee"
+    assert body["emoji_text"] == "ich möchte kaffee"
     assert body["audio_path"].startswith("audio/")
     assert body["suggestions"][0]["text"] == "Ich möchte Kaffee."
 
@@ -70,11 +71,31 @@ def test_transcribe_uses_browser_transcript_when_available(
     assert response.status_code == 200
     body = response.json()
     assert body["raw_transcript"] == "ich möchte kaffee"
+    assert body["emoji_text"] == "ich möchte kaffee"
     assert body["recognition_source"] == "browser"
 
     with database.connect_db() as db:
         label = db.execute("SELECT asr_text, asr_source FROM transcription_labels").fetchone()
     assert dict(label) == {"asr_text": "ich möchte kaffee", "asr_source": "browser"}
+
+
+def test_transcribe_returns_converted_emoji_text(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(transcription, "ROOT", initialized_db)
+    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/transcribe",
+        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
+        data={"browser_transcript": "weißes Herz emoji"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["emoji_text"] == "🤍"
 
 
 def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> None:

@@ -107,9 +107,19 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
         body: form
       })
       if (!response.ok) throw new Error('Erkennung fehlgeschlagen.')
-      result.value = await response.json()
+      const transcription: TranscriptionResult = await response.json()
+      result.value = transcription
       selected.value
-        = mode.value === 'phrases' ? result.value?.suggestions[0] : undefined
+        = mode.value === 'phrases'
+          ? transcription.emoji_text !== transcription.raw_transcript
+            ? {
+                id: 'emoji:recognized',
+                source: 'emoji',
+                text: transcription.emoji_text,
+                score: 1
+              }
+            : transcription.suggestions[0]
+          : undefined
       hasSaved.value = false
       status.value
         = mode.value === 'math'

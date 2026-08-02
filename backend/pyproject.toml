@@ -13,6 +13,7 @@ dependencies = [
   "onnxruntime",
   "text2num>=3.0.2",
   "tokenizers",
+  "emoji>=2.0.0",
 ]
 
 [dependency-groups]

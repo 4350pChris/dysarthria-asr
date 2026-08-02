@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
 from ..corpus import create_audio_clip, upsert_transcription_label
+from ..emoji_normalizer import replace_spoken_emojis
 from ..math_normalizer import normalize_german_math
 from ..paths import AUDIO_DIR, ROOT
 
@@ -45,12 +46,14 @@ async def transcribe(
         asr_text=transcript,
         asr_source=recognition_source,
     )
+    emoji_text = replace_spoken_emojis(transcript)
     math = normalize_german_math(transcript)
     return {
         "audio_id": audio_id,
         "audio_path": relative_audio_path,
         "recognition_source": recognition_source,
         "raw_transcript": transcript,
+        "emoji_text": emoji_text,
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
         "math_text": math.math_text,

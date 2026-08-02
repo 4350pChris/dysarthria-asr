@@ -1,6 +1,6 @@
 export type Suggestion = {
   id: string
-  source: 'phrase' | 'generated'
+  source: 'phrase' | 'generated' | 'emoji'
   text: string
   score: number
 }
@@ -22,6 +22,7 @@ export type TranscriptionResult = {
   audio_path: string
   recognition_source: 'browser' | 'server'
   raw_transcript: string
+  emoji_text: string
   math_corrected_text: string
   math_number_text: string
   math_text: string

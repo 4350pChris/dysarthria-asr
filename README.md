@@ -10,6 +10,7 @@ The app records short utterances, uses supported browser speech recognition firs
 - Browser speech recognition first, with German `faster-whisper` (`small` on CPU) as fallback
 - Phrase suggestions from saved phrases plus generated grammar candidates
 - Math mode for spoken German arithmetic
+- Spoken German emoji names, such as `weißes Herz emoji` → 🤍
 - Browser TTS for the selected recognized text
 - Copy and share actions for recognized text
 - Native Web Share first, WhatsApp link fallback
@@ -93,6 +94,13 @@ Recognized commands include:
 - `hilfe`, `befehle`
 
 Browser speech recognition support varies. Each saved label records whether the browser or the server produced its ASR text.
+
+## Emojis
+
+Say the official German emoji name followed by `emoji` (or `emojis`). For example,
+`weißes Herz emoji` becomes 🤍 and `Daumen hoch emoji` becomes 👍. The app uses the
+Unicode CLDR German emoji names, so it covers the package's complete supported emoji
+set without a project-maintained word-to-emoji list.
 
 ## Data And Persistence
 

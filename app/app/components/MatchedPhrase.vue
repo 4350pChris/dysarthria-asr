@@ -16,7 +16,9 @@ function confidence(suggestion?: Suggestion) {
 
 function sourceLabel(suggestion?: Suggestion) {
   if (!suggestion) return ''
-  return suggestion.source === 'generated' ? 'Baustein' : 'Gespeichert'
+  if (suggestion.source === 'generated') return 'Baustein'
+  if (suggestion.source === 'emoji') return 'Emoji erkannt'
+  return 'Gespeichert'
 }
 </script>
 

@@ -2,4 +2,4 @@ fastapi
 uvicorn[standard]
 python-multipart
 faster-whisper
-
+emoji>=2.0.0

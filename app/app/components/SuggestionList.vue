@@ -11,7 +11,9 @@ defineEmits<{
 }>()
 
 function sourceLabel(suggestion: Suggestion) {
-  return suggestion.source === 'generated' ? 'Baustein' : 'Gespeichert'
+  if (suggestion.source === 'generated') return 'Baustein'
+  if (suggestion.source === 'emoji') return 'Emoji erkannt'
+  return 'Gespeichert'
 }
 </script>
 
