@@ -14,6 +14,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const hasSaved = ref(false)
   const recordingDone = shallowRef<Promise<void>>()
   const browserTranscript = useBrowserTranscript()
+  const { isSafeToUpdate } = usePwaUpdateSafety()
 
   const suggestions = computed(() => result.value?.suggestions ?? [])
   const hasSelection = computed(() => Boolean(selected.value))
@@ -28,6 +29,14 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const outputText = computed(() =>
     mode.value === 'math' ? result.value?.math_text : selected.value?.text
   )
+
+  watch([isRecording, isBusy], ([recording, busy]) => {
+    isSafeToUpdate.value = !recording && !busy
+  }, { immediate: true })
+
+  onScopeDispose(() => {
+    isSafeToUpdate.value = true
+  })
 
   const silenceDetection = useSilenceDetection(stopRecording)
 
@@ -106,7 +115,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
         method: 'POST',
         body: form
       })
-      if (!response.ok) throw new Error('Erkennung fehlgeschlagen.')
+      if (!response.ok) {
+        const body = await response.json().catch(() => undefined)
+        const message = body && typeof body.detail === 'string'
+          ? body.detail
+          : 'Erkennung fehlgeschlagen.'
+        throw new Error(message)
+      }
       const transcription: TranscriptionResult = await response.json()
       result.value = transcription
       selected.value

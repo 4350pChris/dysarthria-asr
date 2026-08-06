@@ -84,6 +84,9 @@ useSpeechCommand({
         </h1>
       </header>
 
+      <PwaInstallHint />
+      <PwaUpdatePrompt />
+
       <slot />
     </UContainer>
   </UMain>
