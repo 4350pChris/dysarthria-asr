@@ -89,11 +89,21 @@ def import_audio_bytes(
     contents: bytes,
     original_filename: str,
     content_type: str,
-) -> dict:
+) -> dict | None:
     suffix = Path(original_filename).suffix.lower() or ".ogg"
     audio_id = uuid.uuid4().hex
     audio_path = AUDIO_DIR / f"{audio_id}{suffix}"
     audio_path.write_bytes(contents)
+    notes = ""
+    try:
+        asr_text = transcribe_german(audio_path)
+    except Exception:
+        asr_text = ""
+        notes = "ASR failed."
+    if not notes and not asr_text.strip():
+        audio_path.unlink(missing_ok=True)
+        return None
+
     relative_audio_path = str(audio_path.relative_to(ROOT))
     create_audio_clip(
         id=audio_id,
@@ -102,23 +112,17 @@ def import_audio_bytes(
         content_type=content_type,
         source="whatsapp_upload",
     )
-    notes = ""
-    try:
-        asr_text = transcribe_german(audio_path)
-    except Exception:
-        asr_text = ""
-        notes = "ASR failed."
     return upsert_transcription_label(audio_id=audio_id, asr_text=asr_text, notes=notes)
 
 
-def import_zip(contents: bytes, target_sender: str) -> list[dict]:
+def import_zip(contents: bytes, target_sender: str) -> list[dict | None]:
     try:
         archive = zipfile.ZipFile(io.BytesIO(contents))
     except zipfile.BadZipFile as error:
         raise HTTPException(status_code=400, detail="Upload a valid WhatsApp ZIP export.") from error
 
     selected_names = audio_names_for_sender(archive, target_sender)
-    items = []
+    items: list[dict | None] = []
     for name in archive.namelist():
         path = Path(name)
         if path.name not in selected_names or path.suffix.lower() not in AUDIO_EXTENSIONS:
@@ -139,18 +143,24 @@ async def import_audio(
     target_sender: str = Form(""),
 ) -> dict:
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-    items = []
+    imported_items: list[dict | None] = []
     for audio in files:
         contents = await audio.read()
         if not contents:
             raise HTTPException(status_code=400, detail="Upload non-empty audio files.")
         if Path(audio.filename or "").suffix.lower() == ".zip":
-            items.extend(import_zip(contents, target_sender))
+            imported_items.extend(import_zip(contents, target_sender))
             continue
         if not is_audio_upload(audio):
             raise HTTPException(status_code=400, detail="Upload audio files or a WhatsApp ZIP export.")
-        items.append(import_audio_bytes(contents, audio.filename or "", audio.content_type or ""))
-    return {"imported": len(items), "items": items, "counts": label_counts()}
+        imported_items.append(import_audio_bytes(contents, audio.filename or "", audio.content_type or ""))
+    items = [item for item in imported_items if item is not None]
+    return {
+        "imported": len(items),
+        "skipped": len(imported_items) - len(items),
+        "items": items,
+        "counts": label_counts(),
+    }
 
 
 @router.post("/import/senders")
@@ -168,10 +178,17 @@ def list_items(
     source: str | None = None,
     status: str | None = None,
     unsure: bool | None = None,
+    missing_asr: bool | None = None,
     limit: int = Query(100, ge=1, le=500),
 ) -> dict:
     return {
-        "items": read_label_items(source=source, status=status, unsure=unsure, limit=limit),
+        "items": read_label_items(
+            source=source,
+            status=status,
+            unsure=unsure,
+            missing_asr=missing_asr,
+            limit=limit,
+        ),
         "counts": label_counts(),
     }
 

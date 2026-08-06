@@ -2,11 +2,13 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 
 type ImportFormState = { targetSender: string }
+type ImportResult = { imported: number, skipped: number }
 
 const files = ref<File[] | null>(null)
 const formState = reactive<ImportFormState>({ targetSender: '' })
 const availableSenders = ref<string[]>([])
 const isLoadingSenders = ref(false)
+const importResult = ref<ImportResult>()
 const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<ImportFormState>('WhatsApp-Audios konnten nicht importiert werden.')
 
 const senderOptions = computed(() =>
@@ -21,6 +23,7 @@ const canImport = computed(() =>
 
 watch(files, async (nextFiles) => {
   clearErrors()
+  importResult.value = undefined
   formState.targetSender = ''
   availableSenders.value = []
   const archive = nextFiles?.find(file => file.name.toLowerCase().endsWith('.zip'))
@@ -47,14 +50,15 @@ async function importFiles(event: FormSubmitEvent<ImportFormState>) {
 
   const form = new FormData()
   selectedFiles.forEach(file => form.append('files', file))
-  const imported = await submit(event, (data) => {
+  const imported = await submit<ImportResult>(event, (data) => {
     form.append('target_sender', data.targetSender.trim())
-    return $fetch<{ imported: number }>('/api/labeling/import', {
+    return $fetch<ImportResult>('/api/labeling/import', {
       method: 'POST',
       body: form
     })
   })
   if (!imported) return
+  importResult.value = imported
   files.value = null
 }
 </script>
@@ -105,5 +109,12 @@ async function importFiles(event: FormSubmitEvent<ImportFormState>) {
     >
       WhatsApp-Audios importieren
     </UButton>
+    <p
+      v-if="importResult"
+      class="rounded-lg bg-muted p-3 text-sm font-semibold text-muted"
+    >
+      {{ importResult.imported }} importiert ·
+      {{ importResult.skipped }} ohne ASR-Text nicht gespeichert
+    </p>
   </UForm>
 </template>

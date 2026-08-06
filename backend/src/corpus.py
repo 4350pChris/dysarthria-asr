@@ -160,6 +160,7 @@ def read_label_items(
     source: str | None = None,
     status: str | None = None,
     unsure: bool | None = None,
+    missing_asr: bool | None = None,
     limit: int = 100,
 ) -> list[dict]:
     conditions = []
@@ -173,6 +174,8 @@ def read_label_items(
     if unsure is not None:
         conditions.append("transcription_labels.unsure = ?")
         args.append(int(unsure))
+    if missing_asr:
+        conditions.append("TRIM(transcription_labels.asr_text) = ''")
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     args.append(limit)
     with connect_db() as db:

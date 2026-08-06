@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from src import database
+from src.corpus import create_audio_clip, upsert_transcription_label
 from src.routers import labeling
 
 
@@ -133,7 +134,7 @@ def test_import_whatsapp_zip_without_sender_imports_all_audio(
 ) -> None:
     monkeypatch.setattr(labeling, "ROOT", initialized_db)
     monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
-    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: "")
+    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: "recognized")
     export = io.BytesIO()
     with zipfile.ZipFile(export, "w") as archive:
         archive.writestr("_chat.txt", "")
@@ -149,6 +150,35 @@ def test_import_whatsapp_zip_without_sender_imports_all_audio(
 
     assert response.status_code == 200
     assert response.json()["imported"] == 2
+
+
+def test_import_does_not_store_audio_without_asr_text(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
+    transcripts = iter(["  ", "hallo"])
+    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: next(transcripts))
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/labeling/import",
+        files=[
+            ("files", ("empty.ogg", b"empty audio", "audio/ogg")),
+            ("files", ("speech.ogg", b"speech audio", "audio/ogg")),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["imported"] == 1
+    assert response.json()["skipped"] == 1
+    with database.connect_db() as db:
+        clips = db.execute("SELECT original_filename, file_path FROM audio_clips").fetchall()
+    assert [row["original_filename"] for row in clips] == ["speech.ogg"]
+    assert (initialized_db / clips[0]["file_path"]).exists()
+    assert len(list((initialized_db / "audio").glob("*.ogg"))) == 1
 
 
 def test_labeling_update_and_default_export_include_only_training_rows(
@@ -195,7 +225,7 @@ def test_delete_labeling_item_removes_audio_and_label(
 ) -> None:
     monkeypatch.setattr(labeling, "ROOT", initialized_db)
     monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
-    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: "")
+    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: "recognized")
 
     from src.app import create_app
 
@@ -213,3 +243,33 @@ def test_delete_labeling_item_removes_audio_and_label(
     with database.connect_db() as db:
         assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM transcription_labels").fetchone()[0] == 0
+
+
+def test_labeling_items_can_filter_missing_asr_text(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
+    from src.app import create_app
+
+    client = TestClient(create_app())
+    for audio_id, filename, asr_text in [
+        ("empty", "empty.ogg", ""),
+        ("text", "text.ogg", "has text"),
+        ("spaces", "spaces.ogg", "  "),
+    ]:
+        create_audio_clip(
+            id=audio_id,
+            file_path=f"audio/{filename}",
+            original_filename=filename,
+        )
+        upsert_transcription_label(audio_id=audio_id, asr_text=asr_text)
+
+    response = client.get("/api/labeling/items?missing_asr=true")
+
+    assert response.status_code == 200
+    assert [item["original_filename"] for item in response.json()["items"]] == [
+        "empty.ogg",
+        "spaces.ogg",
+    ]

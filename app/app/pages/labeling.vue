@@ -36,6 +36,7 @@ const currentIndex = ref(0)
 const sourceFilter = ref<AudioSource | 'all'>('all')
 const statusFilter = ref<LabelStatus | 'all'>('draft')
 const unsureOnly = ref(false)
+const missingAsrOnly = ref(false)
 const transcript = ref('')
 const notes = ref('')
 const unsure = ref(false)
@@ -51,7 +52,8 @@ const emptyCounts: Record<LabelStatus | 'total', number> = {
 const itemsQuery = computed(() => ({
   ...(sourceFilter.value !== 'all' ? { source: sourceFilter.value } : {}),
   ...(statusFilter.value !== 'all' ? { status: statusFilter.value } : {}),
-  ...(unsureOnly.value ? { unsure: true } : {})
+  ...(unsureOnly.value ? { unsure: true } : {}),
+  ...(missingAsrOnly.value ? { missing_asr: true } : {})
 }))
 
 const {
@@ -79,7 +81,7 @@ watch(
   { immediate: true }
 )
 
-watch([sourceFilter, statusFilter, unsureOnly], () => {
+watch([sourceFilter, statusFilter, unsureOnly, missingAsrOnly], () => {
   currentIndex.value = 0
 })
 
@@ -127,7 +129,7 @@ function moveCurrent(delta: number) {
       WhatsApp-Audios importieren
     </UButton>
 
-    <section class="grid gap-3 sm:grid-cols-3">
+    <section class="grid gap-3 sm:grid-cols-4">
       <UFormField label="Quelle">
         <USelect
           v-model="sourceFilter"
@@ -148,6 +150,12 @@ function moveCurrent(delta: number) {
         v-model="unsureOnly"
         class="min-h-16 items-center"
         label="Nur unsichere"
+        size="lg"
+      />
+      <UCheckbox
+        v-model="missingAsrOnly"
+        class="min-h-16 items-center"
+        label="Ohne ASR-Text"
         size="lg"
       />
     </section>
