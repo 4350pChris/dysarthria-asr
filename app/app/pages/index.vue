@@ -1,6 +1,13 @@
 <script setup lang="ts">
 const route = useRoute()
 
+definePageMeta({
+  pageHeader: {
+    eyebrow: 'Sprachhilfe',
+    title: 'Was möchtest du sagen?'
+  }
+})
+
 const mode = ref<'phrases' | 'math'>('phrases')
 const modeOptions = [
   { label: 'Sätze', value: 'phrases' },
@@ -66,94 +73,96 @@ function submit() {
 </script>
 
 <template>
-  <UMain class="min-h-dvh bg-default px-4 py-5 text-highlighted">
-    <UContainer class="flex min-h-[calc(100dvh-2.5rem)] max-w-md flex-col">
-      <SpeakerHeader />
+  <UForm
+    :state="{}"
+    class="flex flex-1 flex-col justify-start gap-5"
+    @submit="submit"
+  >
+    <RecordControl
+      :is-recording="speech.isRecording.value"
+      :is-busy="speech.isBusy.value"
+      @start="startRecording"
+      @stop="speech.stopRecording"
+    />
 
-      <UForm
-        :state="{}"
-        class="flex flex-1 flex-col justify-start gap-5"
-        @submit="submit"
-      >
-        <RecordControl
-          :is-recording="speech.isRecording.value"
-          :is-busy="speech.isBusy.value"
-          @start="startRecording"
-          @stop="speech.stopRecording"
-        />
+    <SpeechCommandControl
+      :is-listening="speechCommands.isListening.value"
+      :is-supported="speechCommands.isSupported.value"
+      :status="speechCommands.status.value"
+      @start="speechCommands.start"
+      @stop="speechCommands.stop"
+    />
 
-        <URadioGroup
-          v-model="mode"
-          class="w-full"
-          color="primary"
-          indicator="hidden"
-          :items="modeOptions"
-          legend="Modus"
-          orientation="horizontal"
-          size="xl"
-          variant="table"
-          :ui="{
-            legend: 'sr-only',
-            fieldset: 'w-full',
-            item: 'min-h-16 flex-1 items-center justify-center',
-            label: 'text-lg font-extrabold'
-          }"
-        />
+    <URadioGroup
+      v-model="mode"
+      class="w-full"
+      color="primary"
+      indicator="hidden"
+      :items="modeOptions"
+      legend="Modus"
+      orientation="horizontal"
+      size="xl"
+      variant="table"
+      :ui="{
+        legend: 'sr-only',
+        fieldset: 'w-full',
+        item: 'min-h-16 flex-1 items-center justify-center',
+        label: 'text-lg font-extrabold'
+      }"
+    />
 
-        <p class="min-h-7 text-center text-lg font-semibold text-toned">
-          {{ speech.status.value }}
-        </p>
+    <p class="min-h-7 text-center text-lg font-semibold text-toned">
+      {{ speech.status.value }}
+    </p>
 
-        <section
-          v-if="speech.hasSelection.value && mode === 'phrases'"
-          class="space-y-4"
-        >
-          <MatchedPhrase
-            :selected="speech.selected.value"
-            @copy="speech.copySelected"
-            @share="speech.shareSelected"
-          />
+    <section
+      v-if="speech.hasSelection.value && mode === 'phrases'"
+      class="space-y-4"
+    >
+      <MatchedPhrase
+        :selected="speech.selected.value"
+        @copy="speech.copySelected"
+        @share="speech.shareSelected"
+      />
 
-          <SuggestionList
-            :suggestions="speech.suggestions.value"
-            :selected="speech.selected.value"
-            @select="speech.setSelection"
-          />
-        </section>
+      <SuggestionList
+        :suggestions="speech.suggestions.value"
+        :selected="speech.selected.value"
+        @select="speech.setSelection"
+      />
+    </section>
 
-        <MathResult
-          v-if="speech.hasMathResult.value && speech.result.value"
-          :math-text="speech.result.value.math_text"
-          :corrected-text="speech.result.value.math_corrected_text"
-          @copy="speech.copySelected"
-          @share="speech.shareSelected"
-        />
+    <MathResult
+      v-if="speech.hasMathResult.value && speech.result.value"
+      :math-text="speech.result.value.math_text"
+      :corrected-text="speech.result.value.math_corrected_text"
+      @copy="speech.copySelected"
+      @share="speech.shareSelected"
+    />
 
-        <UButton
-          class="min-h-24 justify-center rounded-2xl text-xl font-extrabold"
-          block
-          color="neutral"
-          icon="i-lucide-layout-grid"
-          size="xl"
-          to="/phrases"
-          variant="subtle"
-          :ui="{ leadingIcon: 'size-8', base: 'flex-col gap-2' }"
-        >
-          Satz auswählen
-        </UButton>
+    <UButton
+      class="min-h-24 justify-center rounded-2xl text-xl font-extrabold"
+      block
+      color="neutral"
+      icon="i-lucide-layout-grid"
+      size="xl"
+      to="/phrases"
+      variant="subtle"
+      :ui="{ leadingIcon: 'size-8', base: 'flex-col gap-2' }"
+    >
+      Satz auswählen
+    </UButton>
 
-        <UButton
-          class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
-          block
-          color="neutral"
-          icon="i-lucide-list-checks"
-          size="xl"
-          to="/labeling"
-          variant="subtle"
-        >
-          Aufnahmen prüfen
-        </UButton>
-      </UForm>
-    </UContainer>
-  </UMain>
+    <UButton
+      class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+      block
+      color="neutral"
+      icon="i-lucide-list-checks"
+      size="xl"
+      to="/labeling"
+      variant="subtle"
+    >
+      Aufnahmen prüfen
+    </UButton>
+  </UForm>
 </template>

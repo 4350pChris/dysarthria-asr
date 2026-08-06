@@ -134,17 +134,6 @@ export function useSpeechCommand(command: SpeechCommand) {
   onScopeDispose(register(command))
 }
 
-export function useSpeechBack(target = '/') {
-  useSpeechCommand({
-    id: 'back',
-    label: 'Zurück',
-    phrases: ['zurück', 'zurueck', 'zurückgehen'],
-    handler: async () => {
-      await navigateTo(target)
-    }
-  })
-}
-
 export function provideSpeechCommands(commands: SpeechCommands) {
   provide(speechCommandsKey, commands)
 }

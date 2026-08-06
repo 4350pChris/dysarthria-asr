@@ -2,6 +2,17 @@
 import type { Phrase } from '~/types/speech'
 
 const route = useRoute()
+
+definePageMeta({
+  pageHeader: {
+    backLabel: 'Kategorien',
+    backTo: '/phrases',
+    eyebrow: 'Satz auswählen',
+    showBack: true,
+    titleParam: 'category'
+  }
+})
+
 const category = computed(() => decodeURIComponent(String(route.params.category || '')))
 const status = ref('')
 const formState = reactive({ text: '' })
@@ -11,8 +22,6 @@ const phraseToDelete = ref<Phrase>()
 const isDeleting = ref(false)
 const { categories, byCategory } = usePhrases()
 const { savePhrase: persistPhrase } = usePhraseSaving()
-
-useSpeechBack('/phrases')
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
 const phrases = computed(() => byCategory(category.value))
@@ -85,120 +94,98 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <UMain class="min-h-dvh bg-default px-4 py-5 text-highlighted">
-    <UContainer class="max-w-md space-y-5">
-      <UButton
-        class="min-h-14 rounded-2xl font-extrabold"
-        color="neutral"
-        icon="i-lucide-arrow-left"
-        size="xl"
-        to="/phrases"
-        variant="ghost"
-      >
-        Kategorien
-      </UButton>
+  <div class="space-y-5">
+    <p
+      v-if="status"
+      class="text-lg font-semibold text-toned"
+    >
+      {{ status }}
+    </p>
 
-      <header>
-        <p class="text-sm font-semibold text-muted">
-          Satz auswählen
+    <UForm
+      :state="formState"
+      class="space-y-3"
+      @submit="savePhrase"
+    >
+      <UFormField :label="formLabel">
+        <UTextarea
+          v-model="formState.text"
+          class="w-full"
+          autoresize
+          placeholder="z. B. Ich möchte Anna anrufen."
+          size="xl"
+        />
+      </UFormField>
+      <div class="grid gap-3">
+        <UButton
+          class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+          block
+          color="primary"
+          icon="i-lucide-save"
+          size="xl"
+          type="submit"
+          :label="submitLabel"
+          :loading="isSaving"
+        />
+        <UButton
+          class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+          block
+          color="neutral"
+          icon="i-lucide-x"
+          label="Abbrechen"
+          size="xl"
+          type="button"
+          variant="subtle"
+          @click="resetForm"
+        />
+      </div>
+    </UForm>
+
+    <PhraseGrid
+      :phrases="phrases"
+      @edit="startEdit"
+      @delete="requestDelete"
+    />
+
+    <UModal
+      :open="isDeleteModalOpen"
+      title="Satz löschen?"
+      description="Dieser Satz wird aus der Liste entfernt."
+      :close="false"
+      @update:open="closeDeleteModal"
+    >
+      <template #body>
+        <p class="text-xl font-bold leading-snug text-highlighted">
+          {{ phraseToDelete?.text }}
         </p>
-        <h1 class="mt-1 text-3xl font-bold tracking-normal">
-          {{ category }}
-        </h1>
-      </header>
+      </template>
 
-      <p
-        v-if="status"
-        class="text-lg font-semibold text-toned"
-      >
-        {{ status }}
-      </p>
-
-      <UForm
-        :state="formState"
-        class="space-y-3"
-        @submit="savePhrase"
-      >
-        <UFormField :label="formLabel">
-          <UTextarea
-            v-model="formState.text"
-            class="w-full"
-            autoresize
-            placeholder="z. B. Ich möchte Anna anrufen."
-            size="xl"
-          />
-        </UFormField>
-        <div class="grid gap-3">
+      <template #footer>
+        <div class="grid w-full gap-3">
           <UButton
-            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
             block
-            color="primary"
-            icon="i-lucide-save"
+            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+            color="error"
+            icon="i-lucide-trash-2"
+            label="Ja, löschen"
             size="xl"
-            type="submit"
-            :label="submitLabel"
-            :loading="isSaving"
+            type="button"
+            :loading="isDeleting"
+            @click="confirmDelete"
           />
           <UButton
-            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
             block
+            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
             color="neutral"
             icon="i-lucide-x"
             label="Abbrechen"
             size="xl"
             type="button"
             variant="subtle"
-            @click="resetForm"
+            @click="phraseToDelete = undefined"
           />
         </div>
-      </UForm>
-
-      <PhraseGrid
-        :phrases="phrases"
-        @edit="startEdit"
-        @delete="requestDelete"
-      />
-
-      <UModal
-        :open="isDeleteModalOpen"
-        title="Satz löschen?"
-        description="Dieser Satz wird aus der Liste entfernt."
-        :close="false"
-        @update:open="closeDeleteModal"
-      >
-        <template #body>
-          <p class="text-xl font-bold leading-snug text-highlighted">
-            {{ phraseToDelete?.text }}
-          </p>
-        </template>
-
-        <template #footer>
-          <div class="grid w-full gap-3">
-            <UButton
-              block
-              class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
-              color="error"
-              icon="i-lucide-trash-2"
-              label="Ja, löschen"
-              size="xl"
-              type="button"
-              :loading="isDeleting"
-              @click="confirmDelete"
-            />
-            <UButton
-              block
-              class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
-              color="neutral"
-              icon="i-lucide-x"
-              label="Abbrechen"
-              size="xl"
-              type="button"
-              variant="subtle"
-              @click="phraseToDelete = undefined"
-            />
-          </div>
-        </template>
-      </UModal>
-    </UContainer>
-  </UMain>
+      </template>
+    </UModal>
+  </div>
 </template>

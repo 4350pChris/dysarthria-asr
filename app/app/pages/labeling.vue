@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import type { AudioSource, LabelItem, LabelStatus } from '~/types/speech'
 
+definePageMeta({
+  pageHeader: {
+    action: {
+      icon: 'i-lucide-download',
+      label: 'CSV',
+      to: '/api/labeling/export.csv'
+    },
+    eyebrow: 'Audio-Labels',
+    showBack: true,
+    title: 'Aufnahmen prüfen',
+    wide: true
+  }
+})
+
 type ItemsResponse = {
   items: LabelItem[]
   counts: Record<LabelStatus | 'total', number>
@@ -29,8 +43,6 @@ const notes = ref('')
 const unsure = ref(false)
 const isBusy = ref(false)
 const isSaving = ref(false)
-
-useSpeechBack()
 
 const emptyCounts: Record<LabelStatus | 'total', number> = {
   draft: 0,
@@ -125,235 +137,202 @@ function moveCurrent(delta: number) {
 </script>
 
 <template>
-  <UMain class="min-h-dvh bg-default px-4 py-5 text-highlighted">
-    <UContainer class="max-w-3xl space-y-5">
-      <div class="flex items-center justify-between gap-3">
-        <UButton
-          class="min-h-12 font-extrabold"
-          color="neutral"
-          icon="i-lucide-arrow-left"
+  <div class="space-y-5">
+    <section class="space-y-3">
+      <UFileUpload
+        v-model="files"
+        accept="audio/*,.zip,application/zip"
+        class="min-h-48"
+        description="WhatsApp-Export-ZIP oder einzelne Audiodateien"
+        label="ZIP oder Audios hier ablegen"
+        layout="list"
+        multiple
+        position="inside"
+        size="lg"
+      />
+      <UFormField label="Name der sprechenden Person im WhatsApp-Chat">
+        <UInput
+          v-model="targetSender"
+          class="w-full"
+          placeholder="Leer lassen, um alle Audios zu importieren"
           size="lg"
-          to="/"
+        />
+      </UFormField>
+      <UButton
+        block
+        class="min-h-14 justify-center font-extrabold"
+        color="primary"
+        icon="i-lucide-upload"
+        size="lg"
+        :loading="isBusy"
+        @click="importFiles"
+      >
+        WhatsApp-Audios importieren
+      </UButton>
+    </section>
+
+    <section class="grid gap-3 sm:grid-cols-3">
+      <UFormField label="Quelle">
+        <USelect
+          v-model="sourceFilter"
+          class="w-full"
+          :items="sourceOptions"
+          size="lg"
+        />
+      </UFormField>
+      <UFormField label="Status">
+        <USelect
+          v-model="statusFilter"
+          class="w-full"
+          :items="statusOptions"
+          size="lg"
+        />
+      </UFormField>
+      <UCheckbox
+        v-model="unsureOnly"
+        class="min-h-16 items-center"
+        label="Nur unsichere"
+        size="lg"
+      />
+    </section>
+
+    <p class="text-sm font-semibold text-muted">
+      {{ counts.draft }} offen · {{ counts.labeled }} gelabelt ·
+      {{ counts.skipped }} übersprungen
+    </p>
+
+    <section
+      v-if="current"
+      class="space-y-4"
+    >
+      <div
+        class="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted"
+      >
+        <span class="rounded-md bg-muted px-2 py-1">{{
+          current.source
+        }}</span>
+        <span>{{ current.original_filename || current.audio_file }}</span>
+      </div>
+
+      <audio
+        class="w-full"
+        controls
+        :src="audioUrl"
+      />
+
+      <div>
+        <p class="text-sm font-semibold text-muted">
+          ASR-Entwurf
+        </p>
+        <p
+          class="mt-1 min-h-12 rounded-lg border border-default bg-muted p-3 text-lg"
+        >
+          {{ current.asr_text || "Kein ASR-Entwurf." }}
+        </p>
+      </div>
+
+      <UFormField label="Korrigierte Transkription">
+        <LazyUTextarea
+          v-model="transcript"
+          class="w-full"
+          autofocus
+          autoresize
+          size="xl"
+          :rows="5"
+        />
+      </UFormField>
+
+      <UCheckbox
+        v-model="unsure"
+        label="Unsicher"
+      />
+
+      <UFormField label="Notizen">
+        <LazyUTextarea
+          v-model="notes"
+          class="w-full"
+          autoresize
+          size="lg"
+          :rows="3"
+        />
+      </UFormField>
+
+      <div class="grid gap-3 grid-cols-3">
+        <UButton
+          block
+          class="font-extrabold"
+          color="neutral"
+          icon="i-lucide-chevron-left"
+          size="lg"
           variant="ghost"
+          :disabled="items.length < 2"
+          @click="moveCurrent(-1)"
         >
           Zurück
         </UButton>
-        <UButton
-          class="min-h-12 font-extrabold"
-          color="primary"
-          icon="i-lucide-download"
-          size="lg"
-          to="/api/labeling/export.csv"
+        <p
+          class="flex items-center justify-center text-sm font-semibold text-muted"
         >
-          CSV
+          {{ currentIndex + 1 }} / {{ items.length }}
+        </p>
+        <UButton
+          block
+          class="font-extrabold"
+          color="neutral"
+          icon="i-lucide-chevron-right"
+          size="lg"
+          variant="ghost"
+          :disabled="items.length < 2"
+          @click="moveCurrent(1)"
+        >
+          Weiter
         </UButton>
       </div>
 
-      <header>
-        <p class="text-sm font-semibold text-muted">
-          Audio-Labels
-        </p>
-        <h1 class="mt-1 text-3xl font-bold tracking-normal">
-          Aufnahmen prüfen
-        </h1>
-      </header>
-
-      <section class="space-y-3">
-        <UFileUpload
-          v-model="files"
-          accept="audio/*,.zip,application/zip"
-          class="min-h-48"
-          description="WhatsApp-Export-ZIP oder einzelne Audiodateien"
-          label="ZIP oder Audios hier ablegen"
-          layout="list"
-          multiple
-          position="inside"
+      <div class="grid gap-3 sm:grid-cols-3">
+        <UButton
+          block
+          class="min-h-14 justify-center font-extrabold"
+          color="neutral"
+          icon="i-lucide-skip-forward"
           size="lg"
-        />
-        <UFormField label="Name der sprechenden Person im WhatsApp-Chat">
-          <UInput
-            v-model="targetSender"
-            class="w-full"
-            placeholder="Leer lassen, um alle Audios zu importieren"
-            size="lg"
-          />
-        </UFormField>
+          variant="subtle"
+          :loading="isSaving"
+          @click="save('skipped')"
+        >
+          Skip
+        </UButton>
+        <UButton
+          block
+          class="min-h-14 justify-center font-extrabold"
+          color="neutral"
+          icon="i-lucide-save"
+          size="lg"
+          variant="outline"
+          :loading="isSaving"
+          @click="save('draft')"
+        >
+          Entwurf
+        </UButton>
         <UButton
           block
           class="min-h-14 justify-center font-extrabold"
           color="primary"
-          icon="i-lucide-upload"
+          icon="i-lucide-check"
           size="lg"
-          :loading="isBusy"
-          @click="importFiles"
+          :loading="isSaving"
+          @click="save('labeled')"
         >
-          WhatsApp-Audios importieren
+          Gelabelt + weiter
         </UButton>
-      </section>
+      </div>
+    </section>
 
-      <section class="grid gap-3 sm:grid-cols-3">
-        <UFormField label="Quelle">
-          <USelect
-            v-model="sourceFilter"
-            class="w-full"
-            :items="sourceOptions"
-            size="lg"
-          />
-        </UFormField>
-        <UFormField label="Status">
-          <USelect
-            v-model="statusFilter"
-            class="w-full"
-            :items="statusOptions"
-            size="lg"
-          />
-        </UFormField>
-        <UCheckbox
-          v-model="unsureOnly"
-          class="min-h-16 items-center"
-          label="Nur unsichere"
-          size="lg"
-        />
-      </section>
-
-      <p class="text-sm font-semibold text-muted">
-        {{ counts.draft }} offen · {{ counts.labeled }} gelabelt ·
-        {{ counts.skipped }} übersprungen
-      </p>
-
-      <section
-        v-if="current"
-        class="space-y-4"
-      >
-        <div
-          class="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted"
-        >
-          <span class="rounded-md bg-muted px-2 py-1">{{
-            current.source
-          }}</span>
-          <span>{{ current.original_filename || current.audio_file }}</span>
-        </div>
-
-        <audio
-          class="w-full"
-          controls
-          :src="audioUrl"
-        />
-
-        <div>
-          <p class="text-sm font-semibold text-muted">
-            ASR-Entwurf
-          </p>
-          <p
-            class="mt-1 min-h-12 rounded-lg border border-default bg-muted p-3 text-lg"
-          >
-            {{ current.asr_text || "Kein ASR-Entwurf." }}
-          </p>
-        </div>
-
-        <UFormField label="Korrigierte Transkription">
-          <LazyUTextarea
-            v-model="transcript"
-            class="w-full"
-            autofocus
-            autoresize
-            size="xl"
-            :rows="5"
-          />
-        </UFormField>
-
-        <UCheckbox
-          v-model="unsure"
-          label="Unsicher"
-        />
-
-        <UFormField label="Notizen">
-          <LazyUTextarea
-            v-model="notes"
-            class="w-full"
-            autoresize
-            size="lg"
-            :rows="3"
-          />
-        </UFormField>
-
-        <div class="grid gap-3 grid-cols-3">
-          <UButton
-            block
-            class="font-extrabold"
-            color="neutral"
-            icon="i-lucide-chevron-left"
-            size="lg"
-            variant="ghost"
-            :disabled="items.length < 2"
-            @click="moveCurrent(-1)"
-          >
-            Zurück
-          </UButton>
-          <p
-            class="flex items-center justify-center text-sm font-semibold text-muted"
-          >
-            {{ currentIndex + 1 }} / {{ items.length }}
-          </p>
-          <UButton
-            block
-            class="font-extrabold"
-            color="neutral"
-            icon="i-lucide-chevron-right"
-            size="lg"
-            variant="ghost"
-            :disabled="items.length < 2"
-            @click="moveCurrent(1)"
-          >
-            Weiter
-          </UButton>
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-3">
-          <UButton
-            block
-            class="min-h-14 justify-center font-extrabold"
-            color="neutral"
-            icon="i-lucide-skip-forward"
-            size="lg"
-            variant="subtle"
-            :loading="isSaving"
-            @click="save('skipped')"
-          >
-            Skip
-          </UButton>
-          <UButton
-            block
-            class="min-h-14 justify-center font-extrabold"
-            color="neutral"
-            icon="i-lucide-save"
-            size="lg"
-            variant="outline"
-            :loading="isSaving"
-            @click="save('draft')"
-          >
-            Entwurf
-          </UButton>
-          <UButton
-            block
-            class="min-h-14 justify-center font-extrabold"
-            color="primary"
-            icon="i-lucide-check"
-            size="lg"
-            :loading="isSaving"
-            @click="save('labeled')"
-          >
-            Gelabelt + weiter
-          </UButton>
-        </div>
-      </section>
-
-      <p
-        v-else
-        class="rounded-lg border border-default p-5 text-center text-lg font-semibold text-muted"
-      >
-        Keine Aufnahme in dieser Ansicht.
-      </p>
-    </UContainer>
-  </UMain>
+    <p
+      v-else
+      class="rounded-lg border border-default p-5 text-center text-lg font-semibold text-muted"
+    >
+      Keine Aufnahme in dieser Ansicht.
+    </p>
+  </div>
 </template>

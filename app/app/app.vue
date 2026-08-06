@@ -4,15 +4,6 @@ const speechCommands = createSpeechCommands()
 provideSpeechCommands(speechCommands)
 
 speechCommands.register({
-  id: 'back',
-  label: 'Zurück',
-  phrases: ['zurück', 'zurueck', 'zurückgehen'],
-  handler: () => {
-    speechCommands.status.value = 'Du bist auf der Startseite.'
-  }
-})
-
-speechCommands.register({
   id: 'help',
   label: 'Hilfe',
   phrases: ['hilfe', 'befehle'],
@@ -49,15 +40,8 @@ useSeoMeta({
 
 <template>
   <UApp>
-    <NuxtPage />
-    <div class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md">
-      <SpeechCommandControl
-        :is-listening="speechCommands.isListening.value"
-        :is-supported="speechCommands.isSupported.value"
-        :status="speechCommands.status.value"
-        @start="speechCommands.start"
-        @stop="speechCommands.stop"
-      />
-    </div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </UApp>
 </template>
