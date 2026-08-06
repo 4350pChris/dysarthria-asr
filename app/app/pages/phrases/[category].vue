@@ -10,6 +10,7 @@ const isSaving = ref(false)
 const phraseToDelete = ref<Phrase>()
 const isDeleting = ref(false)
 const { categories, byCategory, loadPhrases } = usePhrases()
+const { savePhrase: persistPhrase } = usePhraseSaving()
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
 const phrases = computed(() => byCategory(category.value))
@@ -41,20 +42,23 @@ function resetForm() {
 async function savePhrase() {
   const text = formState.text.trim()
   if (!text || isSaving.value) return
+  if (!editing.value && !currentCategory.value) {
+    status.value = 'Kategorie konnte nicht gefunden werden.'
+    return
+  }
   isSaving.value = true
-  const form = new FormData()
-  form.append('text', text)
   try {
+    await persistPhrase({
+      text,
+      categoryId: currentCategory.value?.id,
+      phraseId: editing.value?.id
+    })
     if (editing.value) {
-      await $fetch(`/api/phrases/${editing.value.id}`, { method: 'PATCH', body: form })
       status.value = 'Satz gespeichert.'
-    } else if (currentCategory.value) {
-      form.append('category_id', String(currentCategory.value.id))
-      await $fetch('/api/phrases', { method: 'POST', body: form })
+    } else {
       status.value = 'Satz hinzugefügt.'
     }
     resetForm()
-    await loadPhrases({ force: true })
   } catch {
     status.value = 'Satz konnte nicht gespeichert werden.'
   } finally {

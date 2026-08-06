@@ -11,7 +11,10 @@ const modeOptions = [
 const speech = useSpeechSession(mode)
 const { byId, loadPhrases } = usePhrases()
 
-onMounted(selectRoutePhrase)
+onMounted(() => {
+  void loadPhrases()
+  void selectRoutePhrase()
+})
 
 const voiceCommands = useVoiceCommands(handleVoiceCommand)
 
@@ -140,6 +143,8 @@ function submit() {
             :selected="speech.selected.value"
             @select="speech.setSelection"
           />
+
+          <SaveCorrectedPhrase :selected="speech.selected.value" />
         </section>
 
         <MathResult
