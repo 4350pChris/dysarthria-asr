@@ -3,11 +3,6 @@ import type { AudioSource, LabelItem, LabelStatus } from '~/types/speech'
 
 definePageMeta({
   pageHeader: {
-    action: {
-      icon: 'i-lucide-package-down',
-      label: 'Training-ZIP',
-      to: '/api/labeling/training-data.zip'
-    },
     eyebrow: 'Audio-Labels',
     showBack: true,
     title: 'Aufnahmen prüfen',
@@ -121,15 +116,26 @@ function moveCurrent(delta: number) {
 
 <template>
   <div class="space-y-5">
-    <UButton
-      class="font-extrabold"
-      color="neutral"
-      icon="i-lucide-upload"
-      size="lg"
-      to="/whatsapp-import"
-    >
-      WhatsApp-Audios importieren
-    </UButton>
+    <div class="flex flex-wrap gap-3">
+      <UButton
+        class="font-extrabold"
+        color="neutral"
+        icon="i-lucide-upload"
+        size="lg"
+        to="/whatsapp-import"
+      >
+        WhatsApp-Audios importieren
+      </UButton>
+      <UButton
+        class="font-extrabold"
+        color="primary"
+        icon="i-lucide-download"
+        size="lg"
+        to="/api/labeling/training-data.zip"
+      >
+        Training-ZIP laden
+      </UButton>
+    </div>
 
     <section class="grid gap-3 sm:grid-cols-4">
       <UFormField label="Quelle">
