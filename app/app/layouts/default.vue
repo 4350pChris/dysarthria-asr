@@ -41,28 +41,37 @@ useSpeechCommand({
 </script>
 
 <template>
-  <UMain class="min-h-dvh bg-default px-4 py-5 text-highlighted">
-    <UContainer
-      :class="[
-        header.wide ? 'max-w-3xl' : 'max-w-md',
-        'flex min-h-[calc(100dvh-2.5rem)] flex-col space-y-5'
-      ]"
+  <div class="min-h-dvh bg-default">
+    <UHeader
+      title="Dysarthria ASR"
+      :toggle="false"
+      :ui="{
+        container: header.wide ? 'max-w-3xl px-4' : 'max-w-md px-4'
+      }"
     >
-      <header class="space-y-4">
-        <div class="flex min-h-14 items-center justify-between gap-3">
-          <UButton
-            v-if="header.showBack"
-            class="min-h-14 rounded-2xl font-extrabold"
-            color="neutral"
-            icon="i-lucide-arrow-left"
-            size="xl"
-            :to="header.backTo || '/'"
-            variant="ghost"
-          >
-            {{ header.backLabel || 'Zurück' }}
-          </UButton>
-          <LogoLockup :mark-size="40" />
-        </div>
+      <template #left>
+        <UButton
+          v-if="header.showBack"
+          class="min-h-14 rounded-2xl font-extrabold"
+          color="neutral"
+          icon="i-lucide-arrow-left"
+          size="xl"
+          :to="header.backTo || '/'"
+          variant="ghost"
+        >
+          {{ header.backLabel || 'Zurück' }}
+        </UButton>
+        <LogoLockup :mark-size="40" />
+      </template>
+    </UHeader>
+
+    <section class="px-4 pt-4">
+      <UContainer
+        :class="[
+          header.wide ? 'max-w-3xl' : 'max-w-md',
+          'space-y-4 pb-5'
+        ]"
+      >
         <div>
           <p class="text-sm font-semibold text-muted">
             {{ header.eyebrow }}
@@ -81,12 +90,21 @@ useSpeechCommand({
         >
           {{ header.action.label }}
         </UButton>
-      </header>
+      </UContainer>
+    </section>
 
-      <PwaInstallHint />
-      <PwaUpdatePrompt />
+    <UMain class="min-h-dvh px-4 pb-5 text-highlighted">
+      <UContainer
+        :class="[
+          header.wide ? 'max-w-3xl' : 'max-w-md',
+          'flex min-h-[calc(100dvh-2.5rem)] flex-col space-y-5'
+        ]"
+      >
+        <PwaInstallHint />
+        <PwaUpdatePrompt />
 
-      <slot />
-    </UContainer>
-  </UMain>
+        <slot />
+      </UContainer>
+    </UMain>
+  </div>
 </template>

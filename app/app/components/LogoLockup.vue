@@ -7,13 +7,13 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="flex items-center gap-3">
+  <div class="shrink-0 flex items-center gap-3">
     <LogoMark
       :size="markSize"
       label="Dysarthria ASR Tuned Listener"
     />
-    <div class="min-w-0 leading-tight">
-      <p class="font-display text-lg font-bold text-highlighted">
+    <div class="leading-tight">
+      <p class="font-display whitespace-nowrap text-lg font-bold text-highlighted">
         Dysarthria ASR
       </p>
     </div>
