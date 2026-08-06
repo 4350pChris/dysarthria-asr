@@ -4,10 +4,27 @@ defineProps<{
   isBusy: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   start: []
   stop: []
 }>()
+
+const disabledTimer = ref(false)
+
+function toggleRecording(start: boolean) {
+  if (disabledTimer.value) {
+    return
+  }
+  disabledTimer.value = true
+  setTimeout(() => {
+    disabledTimer.value = false
+  }, 2000)
+  if (start) {
+    emit('start')
+  } else {
+    emit('stop')
+  }
+}
 </script>
 
 <template>
@@ -21,7 +38,7 @@ defineEmits<{
     type="button"
     :disabled="isBusy"
     :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
-    @click="$emit('start')"
+    @click="toggleRecording(true)"
   >
     Aufnehmen
   </UButton>
@@ -35,7 +52,7 @@ defineEmits<{
     size="xl"
     type="button"
     :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
-    @click="$emit('stop')"
+    @click="toggleRecording(false)"
   >
     Stopp
   </UButton>
