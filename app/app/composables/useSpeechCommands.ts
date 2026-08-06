@@ -99,7 +99,7 @@ export function createSpeechCommands(): SpeechCommands {
       void command.handler()
     }
     recognition.value.onerror = (event) => {
-      status.value = `Sprachsteuerung: ${event.error}`
+      status.value = `Fehler: ${event.error}`
     }
     recognition.value.onend = () => {
       if (isListening.value) recognition.value?.start()

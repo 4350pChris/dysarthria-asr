@@ -3,7 +3,7 @@ const speechCommands = createSpeechCommands()
 
 provideSpeechCommands(speechCommands)
 
-speechCommands.register({
+const cleanupSpeechCommands = speechCommands.register({
   id: 'help',
   label: 'Hilfe',
   phrases: ['hilfe', 'befehle'],
@@ -19,6 +19,8 @@ speechCommands.register({
     speechSynthesis.speak(utterance)
   }
 })
+
+onScopeDispose(cleanupSpeechCommands)
 
 useHead({
   meta: [
