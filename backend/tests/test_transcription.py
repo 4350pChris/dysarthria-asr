@@ -111,3 +111,25 @@ def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> No
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Upload a non-empty audio file."
+
+
+def test_transcribe_does_not_store_audio_without_asr_text(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(transcription, "ROOT", initialized_db)
+    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "  ")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/transcribe",
+        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Keine Sprache erkannt."
+    with database.connect_db() as db:
+        assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
+    assert not list((initialized_db / "audio").glob("*.webm"))

@@ -28,6 +28,19 @@ async def transcribe(
     if not contents:
         raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
     audio_path.write_bytes(contents)
+
+    transcript = (browser_transcript or "").strip()
+    recognition_source = "browser" if transcript else "server"
+    if not transcript:
+        try:
+            transcript = transcribe_german(audio_path).strip()
+        except Exception:
+            audio_path.unlink(missing_ok=True)
+            raise
+    if not transcript:
+        audio_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail="Keine Sprache erkannt.")
+
     relative_audio_path = str(audio_path.relative_to(ROOT))
     create_audio_clip(
         id=audio_id,
@@ -36,11 +49,6 @@ async def transcribe(
         content_type=audio.content_type or "",
         source="app_recording",
     )
-
-    transcript = (browser_transcript or "").strip()
-    recognition_source = "browser" if transcript else "server"
-    if not transcript:
-        transcript = transcribe_german(audio_path)
     upsert_transcription_label(
         audio_id=audio_id,
         asr_text=transcript,
