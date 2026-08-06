@@ -18,6 +18,7 @@ from ..corpus import (
     upsert_transcription_label,
 )
 from ..paths import AUDIO_DIR, ROOT
+from ..request_models import LabelUpdateRequest
 
 router = APIRouter(prefix="/api/labeling")
 
@@ -174,20 +175,17 @@ def list_items(
     }
 
 @router.patch("/items/{audio_id}")
-async def update_item(
+def update_item(
     audio_id: str,
-    transcript: str = Form(""),
-    status: str = Form("draft"),
-    unsure: bool = Form(False),
-    notes: str = Form(""),
+    data: LabelUpdateRequest,
 ) -> dict:
     return {
         "item": upsert_transcription_label(
             audio_id=audio_id,
-            transcript=transcript,
-            status=status,
-            unsure=unsure,
-            notes=notes,
+            transcript=data.transcript,
+            status=data.status,
+            unsure=data.unsure,
+            notes=data.notes,
         ),
         "counts": label_counts(),
     }

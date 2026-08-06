@@ -174,13 +174,13 @@ def test_labeling_update_and_default_export_include_only_training_rows(
     second_id = imported[1]["audio_id"]
     response = client.patch(
         f"/api/labeling/items/{first_id}",
-        data={"transcript": "Kaffee bitte.", "status": "labeled", "unsure": "false", "notes": ""},
+        json={"transcript": "Kaffee bitte.", "status": "labeled", "unsure": False, "notes": ""},
     )
     assert response.status_code == 200
     assert response.json()["item"]["status"] == "labeled"
     client.patch(
         f"/api/labeling/items/{second_id}",
-        data={"transcript": "Unsicher.", "status": "labeled", "unsure": "true", "notes": ""},
+        json={"transcript": "Unsicher.", "status": "labeled", "unsure": True, "notes": ""},
     )
 
     export = client.get("/api/labeling/export.csv")

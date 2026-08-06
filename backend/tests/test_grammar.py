@@ -16,7 +16,7 @@ def test_grammar_endpoint_updates_generated_candidates(initialized_db: Path) -> 
 
     response = client.patch(
         f"/api/grammar/values/{value['id']}",
-        data={"value": "Kakao"},
+        json={"value": "Kakao"},
     )
 
     assert response.status_code == 200
@@ -33,7 +33,7 @@ def test_grammar_endpoint_updates_pattern_templates(initialized_db: Path) -> Non
 
     response = client.patch(
         f"/api/grammar/patterns/{pattern['id']}",
-        data={"template": "Bitte bring mir {thing_acc}."},
+        json={"template": "Bitte bring mir {thing_acc}."},
     )
 
     assert response.status_code == 200
@@ -50,7 +50,7 @@ def test_grammar_pattern_requires_its_placeholder(initialized_db: Path) -> None:
 
     response = client.patch(
         f"/api/grammar/patterns/{pattern['id']}",
-        data={"template": "Ich möchte Kaffee."},
+        json={"template": "Ich möchte Kaffee."},
     )
 
     assert response.status_code == 422
@@ -66,14 +66,14 @@ def test_grammar_routes_return_conflict_for_duplicate_slot_entries(initialized_d
 
     duplicate_pattern = client.patch(
         f"/api/grammar/patterns/{second_pattern['id']}",
-        data={"template": first_pattern["template"]},
+        json={"template": first_pattern["template"]},
     )
     assert duplicate_pattern.status_code == 409
     assert duplicate_pattern.json()["detail"][0]["type"] == "grammar_pattern_exists"
 
     duplicate_value = client.patch(
         f"/api/grammar/values/{second_value['id']}",
-        data={"value": first_value["value"]},
+        json={"value": first_value["value"]},
     )
     assert duplicate_value.status_code == 409
     assert duplicate_value.json()["detail"][0]["type"] == "grammar_value_exists"

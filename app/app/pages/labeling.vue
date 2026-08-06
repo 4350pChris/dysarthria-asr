@@ -90,15 +90,15 @@ watch(items, (nextItems) => {
 async function save(nextStatus: LabelStatus) {
   if (!current.value || isSaving.value) return
   isSaving.value = true
-  const form = new FormData()
-  form.append('transcript', transcript.value.trim())
-  form.append('status', nextStatus)
-  form.append('unsure', String(unsure.value))
-  form.append('notes', notes.value.trim())
   try {
     await $fetch(`/api/labeling/items/${current.value.audio_id}`, {
       method: 'PATCH',
-      body: form
+      body: {
+        notes: notes.value.trim(),
+        status: nextStatus,
+        transcript: transcript.value.trim(),
+        unsure: unsure.value
+      }
     })
     await refreshItems()
     if (currentIndex.value < items.value.length - 1) currentIndex.value += 1

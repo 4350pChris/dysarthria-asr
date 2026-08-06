@@ -73,10 +73,9 @@ function submit() {
 </script>
 
 <template>
-  <UForm
-    :state="{}"
+  <form
     class="flex flex-1 flex-col justify-start gap-5"
-    @submit="submit"
+    @submit.prevent="submit"
   >
     <RecordControl
       :is-recording="speech.isRecording.value"
@@ -164,5 +163,5 @@ function submit() {
     >
       Aufnahmen prüfen
     </UButton>
-  </UForm>
+  </form>
 </template>

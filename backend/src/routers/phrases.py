@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Form, status
+from fastapi import APIRouter, status
 
 from ..candidates import read_generated_candidates
-from ..form_models import CategoryForm, CreatePhraseForm, GrammarPatternForm, GrammarValueForm, PhraseForm
+from ..request_models import (
+    CategoryRequest,
+    CreatePhraseRequest,
+    GrammarPatternRequest,
+    GrammarValueRequest,
+    PhraseRequest,
+)
 from ..phrases import (
     create_category,
     create_phrase,
@@ -44,12 +48,12 @@ def list_grammar() -> list[dict]:
 
 
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
-async def add_category(data: Annotated[CategoryForm, Form()]) -> dict:
+def add_category(data: CategoryRequest) -> dict:
     return create_category(data.name)
 
 
 @router.patch("/categories/{category_id}")
-async def edit_category(category_id: int, data: Annotated[CategoryForm, Form()]) -> dict:
+def edit_category(category_id: int, data: CategoryRequest) -> dict:
     return update_category(category_id, data.name)
 
 
@@ -59,12 +63,12 @@ def remove_category(category_id: int) -> None:
 
 
 @router.post("/phrases", status_code=status.HTTP_201_CREATED)
-async def add_phrase(data: Annotated[CreatePhraseForm, Form()]) -> dict:
+def add_phrase(data: CreatePhraseRequest) -> dict:
     return create_phrase(data.category_id, data.text)
 
 
 @router.patch("/phrases/{phrase_id}")
-async def edit_phrase(phrase_id: int, data: Annotated[PhraseForm, Form()]) -> dict:
+def edit_phrase(phrase_id: int, data: PhraseRequest) -> dict:
     return update_phrase(phrase_id, data.text)
 
 
@@ -74,16 +78,16 @@ def remove_phrase(phrase_id: int) -> None:
 
 
 @router.patch("/grammar/patterns/{pattern_id}")
-async def edit_grammar_pattern(
+def edit_grammar_pattern(
     pattern_id: int,
-    data: Annotated[GrammarPatternForm, Form()],
+    data: GrammarPatternRequest,
 ) -> dict:
     return update_grammar_pattern(pattern_id, data.template)
 
 
 @router.patch("/grammar/values/{value_id}")
-async def edit_grammar_value(
+def edit_grammar_value(
     value_id: int,
-    data: Annotated[GrammarValueForm, Form()],
+    data: GrammarValueRequest,
 ) -> dict:
     return update_grammar_value(value_id, data.value)

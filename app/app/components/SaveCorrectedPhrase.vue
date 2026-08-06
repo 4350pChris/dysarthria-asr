@@ -5,8 +5,7 @@ const props = defineProps<{
   initialText?: string
 }>()
 
-const { categories } = usePhrases()
-const { savePhrase: persistPhrase } = usePhraseSaving()
+const { categories, refreshPhrases } = usePhrases()
 const correctedText = ref('')
 const selectedCategory = ref<Category>()
 const isSaveModalOpen = ref(false)
@@ -34,10 +33,11 @@ async function savePhrase() {
   if (!text || !selectedCategory.value || isSaving.value) return
   isSaving.value = true
   try {
-    await persistPhrase({
-      text,
-      categoryId: selectedCategory.value.id
+    await $fetch('/api/phrases', {
+      method: 'POST',
+      body: { category_id: selectedCategory.value.id, text }
     })
+    await refreshPhrases()
     status.value = `Gespeichert in: ${selectedCategory.value.name}.`
     isSaveModalOpen.value = false
   } catch (error) {

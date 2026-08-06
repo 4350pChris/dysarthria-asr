@@ -183,15 +183,16 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     if (!result.value || !correctedText || hasSaved.value || isSaving.value)
       return
     isSaving.value = true
-    const form = new FormData()
-    form.append('transcript', correctedText)
-    form.append('status', 'draft')
-    form.append('unsure', 'false')
-    form.append('notes', 'Provisional app selection.')
     try {
       await fetch(`/api/labeling/items/${result.value.audio_id}`, {
         method: 'PATCH',
-        body: form
+        body: JSON.stringify({
+          notes: 'Provisional app selection.',
+          status: 'draft',
+          transcript: correctedText,
+          unsure: false
+        }),
+        headers: { 'Content-Type': 'application/json' }
       })
       hasSaved.value = true
     } finally {

@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+
+type ImportFormState = { targetSender: string }
+
 const files = ref<File[] | null>(null)
-const formState = reactive({ targetSender: '' })
+const formState = reactive<ImportFormState>({ targetSender: '' })
 const availableSenders = ref<string[]>([])
 const isLoadingSenders = ref(false)
-const isBusy = ref(false)
+const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<ImportFormState>('WhatsApp-Audios konnten nicht importiert werden.')
 
 const senderOptions = computed(() =>
   availableSenders.value.map(sender => ({ label: sender, value: sender }))
@@ -16,6 +20,7 @@ const canImport = computed(() =>
 )
 
 watch(files, async (nextFiles) => {
+  clearErrors()
   formState.targetSender = ''
   availableSenders.value = []
   const archive = nextFiles?.find(file => file.name.toLowerCase().endsWith('.zip'))
@@ -34,25 +39,23 @@ watch(files, async (nextFiles) => {
     isLoadingSenders.value = false
   }
 })
+watch(() => formState.targetSender, clearErrors)
 
-async function importFiles() {
+async function importFiles(event: FormSubmitEvent<ImportFormState>) {
   const selectedFiles = files.value
-  if (!selectedFiles?.length || !canImport.value || isBusy.value) return
+  if (!selectedFiles?.length || !canImport.value || isSaving.value) return
 
-  isBusy.value = true
   const form = new FormData()
   selectedFiles.forEach(file => form.append('files', file))
-  form.append('target_sender', formState.targetSender.trim())
-
-  try {
-    await $fetch('/api/labeling/import', {
+  const imported = await submit(event, (data) => {
+    form.append('target_sender', data.targetSender.trim())
+    return $fetch<{ imported: number }>('/api/labeling/import', {
       method: 'POST',
       body: form
     })
-    files.value = null
-  } finally {
-    isBusy.value = false
-  }
+  })
+  if (!imported) return
+  files.value = null
 }
 </script>
 
@@ -62,21 +65,24 @@ async function importFiles() {
     class="space-y-3"
     @submit="importFiles"
   >
-    <UFileUpload
-      v-model="files"
-      accept="audio/*,.zip,application/zip"
-      class="min-h-48"
-      description="WhatsApp-Export-ZIP oder einzelne Audiodateien"
-      label="ZIP oder Audios hier ablegen"
-      layout="list"
-      multiple
-      position="inside"
-      size="lg"
-    />
+    <UFormField :error="formErrors.files || formErrors._form">
+      <UFileUpload
+        v-model="files"
+        accept="audio/*,.zip,application/zip"
+        class="min-h-48"
+        description="WhatsApp-Export-ZIP oder einzelne Audiodateien"
+        label="ZIP oder Audios hier ablegen"
+        layout="list"
+        multiple
+        position="inside"
+        size="lg"
+      />
+    </UFormField>
     <UFormField
       v-if="availableSenders.length || isLoadingSenders"
       label="Sprechende Person im WhatsApp-Chat"
       name="targetSender"
+      :error="formErrors.target_sender"
     >
       <USelect
         v-model="formState.targetSender"
@@ -94,7 +100,7 @@ async function importFiles() {
       icon="i-lucide-upload"
       size="lg"
       :disabled="!canImport"
-      :loading="isBusy"
+      :loading="isSaving"
       type="submit"
     >
       WhatsApp-Audios importieren

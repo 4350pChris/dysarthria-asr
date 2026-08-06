@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
 import type { Phrase } from '~/types/speech'
+
+type PhraseFormState = { text: string }
 
 const route = useRoute()
 
@@ -14,14 +17,12 @@ definePageMeta({
 })
 
 const category = computed(() => decodeURIComponent(String(route.params.category || '')))
-const formState = reactive({ text: '' })
-const formErrors = ref<Record<string, string>>({})
+const formState = reactive<PhraseFormState>({ text: '' })
 const editing = ref<Phrase>()
-const isSaving = ref(false)
 const phraseToDelete = ref<Phrase>()
 const isDeleting = ref(false)
 const { categories, byCategory, refreshPhrases } = usePhrases()
-const { savePhrase: persistPhrase } = usePhraseSaving()
+const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<PhraseFormState>('Satz konnte nicht gespeichert werden.')
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
 const phrases = computed(() => byCategory(category.value))
@@ -32,38 +33,32 @@ const isDeleteModalOpen = computed(() => Boolean(phraseToDelete.value))
 function startEdit(phrase: Phrase) {
   editing.value = phrase
   formState.text = phrase.text
-  formErrors.value = {}
+  clearErrors()
 }
 
 function resetForm() {
   editing.value = undefined
   formState.text = ''
-  formErrors.value = {}
+  clearErrors()
 }
 
-watch(() => formState.text, () => formErrors.value = {})
+watch(() => formState.text, clearErrors)
 
-async function savePhrase() {
-  const text = formState.text.trim()
-  if (!text || isSaving.value) return
-  if (!editing.value && !currentCategory.value) {
+async function savePhrase(event: FormSubmitEvent<PhraseFormState>) {
+  if (isSaving.value) return
+  const phraseId = editing.value?.id
+  const categoryId = currentCategory.value?.id
+  if (!phraseId && !categoryId) {
     formErrors.value = { text: 'Diese Kategorie gibt es nicht mehr.' }
     return
   }
-  formErrors.value = {}
-  isSaving.value = true
-  try {
-    await persistPhrase({
-      text,
-      categoryId: currentCategory.value?.id,
-      phraseId: editing.value?.id
-    })
-    resetForm()
-  } catch (error) {
-    formErrors.value = apiFormErrors(error, 'Satz konnte nicht gespeichert werden.')
-  } finally {
-    isSaving.value = false
-  }
+  const saved = await submit(event, data => phraseId
+    ? $fetch<Phrase>(`/api/phrases/${phraseId}`, { method: 'PATCH', body: data })
+    : $fetch<Phrase>('/api/phrases', { method: 'POST', body: { ...data, category_id: categoryId } })
+  )
+  if (!saved) return
+  await refreshPhrases()
+  resetForm()
 }
 
 function requestDelete(phrase: Phrase) {

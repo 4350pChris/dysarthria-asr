@@ -1,26 +1,19 @@
 <script setup lang="ts">
-const formState = reactive({ name: '' })
-const formErrors = ref<Record<string, string>>({})
-const isSaving = ref(false)
+import type { FormSubmitEvent } from '@nuxt/ui'
+import type { Category } from '~/types/speech'
+
+type CategoryFormState = { name: string }
+
+const formState = reactive<CategoryFormState>({ name: '' })
 const { refreshAfterCategoryChange } = usePhrases()
+const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<CategoryFormState>('Kategorie konnte nicht gespeichert werden.')
 
-watch(() => formState.name, () => formErrors.value = {})
+watch(() => formState.name, clearErrors)
 
-async function createCategory() {
-  if (isSaving.value) return
-  formErrors.value = {}
-  isSaving.value = true
-  try {
-    const form = new FormData()
-    form.append('name', formState.name)
-    await $fetch('/api/categories', { method: 'POST', body: form })
-    formState.name = ''
-    await refreshAfterCategoryChange()
-  } catch (error) {
-    formErrors.value = apiFormErrors(error, 'Kategorie konnte nicht gespeichert werden.')
-  } finally {
-    isSaving.value = false
-  }
+async function createCategory(event: FormSubmitEvent<CategoryFormState>) {
+  if (!await submit(event, data => $fetch<Category>('/api/categories', { method: 'POST', body: data }))) return
+  formState.name = ''
+  await refreshAfterCategoryChange()
 }
 </script>
 

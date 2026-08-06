@@ -1,27 +1,38 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
 import type { Category } from '~/types/speech'
+
+type CategoryFormState = { name: string }
 
 const props = defineProps<{
   category: Category
-  isSaving: boolean
+  isDeleting: boolean
 }>()
 
 const emit = defineEmits<{
-  save: [name: string]
+  saved: [name: string]
   delete: []
-  cancel: []
 }>()
 
 const isEditing = ref(false)
 const isDeleteModalOpen = ref(false)
 const name = ref(props.category.name)
+const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<CategoryFormState>('Kategorie konnte nicht geändert werden.')
+const isBusy = computed(() => isSaving.value || props.isDeleting)
 
 watch(() => props.category.name, (categoryName) => {
   name.value = categoryName
 })
+watch(name, clearErrors)
 
-function save() {
-  emit('save', name.value)
+async function save(event: FormSubmitEvent<CategoryFormState>) {
+  const saved = await submit(event, data => $fetch<Category>(`/api/categories/${props.category.id}`, {
+    method: 'PATCH',
+    body: data
+  }))
+  if (!saved) return
+  isEditing.value = false
+  emit('saved', saved.name)
 }
 
 function deleteCategory() {
@@ -31,6 +42,7 @@ function deleteCategory() {
 function cancel() {
   name.value = props.category.name
   isEditing.value = false
+  clearErrors()
 }
 </script>
 
@@ -41,7 +53,10 @@ function cancel() {
     class="space-y-3"
     @submit="save"
   >
-    <UFormField label="Name der Kategorie">
+    <UFormField
+      :error="formErrors.name || formErrors._form"
+      label="Name der Kategorie"
+    >
       <UInput
         v-model="name"
         class="w-full"
@@ -68,7 +83,7 @@ function cancel() {
         size="xl"
         type="button"
         variant="subtle"
-        :disabled="isSaving"
+        :disabled="isBusy"
         @click="cancel"
       />
     </div>
@@ -86,6 +101,7 @@ function cancel() {
       size="xl"
       type="button"
       variant="subtle"
+      :disabled="isBusy"
       @click="isEditing = true"
     />
     <UButton
@@ -97,13 +113,14 @@ function cancel() {
       size="xl"
       type="button"
       variant="subtle"
+      :disabled="isBusy"
       @click="isDeleteModalOpen = true"
     />
   </div>
   <CategoryDeletionModal
     v-model:open="isDeleteModalOpen"
     :category="props.category"
-    :is-saving="isSaving"
+    :is-saving="isDeleting"
     @delete="deleteCategory"
   />
 </template>

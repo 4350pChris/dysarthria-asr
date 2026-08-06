@@ -7,28 +7,16 @@ const props = defineProps<{
 
 const { refreshAfterCategoryChange } = usePhrases()
 const status = ref('')
-const isSaving = ref(false)
+const isDeleting = ref(false)
 
-async function saveCategory(name: string) {
-  const cleanName = name.trim()
-  if (!cleanName || isSaving.value) return
-  isSaving.value = true
-  try {
-    const form = new FormData()
-    form.append('name', cleanName)
-    await $fetch(`/api/categories/${props.category.id}`, { method: 'PATCH', body: form })
-    await refreshAfterCategoryChange()
-    await navigateTo(`/phrases/${encodeURIComponent(cleanName)}`, { replace: true })
-  } catch (error) {
-    status.value = apiErrorMessage(error, 'Kategorie konnte nicht geändert werden.')
-  } finally {
-    isSaving.value = false
-  }
+async function categorySaved(name: string) {
+  await refreshAfterCategoryChange()
+  await navigateTo(`/phrases/${encodeURIComponent(name)}`, { replace: true })
 }
 
 async function deleteCategory() {
-  if (isSaving.value) return
-  isSaving.value = true
+  if (isDeleting.value) return
+  isDeleting.value = true
   try {
     await $fetch(`/api/categories/${props.category.id}`, { method: 'DELETE' })
     await refreshAfterCategoryChange()
@@ -36,7 +24,7 @@ async function deleteCategory() {
   } catch (error) {
     status.value = apiErrorMessage(error, 'Kategorie konnte nicht gelöscht werden.')
   } finally {
-    isSaving.value = false
+    isDeleting.value = false
   }
 }
 </script>
@@ -45,9 +33,9 @@ async function deleteCategory() {
   <section class="space-y-3">
     <CategoryEditForm
       :category="category"
-      :is-saving="isSaving"
+      :is-deleting="isDeleting"
       @delete="deleteCategory"
-      @save="saveCategory"
+      @saved="categorySaved"
     />
     <p
       v-if="status"
