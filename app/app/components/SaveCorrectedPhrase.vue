@@ -1,139 +1,116 @@
 <script setup lang="ts">
-import type { Category } from '~/types/speech'
+import type { FormSubmitEvent } from '@nuxt/ui'
+import type { Phrase } from '~/types/speech'
+
+type SavePhraseFormState = {
+  category_id?: number
+  text: string
+}
 
 const props = defineProps<{
   initialText?: string
 }>()
 
 const { categories, refreshPhrases } = usePhrases()
-const correctedText = ref('')
-const selectedCategory = ref<Category>()
-const isSaveModalOpen = ref(false)
-const isSaving = ref(false)
-const status = ref('')
+const formState = reactive<SavePhraseFormState>({ category_id: undefined, text: '' })
+const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<SavePhraseFormState>('Satz konnte nicht gespeichert werden.')
+const categoryOptions = computed(() =>
+  categories.value.map(category => ({ label: category.name, value: category.id }))
+)
 
 watch(
   () => props.initialText,
   () => {
-    correctedText.value = props.initialText || ''
-    selectedCategory.value = undefined
-    status.value = ''
+    formState.text = props.initialText || ''
+    formState.category_id = undefined
+    clearErrors()
   },
   { immediate: true }
 )
+watch(() => [formState.category_id, formState.text], clearErrors)
 
-function openSaveModal() {
-  if (!correctedText.value.trim()) return
-  selectedCategory.value = undefined
-  isSaveModalOpen.value = true
-}
-
-async function savePhrase() {
-  const text = correctedText.value.trim()
-  if (!text || !selectedCategory.value || isSaving.value) return
-  isSaving.value = true
-  try {
-    await $fetch('/api/phrases', {
-      method: 'POST',
-      body: { category_id: selectedCategory.value.id, text }
-    })
-    await refreshPhrases()
-    status.value = `Gespeichert in: ${selectedCategory.value.name}.`
-    isSaveModalOpen.value = false
-  } catch (error) {
-    status.value = apiErrorMessage(error, 'Satz konnte nicht gespeichert werden.')
-  } finally {
-    isSaving.value = false
+async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
+  if (!event.data.category_id) {
+    formErrors.value = { category_id: 'Wähle eine Kategorie.' }
+    return
   }
+  const saved = await submit(event, data => $fetch<Phrase>('/api/phrases', {
+    method: 'POST',
+    body: data
+  }))
+  if (!saved) return
+  await refreshPhrases()
+  formState.text = ''
 }
 </script>
 
 <template>
-  <section class="space-y-5">
-    <UFormField label="Dein Satz">
+  <UForm
+    :state="formState"
+    class="space-y-5"
+    @submit="savePhrase"
+  >
+    <UFormField
+      :error="formErrors.text || formErrors._form"
+      label="Dein Satz"
+      name="text"
+    >
       <UTextarea
-        v-model="correctedText"
+        v-model="formState.text"
         class="w-full"
         autoresize
         placeholder="Schreibe deinen Satz hier."
         size="xl"
       />
     </UFormField>
-    <p
-      v-if="status"
-      class="text-lg font-semibold text-toned"
-      role="status"
+
+    <UFormField
+      :error="formErrors.category_id"
+      label="Kategorie"
+      name="category_id"
     >
-      {{ status }}
+      <USelect
+        v-model="formState.category_id"
+        class="w-full"
+        :content="{
+          position: 'item-aligned'
+        }"
+        :disabled="!categories.length"
+        :items="categoryOptions"
+        placeholder="Kategorie auswählen"
+        size="xl"
+        :ui="{
+          base: 'text-lg py-4',
+          content: 'h-[min(36rem,var(--reka-select-content-available-height,36rem))] max-h-[min(36rem,var(--reka-select-content-available-height,36rem))]',
+          item: 'min-h-16 items-center text-xl font-semibold'
+        }"
+      />
+    </UFormField>
+
+    <p
+      v-if="!categories.length"
+      class="text-lg font-semibold text-toned"
+    >
+      Bitte lege zuerst eine Kategorie an.
+      <UButton
+        block
+        color="primary"
+        icon="i-lucide-plus"
+        label="Kategorie hinzufügen"
+        size="xl"
+        to="/categories"
+      />
     </p>
+
     <UButton
       block
       class="min-h-24 justify-center rounded-2xl text-xl font-extrabold"
       color="primary"
       icon="i-lucide-bookmark-plus"
-      label="Kategorie auswählen"
+      label="Satz speichern"
       size="xl"
-      type="button"
-      :disabled="!correctedText.trim()"
-      @click="openSaveModal"
+      type="submit"
+      :loading="isSaving"
     />
-
-    <UModal
-      v-model:open="isSaveModalOpen"
-      title="Kategorie wählen"
-      description="Wähle zuerst eine Kategorie. Danach speicherst du den Satz."
-    >
-      <template #body>
-        <div class="space-y-3">
-          <UButton
-            v-for="category in categories"
-            :key="category.id"
-            block
-            class="min-h-20 justify-start rounded-2xl text-left text-xl font-extrabold"
-            color="neutral"
-            type="button"
-            variant="subtle"
-            :class="selectedCategory?.id === category.id ? 'ring-4 ring-primary/20 border-primary' : ''"
-            @click="selectedCategory = category"
-          >
-            {{ category.name }}
-          </UButton>
-          <p
-            v-if="!categories.length"
-            class="text-lg font-semibold text-toned"
-          >
-            Bitte lege zuerst eine Kategorie an.
-          </p>
-        </div>
-      </template>
-
-      <template #footer>
-        <div class="grid w-full gap-3">
-          <UButton
-            block
-            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
-            color="primary"
-            icon="i-lucide-save"
-            :label="selectedCategory ? `In ${selectedCategory.name} speichern` : 'Kategorie wählen'"
-            size="xl"
-            type="button"
-            :disabled="!selectedCategory"
-            :loading="isSaving"
-            @click="savePhrase"
-          />
-          <UButton
-            block
-            class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
-            color="neutral"
-            icon="i-lucide-x"
-            label="Abbrechen"
-            size="xl"
-            type="button"
-            variant="subtle"
-            @click="isSaveModalOpen = false"
-          />
-        </div>
-      </template>
-    </UModal>
-  </section>
+  </UForm>
 </template>
