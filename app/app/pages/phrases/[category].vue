@@ -12,6 +12,8 @@ const isDeleting = ref(false)
 const { categories, byCategory } = usePhrases()
 const { savePhrase: persistPhrase } = usePhraseSaving()
 
+useSpeechBack('/phrases')
+
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
 const phrases = computed(() => byCategory(category.value))
 const formLabel = computed(() => editing.value ? 'Satz ändern' : 'Neuer Satz')

@@ -30,6 +30,8 @@ const unsure = ref(false)
 const isBusy = ref(false)
 const isSaving = ref(false)
 
+useSpeechBack()
+
 const emptyCounts: Record<LabelStatus | 'total', number> = {
   draft: 0,
   labeled: 0,

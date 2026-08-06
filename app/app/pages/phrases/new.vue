@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const route = useRoute()
 const initialText = computed(() => String(route.query.text || ''))
+
+useSpeechBack()
 </script>
 
 <template>

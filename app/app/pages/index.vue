@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { VoiceCommand } from '~/composables/useVoiceCommands'
-
 const route = useRoute()
 
 const mode = ref<'phrases' | 'math'>('phrases')
@@ -10,10 +8,34 @@ const modeOptions = [
 ]
 const speech = useSpeechSession(mode)
 const { byId, ready } = usePhrases()
+const speechCommands = useSpeechCommands()
 
 await selectRoutePhrase()
-
-const voiceCommands = useVoiceCommands(handleVoiceCommand)
+useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los'], handler: startRecording })
+useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], handler: speech.stopRecording })
+useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], handler: submit })
+useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], handler: speech.copySelected })
+useSpeechCommand({ id: 'share', label: 'Teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], handler: speech.shareSelected })
+useSpeechCommand({
+  id: 'phrases-mode',
+  label: 'Satzmodus',
+  phrases: ['sätze', 'satzmodus', 'sätze modus'],
+  handler: () => {
+    mode.value = 'phrases'
+    speech.status.value = 'Satzmodus.'
+  }
+})
+useSpeechCommand({
+  id: 'math-mode',
+  label: 'Mathemodus',
+  phrases: ['mathe', 'mathemodus'],
+  handler: () => {
+    mode.value = 'math'
+    speech.status.value = 'Mathemodus.'
+  }
+})
+useSpeechCommand({ id: 'next', label: 'Nächster Vorschlag', phrases: ['weiter', 'nächster', 'nächste', 'nein'], handler: () => speech.selectSuggestionAt(speech.selectedIndex.value + 1) })
+useSpeechCommand({ id: 'previous', label: 'Vorheriger Vorschlag', phrases: ['vorheriger', 'vorherige'], handler: () => speech.selectSuggestionAt(speech.selectedIndex.value - 1) })
 
 async function selectRoutePhrase() {
   const phraseId = Number(route.query.phrase || 0)
@@ -27,48 +49,13 @@ async function selectRoutePhrase() {
   }
 }
 
-function speakHelp() {
-  speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(
-    'Sag aufnehmen. Sprich deinen Satz. Ich stoppe automatisch, wenn es ruhig ist. Danach sag vorlesen, kopieren oder teilen. Sag Mathe für den Mathemodus. Sag Sätze für den Satzmodus. Sag weiter für den nächsten Vorschlag. Sag zurück für den vorherigen Vorschlag.'
-  )
-  utterance.lang = 'de-DE'
-  speechSynthesis.speak(utterance)
-}
-
-function handleVoiceCommand(command: VoiceCommand) {
-  if (command === 'start') {
-    startRecording()
-  } else if (command === 'stop' && speech.isRecording.value) {
-    speech.stopRecording()
-  } else if (command === 'speak' && (speech.selected.value || speech.result.value?.math_text)) {
-    submit()
-  } else if (command === 'copy' && speech.outputText.value) {
-    void speech.copySelected()
-  } else if (command === 'share' && speech.outputText.value) {
-    void speech.shareSelected()
-  } else if (command === 'phrasesMode') {
-    mode.value = 'phrases'
-    speech.status.value = 'Satzmodus.'
-  } else if (command === 'mathMode') {
-    mode.value = 'math'
-    speech.status.value = 'Mathemodus.'
-  } else if (command === 'next') {
-    speech.selectSuggestionAt(speech.selectedIndex.value + 1)
-  } else if (command === 'previous') {
-    speech.selectSuggestionAt(speech.selectedIndex.value - 1)
-  } else if (command === 'help') {
-    speakHelp()
-  }
-}
-
 function startRecording() {
   if (speech.isRecording.value || speech.isBusy.value) return
-  const shouldResumeVoiceCommands = voiceCommands.isListening.value
-  voiceCommands.stop()
+  const shouldResumeVoiceCommands = speechCommands.isListening.value
+  speechCommands.stop()
   void speech.startRecording().finally(() => {
     if (shouldResumeVoiceCommands) {
-      voiceCommands.start()
+      speechCommands.start()
     }
   })
 }
@@ -116,14 +103,6 @@ function submit() {
         <p class="min-h-7 text-center text-lg font-semibold text-toned">
           {{ speech.status.value }}
         </p>
-
-        <VoiceCommandControl
-          :is-listening="voiceCommands.isListening.value"
-          :is-supported="voiceCommands.isSupported.value"
-          :status="voiceCommands.status.value"
-          @start="voiceCommands.start"
-          @stop="voiceCommands.stop"
-        />
 
         <section
           v-if="speech.hasSelection.value && mode === 'phrases'"

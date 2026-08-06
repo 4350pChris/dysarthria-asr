@@ -4,6 +4,8 @@ const formState = reactive({ name: '' })
 const isSaving = ref(false)
 const { categories } = usePhrases()
 
+useSpeechBack()
+
 async function createCategory() {
   const name = formState.name.trim()
   if (!name || isSaving.value) return
