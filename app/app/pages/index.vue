@@ -140,8 +140,6 @@ function submit() {
             :selected="speech.selected.value"
             @select="speech.setSelection"
           />
-
-          <SaveCorrectedPhrase :selected="speech.selected.value" />
         </section>
 
         <MathResult

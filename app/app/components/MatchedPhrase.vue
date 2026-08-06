@@ -41,6 +41,17 @@ function sourceLabel(suggestion?: Suggestion) {
       </UButton>
     </UCard>
 
+    <UButton
+      block
+      class="min-h-20 justify-center rounded-2xl text-lg font-extrabold"
+      color="primary"
+      icon="i-lucide-pencil-line"
+      label="Satz korrigieren und speichern"
+      size="xl"
+      :to="{ path: '/phrases/new', query: { text: selected?.text } }"
+      :disabled="!selected"
+    />
+
     <ResultActions
       :disabled="!selected"
       @share="$emit('share')"

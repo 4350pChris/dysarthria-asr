@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Category, Suggestion } from '~/types/speech'
+import type { Category } from '~/types/speech'
 
 const props = defineProps<{
-  selected?: Suggestion
+  initialText?: string
 }>()
 
 const { categories } = usePhrases()
@@ -14,9 +14,9 @@ const isSaving = ref(false)
 const status = ref('')
 
 watch(
-  () => props.selected?.id,
+  () => props.initialText,
   () => {
-    correctedText.value = props.selected?.text || ''
+    correctedText.value = props.initialText || ''
     selectedCategory.value = undefined
     status.value = ''
   },
@@ -49,12 +49,13 @@ async function savePhrase() {
 </script>
 
 <template>
-  <section class="space-y-3 rounded-3xl bg-elevated p-4">
-    <UFormField label="Satz korrigieren">
+  <section class="space-y-5">
+    <UFormField label="Dein Satz">
       <UTextarea
         v-model="correctedText"
         class="w-full"
         autoresize
+        placeholder="Schreibe deinen Satz hier."
         size="xl"
       />
     </UFormField>
@@ -66,10 +67,10 @@ async function savePhrase() {
     </p>
     <UButton
       block
-      class="min-h-20 justify-center rounded-2xl text-lg font-extrabold"
+      class="min-h-24 justify-center rounded-2xl text-xl font-extrabold"
       color="primary"
       icon="i-lucide-bookmark-plus"
-      label="Als eigenen Satz speichern"
+      label="Kategorie auswählen"
       size="xl"
       type="button"
       :disabled="!correctedText.trim()"
