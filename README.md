@@ -126,6 +126,25 @@ Training export:
 
 - `GET /api/labeling/training-data.zip`: reviewed audio and `training-labels.csv` in one archive
 
+## Model benchmark
+
+Use the downloaded training-data ZIP to compare local Whisper models. This tool
+does not change the app or the backend model.
+
+```bash
+cd backend
+uv run python scripts/benchmark_asr.py /path/to/dysarthria-asr-training-data.zip \
+  --model small \
+  --model medium \
+  --model large-v3-turbo \
+  --output-dir reports/asr-baseline
+```
+
+The first use downloads each model. The command writes `summary.csv` with one
+row per model, and `details.csv` with one row per recording and model. Both use
+case- and punctuation-insensitive German word and character error rates. Use a
+local converted CTranslate2 model with `--model label=/path/to/model`.
+
 ## API
 
 Main backend endpoints:
