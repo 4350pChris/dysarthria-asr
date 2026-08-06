@@ -5,15 +5,13 @@ const props = defineProps<{
   selected?: Suggestion
 }>()
 
-const { categories, loadPhrases } = usePhrases()
+const { categories } = usePhrases()
 const { savePhrase: persistPhrase } = usePhraseSaving()
 const correctedText = ref('')
 const selectedCategory = ref<Category>()
 const isSaveModalOpen = ref(false)
 const isSaving = ref(false)
 const status = ref('')
-
-onMounted(loadPhrases)
 
 watch(
   () => props.selected?.id,

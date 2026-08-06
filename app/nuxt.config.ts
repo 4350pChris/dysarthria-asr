@@ -18,10 +18,6 @@ export default defineNuxtConfig({
     apiBase: process.env.NUXT_API_BASE || 'http://127.0.0.1:8000'
   },
 
-  routeRules: {
-    '/': { prerender: true }
-  },
-
   compatibilityDate: '2026-06-30',
 
   eslint: {

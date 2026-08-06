@@ -2,17 +2,7 @@
 const status = ref('')
 const formState = reactive({ name: '' })
 const isSaving = ref(false)
-const { categories, loadPhrases } = usePhrases()
-
-onMounted(loadCategories)
-
-async function loadCategories() {
-  try {
-    await loadPhrases()
-  } catch {
-    status.value = 'Phrasen konnten nicht geladen werden.'
-  }
-}
+const { categories } = usePhrases()
 
 async function createCategory() {
   const name = formState.name.trim()
@@ -24,7 +14,7 @@ async function createCategory() {
     await $fetch('/api/categories', { method: 'POST', body: form })
     formState.name = ''
     status.value = 'Kategorie gespeichert.'
-    await loadPhrases({ force: true })
+    await refreshNuxtData('phrases')
   } catch {
     status.value = 'Kategorie konnte nicht gespeichert werden.'
   } finally {

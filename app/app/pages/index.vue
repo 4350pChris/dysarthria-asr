@@ -9,12 +9,9 @@ const modeOptions = [
   { label: 'Mathe', value: 'math' }
 ]
 const speech = useSpeechSession(mode)
-const { byId, loadPhrases } = usePhrases()
+const { byId, ready } = usePhrases()
 
-onMounted(() => {
-  void loadPhrases()
-  void selectRoutePhrase()
-})
+await selectRoutePhrase()
 
 const voiceCommands = useVoiceCommands(handleVoiceCommand)
 
@@ -22,7 +19,7 @@ async function selectRoutePhrase() {
   const phraseId = Number(route.query.phrase || 0)
   if (!phraseId) return
   try {
-    await loadPhrases()
+    await ready
     const phrase = byId(phraseId)
     if (phrase) speech.selectPhrase(phrase)
   } catch {

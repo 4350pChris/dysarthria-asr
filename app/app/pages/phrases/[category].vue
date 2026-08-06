@@ -9,7 +9,7 @@ const editing = ref<Phrase>()
 const isSaving = ref(false)
 const phraseToDelete = ref<Phrase>()
 const isDeleting = ref(false)
-const { categories, byCategory, loadPhrases } = usePhrases()
+const { categories, byCategory } = usePhrases()
 const { savePhrase: persistPhrase } = usePhraseSaving()
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
@@ -17,16 +17,6 @@ const phrases = computed(() => byCategory(category.value))
 const formLabel = computed(() => editing.value ? 'Satz ändern' : 'Neuer Satz')
 const submitLabel = computed(() => editing.value ? 'Änderung speichern' : 'Satz hinzufügen')
 const isDeleteModalOpen = computed(() => Boolean(phraseToDelete.value))
-
-watch(category, loadData, { immediate: true })
-
-async function loadData() {
-  try {
-    await loadPhrases()
-  } catch {
-    status.value = 'Phrasen konnten nicht geladen werden.'
-  }
-}
 
 function startEdit(phrase: Phrase) {
   editing.value = phrase
@@ -83,7 +73,7 @@ async function confirmDelete() {
     await $fetch(`/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
     status.value = 'Satz gelöscht.'
     phraseToDelete.value = undefined
-    await loadPhrases({ force: true })
+    await refreshNuxtData('phrases')
   } catch {
     status.value = 'Satz konnte nicht gelöscht werden.'
   } finally {

@@ -1,27 +1,34 @@
 import type { Category, Phrase } from '~/types/speech'
 
+type PhraseData = {
+  categories: Category[]
+  phrases: Phrase[]
+}
+
 export function usePhrases() {
-  const categories = useState<Category[]>('phrases:categories', () => [])
-  const phrases = useState<Phrase[]>('phrases:items', () => [])
-  const isLoaded = useState('phrases:is-loaded', () => false)
+  const phraseData = useAsyncData<PhraseData>(
+    'phrases',
+    async () => {
+      const [categories, phrases] = await Promise.all([
+        $fetch<Category[]>('/api/categories'),
+        $fetch<Phrase[]>('/api/phrases')
+      ])
+      return { categories, phrases }
+    },
+    {
+      dedupe: 'defer',
+      default: () => ({ categories: [], phrases: [] })
+    }
+  )
+  const { data } = phraseData
 
-  async function loadPhrases(options: { force?: boolean } = {}) {
-    if (isLoaded.value && !options.force) return
-
-    const [nextCategories, nextPhrases] = await Promise.all([
-      $fetch<Category[]>('/api/categories'),
-      $fetch<Phrase[]>('/api/phrases')
-    ])
-
-    categories.value = nextCategories
-    phrases.value = nextPhrases
-    isLoaded.value = true
-  }
+  const categories = computed(() => data.value.categories)
+  const phrases = computed(() => data.value.phrases)
 
   return {
     categories,
     phrases,
-    loadPhrases,
+    ready: phraseData.then(() => undefined),
     byCategory: (category: string) => phrases.value.filter(phrase => phrase.category === category),
     byId: (id: number) => phrases.value.find(phrase => phrase.id === id)
   }
