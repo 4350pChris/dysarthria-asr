@@ -39,3 +39,19 @@ pnpm test
 pnpm build
 pnpm preview
 ```
+
+## iPhone installation
+
+Serve the app with HTTPS. On the iPhone, open the app in Safari, tap Share,
+then tap **Add to Home Screen**. The app opens in standalone mode with the
+Sprechen icon.
+
+The service worker updates the app automatically. It caches the current phrase
+and category data after use. Audio transcription still needs the backend and an
+internet connection.
+
+To regenerate the PWA icons after changing `public/icon.svg`, run:
+
+```sh
+pnpm generate-pwa-assets
+```

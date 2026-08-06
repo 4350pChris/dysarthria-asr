@@ -24,10 +24,14 @@ onScopeDispose(cleanupSpeechCommands)
 
 useHead({
   meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' }
+    { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+    { name: 'apple-mobile-web-app-capable', content: 'yes' },
+    { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+    { name: 'apple-mobile-web-app-title', content: 'Sprechen' }
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' }
+    { rel: 'icon', href: '/favicon.ico' },
+    { rel: 'apple-touch-icon', href: '/apple-touch-icon-180x180.png' }
   ],
   htmlAttrs: {
     lang: 'de'
@@ -41,6 +45,7 @@ useSeoMeta({
 </script>
 
 <template>
+  <VitePwaManifest />
   <UApp>
     <NuxtLayout>
       <NuxtPage />
