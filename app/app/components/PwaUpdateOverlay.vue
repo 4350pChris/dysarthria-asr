@@ -16,6 +16,7 @@ defineProps<{
       label="PWA-Aktualisierung wird geladen"
       :size="96"
       speed="reload"
+      variant="full"
     />
     <p class="text-lg font-bold">
       Aktualisierung wird geladen

@@ -47,6 +47,7 @@ useSeoMeta({
 <template>
   <VitePwaManifest />
   <UApp>
+    <PwaStartupOverlay />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>

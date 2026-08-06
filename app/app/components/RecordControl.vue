@@ -29,41 +29,84 @@ function toggleRecording(start: boolean) {
 
 <template>
   <UButton
-    v-if="!isRecording"
-    class="min-h-60 rounded-3xl text-3xl font-extrabold shadow-lg"
+    class="min-h-60 justify-center rounded-3xl text-center shadow-sm"
     block
-    color="primary"
+    color="neutral"
     size="xl"
     type="button"
+    variant="soft"
     :disabled="isBusy"
-    :ui="{ base: 'flex-col gap-4' }"
-    @click="toggleRecording(true)"
+    :ui="{
+      base: isRecording
+        ? 'flex-col gap-0 ring-2 ring-primary hover:ring-primary/75'
+        : 'flex-col gap-0 ring ring-default hover:ring-primary/50'
+    }"
+    @click="toggleRecording(!isRecording)"
   >
-    <LogoSpinner
-      v-if="isBusy"
-      label="Modell wird vorbereitet"
-      :size="52"
-      speed="warmup"
-    />
-    <UIcon
-      v-else
-      class="size-12"
-      name="i-lucide-mic"
-    />
-    {{ isBusy ? 'Erkennung wird vorbereitet' : 'Aufnehmen' }}
-  </UButton>
+    <Transition
+      mode="out-in"
+      name="record-content"
+    >
+      <div
+        v-if="isRecording"
+        key="recording"
+        class="flex flex-col items-center gap-3"
+      >
+        <LogoSpinner
+          label="Aufnahme läuft"
+          :size="92"
+          variant="compact"
+        />
+        <span class="text-2xl font-extrabold text-highlighted">
+          Aufnahme läuft
+        </span>
+        <span class="text-base font-semibold text-primary">
+          Tippe zum Stoppen
+        </span>
+      </div>
 
-  <UButton
-    v-else
-    class="min-h-60 justify-center rounded-3xl text-3xl font-extrabold shadow-lg"
-    block
-    color="error"
-    icon="i-lucide-square"
-    size="xl"
-    type="button"
-    :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
-    @click="toggleRecording(false)"
-  >
-    Stopp
+      <div
+        v-else
+        key="idle"
+        class="flex flex-col items-center gap-3"
+      >
+        <LogoSpinner
+          v-if="isBusy"
+          label="Modell wird vorbereitet"
+          :size="76"
+          speed="warmup"
+        />
+        <LogoMark
+          v-else
+          :size="76"
+        />
+        <span class="text-2xl font-extrabold text-highlighted">
+          {{ isBusy ? 'Erkennung wird vorbereitet' : 'Aufnehmen' }}
+        </span>
+        <span class="text-base font-semibold text-primary">
+          {{ isBusy ? 'Einen Moment bitte' : 'Tippe zum Sprechen' }}
+        </span>
+      </div>
+    </Transition>
   </UButton>
 </template>
+
+<style scoped>
+.record-content-enter-active,
+.record-content-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.record-content-enter-from,
+.record-content-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-content-enter-active,
+  .record-content-leave-active {
+    transition: none;
+  }
+}
+</style>
