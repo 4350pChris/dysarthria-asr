@@ -41,6 +41,7 @@ async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
   if (!saved) return
   await refreshPhrases()
   formState.text = ''
+  await navigateTo('/?phrase=' + encodeURIComponent(saved.id))
 }
 </script>
 

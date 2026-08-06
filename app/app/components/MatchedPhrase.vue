@@ -47,7 +47,7 @@ function sourceLabel(suggestion?: Suggestion) {
       class="min-h-20 justify-center rounded-2xl text-lg font-extrabold"
       color="primary"
       icon="i-lucide-pencil-line"
-      label="Satz korrigieren und speichern"
+      label="Neuen Satz speichern"
       size="xl"
       :to="{ path: '/phrases/new', query: { text: rawTranscript || selected?.text } }"
       :disabled="!selected"
