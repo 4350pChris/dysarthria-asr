@@ -93,6 +93,8 @@ Recognized commands include:
 - `zurück`, `vorheriger`, `vorherige`
 - `hilfe`, `befehle`
 
+On the category list, say a category name (for example, `Familie`) or `Kategorie Familie` to open it.
+
 Browser speech recognition support varies. Each saved label records whether the browser or the server produced its ASR text.
 
 ## Emojis

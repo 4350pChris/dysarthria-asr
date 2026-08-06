@@ -3,6 +3,8 @@ const status = ref('')
 const formState = reactive({ name: '' })
 const isSaving = ref(false)
 const { categories, refreshAfterCategoryChange } = usePhrases()
+const speechCommands = useSpeechCommands()
+let unregisterCategoryCommands = () => {}
 
 definePageMeta({
   pageHeader: {
@@ -29,6 +31,23 @@ async function createCategory() {
     isSaving.value = false
   }
 }
+
+async function openCategory(name: string) {
+  await navigateTo(`/phrases/${encodeURIComponent(name)}`)
+}
+
+watch(categories, (items) => {
+  unregisterCategoryCommands()
+  const unregister = items.map(category => speechCommands.register({
+    id: `category-${category.id}`,
+    label: category.name,
+    phrases: [category.name, `kategorie ${category.name}`],
+    handler: () => openCategory(category.name)
+  }))
+  unregisterCategoryCommands = () => unregister.forEach(remove => remove())
+}, { immediate: true })
+
+onScopeDispose(() => unregisterCategoryCommands())
 </script>
 
 <template>

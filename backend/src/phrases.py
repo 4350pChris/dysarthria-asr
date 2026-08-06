@@ -54,6 +54,30 @@ def create_category(name: str) -> dict:
         return {"id": cursor.lastrowid, "name": clean_name, "phrase_count": 0}
 
 
+def update_category(category_id: int, name: str) -> dict:
+    clean_name = name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Category name is required.")
+    with connect_db() as db:
+        try:
+            cursor = db.execute("UPDATE categories SET name = ? WHERE id = ?", (clean_name, category_id))
+        except sqlite3.IntegrityError as error:
+            raise HTTPException(status_code=409, detail="Category already exists.") from error
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Category not found.")
+    return {"id": category_id, "name": clean_name}
+
+
+def delete_category(category_id: int) -> dict:
+    with connect_db() as db:
+        category = db.execute("SELECT id FROM categories WHERE id = ?", (category_id,)).fetchone()
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found.")
+        db.execute("DELETE FROM phrases WHERE category_id = ?", (category_id,))
+        db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+    return {"ok": True}
+
+
 def create_phrase(category_id: int, text: str) -> dict:
     clean_text = text.strip()
     if not clean_text:

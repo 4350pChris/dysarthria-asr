@@ -102,6 +102,11 @@ async function confirmDelete() {
       {{ status }}
     </p>
 
+    <CategoryManagement
+      v-if="currentCategory"
+      :category="currentCategory"
+    />
+
     <UForm
       :state="formState"
       class="space-y-3"

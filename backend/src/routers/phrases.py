@@ -6,12 +6,14 @@ from ..candidates import read_generated_candidates
 from ..phrases import (
     create_category,
     create_phrase,
+    delete_category,
     delete_phrase,
     read_grammar,
     read_categories,
     read_phrases,
     update_grammar_pattern,
     update_grammar_value,
+    update_category,
     update_phrase,
 )
 
@@ -41,6 +43,16 @@ def list_grammar() -> list[dict]:
 @router.post("/categories")
 async def add_category(name: str = Form(...)) -> dict:
     return create_category(name)
+
+
+@router.patch("/categories/{category_id}")
+async def edit_category(category_id: int, name: str = Form(...)) -> dict:
+    return update_category(category_id, name)
+
+
+@router.delete("/categories/{category_id}")
+def remove_category(category_id: int) -> dict:
+    return delete_category(category_id)
 
 
 @router.post("/phrases")
