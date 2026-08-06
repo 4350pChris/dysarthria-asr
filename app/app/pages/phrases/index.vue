@@ -2,7 +2,7 @@
 const status = ref('')
 const formState = reactive({ name: '' })
 const isSaving = ref(false)
-const { categories } = usePhrases()
+const { categories, refreshAfterCategoryChange } = usePhrases()
 
 definePageMeta({
   pageHeader: {
@@ -22,7 +22,7 @@ async function createCategory() {
     await $fetch('/api/categories', { method: 'POST', body: form })
     formState.name = ''
     status.value = 'Kategorie gespeichert.'
-    await refreshNuxtData('phrases')
+    await refreshAfterCategoryChange()
   } catch {
     status.value = 'Kategorie konnte nicht gespeichert werden.'
   } finally {

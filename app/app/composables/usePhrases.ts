@@ -1,35 +1,24 @@
 import type { Category, Phrase } from '~/types/speech'
 
-type PhraseData = {
-  categories: Category[]
-  phrases: Phrase[]
-}
-
 export function usePhrases() {
-  const phraseData = useAsyncData<PhraseData>(
-    'phrases',
-    async () => {
-      const [categories, phrases] = await Promise.all([
-        $fetch<Category[]>('/api/categories'),
-        $fetch<Phrase[]>('/api/phrases')
-      ])
-      return { categories, phrases }
-    },
-    {
-      dedupe: 'defer',
-      default: () => ({ categories: [], phrases: [] })
-    }
-  )
-  const { data } = phraseData
+  const categories = useFetch<Category[]>('/api/categories', { default: () => [] })
+  const phrases = useFetch<Phrase[]>('/api/phrases', { default: () => [] })
 
-  const categories = computed(() => data.value.categories)
-  const phrases = computed(() => data.value.phrases)
+  async function refreshPhrases() {
+    await phrases.refresh()
+  }
+
+  async function refreshAfterCategoryChange() {
+    await Promise.all([categories.refresh(), phrases.refresh()])
+  }
 
   return {
-    categories,
-    phrases,
-    ready: phraseData.then(() => undefined),
-    byCategory: (category: string) => phrases.value.filter(phrase => phrase.category === category),
-    byId: (id: number) => phrases.value.find(phrase => phrase.id === id)
+    categories: categories.data,
+    phrases: phrases.data,
+    ready: Promise.all([categories, phrases]),
+    byCategory: (category: string) => phrases.data.value.filter(phrase => phrase.category === category),
+    byId: (id: number) => phrases.data.value.find(phrase => phrase.id === id),
+    refreshAfterCategoryChange,
+    refreshPhrases
   }
 }

@@ -20,7 +20,7 @@ const editing = ref<Phrase>()
 const isSaving = ref(false)
 const phraseToDelete = ref<Phrase>()
 const isDeleting = ref(false)
-const { categories, byCategory } = usePhrases()
+const { categories, byCategory, refreshPhrases } = usePhrases()
 const { savePhrase: persistPhrase } = usePhraseSaving()
 
 const currentCategory = computed(() => categories.value.find(item => item.name === category.value))
@@ -84,7 +84,7 @@ async function confirmDelete() {
     await $fetch(`/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
     status.value = 'Satz gelöscht.'
     phraseToDelete.value = undefined
-    await refreshNuxtData('phrases')
+    await refreshPhrases()
   } catch {
     status.value = 'Satz konnte nicht gelöscht werden.'
   } finally {

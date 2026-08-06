@@ -5,6 +5,8 @@ type SavePhraseOptions = {
 }
 
 export function usePhraseSaving() {
+  const { refreshPhrases } = usePhrases()
+
   async function savePhrase({ text, categoryId, phraseId }: SavePhraseOptions) {
     const form = new FormData()
     form.append('text', text)
@@ -18,7 +20,7 @@ export function usePhraseSaving() {
       throw new Error('Eine Kategorie oder Satz-ID ist erforderlich.')
     }
 
-    await refreshNuxtData('phrases')
+    await refreshPhrases()
   }
 
   return { savePhrase }
