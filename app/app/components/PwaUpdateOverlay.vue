@@ -12,9 +12,10 @@ defineProps<{
     aria-busy="true"
     aria-live="assertive"
   >
-    <UIcon
-      class="size-12 animate-spin text-primary"
-      name="i-lucide-loader-circle"
+    <LogoSpinner
+      label="PWA-Aktualisierung wird geladen"
+      :size="96"
+      speed="reload"
     />
     <p class="text-lg font-bold">
       Aktualisierung wird geladen

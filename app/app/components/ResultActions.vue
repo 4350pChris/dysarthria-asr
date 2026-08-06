@@ -24,9 +24,8 @@ defineEmits<{
     <UButton
       class="min-h-24 justify-center rounded-2xl text-lg font-extrabold"
       block
-      color="success"
-      icon="i-simple-icons-whatsapp"
-      label="WhatsApp"
+      icon="i-lucide-share-2"
+      label="Teilen"
       size="xl"
       type="button"
       :disabled="disabled"

@@ -2,5 +2,38 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-brand-50: oklch(97% 0.02 170);
+  --color-brand-100: oklch(94% 0.04 170);
+  --color-brand-200: oklch(88% 0.07 170);
+  --color-brand-300: oklch(79% 0.1 170);
+  --color-brand-400: oklch(67% 0.12 170);
+  --color-brand-500: oklch(56% 0.12 170);
+  --color-brand-600: oklch(48% 0.11 170);
+  --color-brand-700: oklch(40% 0.09 170);
+  --color-brand-800: oklch(32% 0.065 170);
+  --color-brand-900: oklch(24% 0.04 170);
+  --color-brand-950: oklch(17% 0.025 170);
+
+  --color-brand-neutral-50: oklch(98% 0.004 240);
+  --color-brand-neutral-100: oklch(96% 0.006 240);
+  --color-brand-neutral-200: oklch(90% 0.006 240);
+  --color-brand-neutral-300: oklch(82% 0.01 240);
+  --color-brand-neutral-400: oklch(68% 0.014 240);
+  --color-brand-neutral-500: oklch(50% 0.018 240);
+  --color-brand-neutral-600: oklch(40% 0.02 240);
+  --color-brand-neutral-700: oklch(31% 0.02 240);
+  --color-brand-neutral-800: oklch(25% 0.02 240);
+  --color-brand-neutral-900: oklch(20% 0.02 240);
+  --color-brand-neutral-950: oklch(14% 0.018 240);
+
+  --font-display: "Avenir Next", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
 }

@@ -48,21 +48,29 @@ useSpeechCommand({
         'flex min-h-[calc(100dvh-2.5rem)] flex-col space-y-5'
       ]"
     >
-      <div
-        v-if="header.showBack || header.action"
-        class="flex items-center justify-between gap-3"
-      >
-        <UButton
-          v-if="header.showBack"
-          class="min-h-14 rounded-2xl font-extrabold"
-          color="neutral"
-          icon="i-lucide-arrow-left"
-          size="xl"
-          :to="header.backTo || '/'"
-          variant="ghost"
-        >
-          {{ header.backLabel || 'Zurück' }}
-        </UButton>
+      <header class="space-y-4">
+        <div class="flex min-h-14 items-center justify-between gap-3">
+          <UButton
+            v-if="header.showBack"
+            class="min-h-14 rounded-2xl font-extrabold"
+            color="neutral"
+            icon="i-lucide-arrow-left"
+            size="xl"
+            :to="header.backTo || '/'"
+            variant="ghost"
+          >
+            {{ header.backLabel || 'Zurück' }}
+          </UButton>
+          <LogoLockup :mark-size="40" />
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-muted">
+            {{ header.eyebrow }}
+          </p>
+          <h1 class="mt-1 text-3xl font-bold tracking-normal">
+            {{ title }}
+          </h1>
+        </div>
         <UButton
           v-if="header.action"
           class="min-h-12 font-extrabold"
@@ -73,15 +81,6 @@ useSpeechCommand({
         >
           {{ header.action.label }}
         </UButton>
-      </div>
-
-      <header>
-        <p class="text-sm font-semibold text-muted">
-          {{ header.eyebrow }}
-        </p>
-        <h1 class="mt-1 text-3xl font-bold tracking-normal">
-          {{ title }}
-        </h1>
       </header>
 
       <PwaInstallHint />

@@ -33,14 +33,24 @@ function toggleRecording(start: boolean) {
     class="min-h-60 rounded-3xl text-3xl font-extrabold shadow-lg"
     block
     color="primary"
-    icon="i-lucide-mic"
     size="xl"
     type="button"
     :disabled="isBusy"
-    :ui="{ leadingIcon: 'size-12', base: 'flex-col gap-4' }"
+    :ui="{ base: 'flex-col gap-4' }"
     @click="toggleRecording(true)"
   >
-    Aufnehmen
+    <LogoSpinner
+      v-if="isBusy"
+      label="Modell wird vorbereitet"
+      :size="52"
+      speed="warmup"
+    />
+    <UIcon
+      v-else
+      class="size-12"
+      name="i-lucide-mic"
+    />
+    {{ isBusy ? 'Erkennung wird vorbereitet' : 'Aufnehmen' }}
   </UButton>
 
   <UButton
