@@ -119,6 +119,7 @@ function submit() {
       class="space-y-4"
     >
       <MatchedPhrase
+        :raw-transcript="speech.result.value?.raw_transcript"
         :selected="speech.selected.value"
         @copy="speech.copySelected"
         @share="speech.shareSelected"

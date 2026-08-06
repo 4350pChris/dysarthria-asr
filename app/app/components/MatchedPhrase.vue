@@ -2,6 +2,7 @@
 import type { Suggestion } from '~/types/speech'
 
 defineProps<{
+  rawTranscript?: string
   selected?: Suggestion
 }>()
 
@@ -48,7 +49,7 @@ function sourceLabel(suggestion?: Suggestion) {
       icon="i-lucide-pencil-line"
       label="Satz korrigieren und speichern"
       size="xl"
-      :to="{ path: '/phrases/new', query: { text: selected?.text } }"
+      :to="{ path: '/phrases/new', query: { text: rawTranscript || selected?.text } }"
       :disabled="!selected"
     />
 
