@@ -11,8 +11,10 @@ from fastapi.responses import FileResponse, Response
 from ..asr import transcribe_german
 from ..corpus import (
     audio_file_for_clip,
+    count_label_items,
     create_audio_clip,
     delete_audio_clip,
+    delete_label_items_without_asr,
     export_labels_csv,
     label_counts,
     read_label_items,
@@ -189,8 +191,30 @@ def list_items(
             missing_asr=missing_asr,
             limit=limit,
         ),
+        "filtered_count": count_label_items(
+            source=source,
+            status=status,
+            unsure=unsure,
+            missing_asr=missing_asr,
+        ),
         "counts": label_counts(),
     }
+
+
+@router.delete("/items/empty-asr")
+def delete_empty_asr_items(
+    source: str | None = None,
+    status: str | None = None,
+    unsure: bool | None = None,
+) -> dict:
+    deleted = delete_label_items_without_asr(
+        ROOT,
+        source=source,
+        status=status,
+        unsure=unsure,
+    )
+    return {"deleted": deleted, "counts": label_counts()}
+
 
 @router.patch("/items/{audio_id}")
 def update_item(

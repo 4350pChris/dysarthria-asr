@@ -156,13 +156,12 @@ def read_label_item(audio_id: str) -> dict:
     return item
 
 
-def read_label_items(
+def label_item_filters(
     source: str | None = None,
     status: str | None = None,
     unsure: bool | None = None,
     missing_asr: bool | None = None,
-    limit: int = 100,
-) -> list[dict]:
+) -> tuple[str, list[str | int]]:
     conditions = []
     args: list[str | int] = []
     if source:
@@ -177,6 +176,17 @@ def read_label_items(
     if missing_asr:
         conditions.append("TRIM(transcription_labels.asr_text) = ''")
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    return where, args
+
+
+def read_label_items(
+    source: str | None = None,
+    status: str | None = None,
+    unsure: bool | None = None,
+    missing_asr: bool | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    where, args = label_item_filters(source, status, unsure, missing_asr)
     args.append(limit)
     with connect_db() as db:
         rows = db.execute(
@@ -207,6 +217,48 @@ def read_label_items(
     for item in items:
         item["unsure"] = bool(item["unsure"])
     return items
+
+
+def count_label_items(
+    source: str | None = None,
+    status: str | None = None,
+    unsure: bool | None = None,
+    missing_asr: bool | None = None,
+) -> int:
+    where, args = label_item_filters(source, status, unsure, missing_asr)
+    with connect_db() as db:
+        row = db.execute(
+            f"""
+            SELECT COUNT(*) AS count
+            FROM audio_clips
+            JOIN transcription_labels ON transcription_labels.audio_id = audio_clips.id
+            {where}
+            """,
+            args,
+        ).fetchone()
+    return row["count"]
+
+
+def delete_label_items_without_asr(
+    root: Path,
+    source: str | None = None,
+    status: str | None = None,
+    unsure: bool | None = None,
+) -> int:
+    deleted = 0
+    while True:
+        items = read_label_items(
+            source=source,
+            status=status,
+            unsure=unsure,
+            missing_asr=True,
+            limit=500,
+        )
+        if not items:
+            return deleted
+        for item in items:
+            delete_audio_clip(item["audio_id"], root)
+        deleted += len(items)
 
 
 def label_counts() -> dict:

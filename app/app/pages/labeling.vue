@@ -17,6 +17,7 @@ definePageMeta({
 
 type ItemsResponse = {
   items: LabelItem[]
+  filtered_count: number
   counts: Record<LabelStatus | 'total', number>
 }
 
@@ -61,10 +62,11 @@ const {
   refresh: refreshItems
 } = await useFetch<ItemsResponse>('/api/labeling/items', {
   query: itemsQuery,
-  default: () => ({ items: [], counts: emptyCounts })
+  default: () => ({ items: [], filtered_count: 0, counts: emptyCounts })
 })
 
 const items = computed(() => itemsData.value.items)
+const filteredCount = computed(() => itemsData.value.filtered_count)
 const counts = computed(() => itemsData.value.counts)
 const current = computed(() => items.value[currentIndex.value])
 const audioUrl = computed(() =>
@@ -164,6 +166,15 @@ function moveCurrent(delta: number) {
       {{ counts.draft }} offen · {{ counts.labeled }} gelabelt ·
       {{ counts.skipped }} übersprungen
     </p>
+
+    <EmptyAsrBulkDeletion
+      v-if="missingAsrOnly"
+      :count="filteredCount"
+      :source="sourceFilter"
+      :status="statusFilter"
+      :unsure-only="unsureOnly"
+      @deleted="refreshItems"
+    />
 
     <section
       v-if="current"

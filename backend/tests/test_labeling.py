@@ -273,3 +273,31 @@ def test_labeling_items_can_filter_missing_asr_text(
         "empty.ogg",
         "spaces.ogg",
     ]
+
+
+def test_delete_empty_asr_items_uses_active_filters(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    for audio_id, status, asr_text in [
+        ("empty-draft", "draft", ""),
+        ("empty-skipped", "skipped", ""),
+        ("text-draft", "draft", "text"),
+    ]:
+        create_audio_clip(id=audio_id, file_path=f"audio/{audio_id}.ogg")
+        upsert_transcription_label(audio_id=audio_id, asr_text=asr_text, status=status)
+
+    from src.app import create_app
+
+    client = TestClient(create_app())
+    listed = client.get("/api/labeling/items?status=draft&missing_asr=true")
+    assert listed.json()["filtered_count"] == 1
+
+    response = client.delete("/api/labeling/items/empty-asr?status=draft")
+
+    assert response.status_code == 200
+    assert response.json()["deleted"] == 1
+    with database.connect_db() as db:
+        remaining = db.execute("SELECT id FROM audio_clips ORDER BY id").fetchall()
+    assert [row["id"] for row in remaining] == ["empty-skipped", "text-draft"]
