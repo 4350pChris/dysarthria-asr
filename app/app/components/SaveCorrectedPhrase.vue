@@ -40,8 +40,8 @@ async function savePhrase() {
     })
     status.value = `Gespeichert in: ${selectedCategory.value.name}.`
     isSaveModalOpen.value = false
-  } catch {
-    status.value = 'Satz konnte nicht gespeichert werden.'
+  } catch (error) {
+    status.value = apiErrorMessage(error, 'Satz konnte nicht gespeichert werden.')
   } finally {
     isSaving.value = false
   }
@@ -62,6 +62,7 @@ async function savePhrase() {
     <p
       v-if="status"
       class="text-lg font-semibold text-toned"
+      role="status"
     >
       {{ status }}
     </p>

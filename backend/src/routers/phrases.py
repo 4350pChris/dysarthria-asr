@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Form, status
 
 from ..candidates import read_generated_candidates
+from ..form_models import CategoryForm, CreatePhraseForm, GrammarPatternForm, GrammarValueForm, PhraseForm
 from ..phrases import (
     create_category,
     create_phrase,
@@ -41,13 +44,13 @@ def list_grammar() -> list[dict]:
 
 
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
-async def add_category(name: str = Form(...)) -> dict:
-    return create_category(name)
+async def add_category(data: Annotated[CategoryForm, Form()]) -> dict:
+    return create_category(data.name)
 
 
 @router.patch("/categories/{category_id}")
-async def edit_category(category_id: int, name: str = Form(...)) -> dict:
-    return update_category(category_id, name)
+async def edit_category(category_id: int, data: Annotated[CategoryForm, Form()]) -> dict:
+    return update_category(category_id, data.name)
 
 
 @router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -56,13 +59,13 @@ def remove_category(category_id: int) -> None:
 
 
 @router.post("/phrases", status_code=status.HTTP_201_CREATED)
-async def add_phrase(category_id: int = Form(...), text: str = Form(...)) -> dict:
-    return create_phrase(category_id, text)
+async def add_phrase(data: Annotated[CreatePhraseForm, Form()]) -> dict:
+    return create_phrase(data.category_id, data.text)
 
 
 @router.patch("/phrases/{phrase_id}")
-async def edit_phrase(phrase_id: int, text: str = Form(...)) -> dict:
-    return update_phrase(phrase_id, text)
+async def edit_phrase(phrase_id: int, data: Annotated[PhraseForm, Form()]) -> dict:
+    return update_phrase(phrase_id, data.text)
 
 
 @router.delete("/phrases/{phrase_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -73,14 +76,14 @@ def remove_phrase(phrase_id: int) -> None:
 @router.patch("/grammar/patterns/{pattern_id}")
 async def edit_grammar_pattern(
     pattern_id: int,
-    template: str = Form(...),
+    data: Annotated[GrammarPatternForm, Form()],
 ) -> dict:
-    return update_grammar_pattern(pattern_id, template)
+    return update_grammar_pattern(pattern_id, data.template)
 
 
 @router.patch("/grammar/values/{value_id}")
 async def edit_grammar_value(
     value_id: int,
-    value: str = Form(...),
+    data: Annotated[GrammarValueForm, Form()],
 ) -> dict:
-    return update_grammar_value(value_id, value)
+    return update_grammar_value(value_id, data.value)

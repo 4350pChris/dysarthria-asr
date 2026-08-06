@@ -12,6 +12,10 @@ def test_category_endpoint_renames_and_deletes_its_phrases(initialized_db: Path)
     created_category = client.post("/api/categories", data={"name": "Test"})
     assert created_category.status_code == 201
     category = created_category.json()
+    duplicate_category = client.post("/api/categories", data={"name": "Test"})
+    assert duplicate_category.status_code == 409
+    assert duplicate_category.json()["detail"][0]["type"] == "category_exists"
+    assert duplicate_category.json()["detail"][0]["loc"] == ["body", "name"]
     created_phrase = client.post("/api/phrases", data={"category_id": category["id"], "text": "Hallo"})
     assert created_phrase.status_code == 201
 
@@ -34,14 +38,20 @@ def test_phrase_routes_return_conflicts_and_no_content(initialized_db: Path) -> 
 
     assert first.status_code == 201
     assert second.status_code == 201
-    assert client.post(
+    duplicate = client.post(
         "/api/phrases",
         data={"category_id": category["id"], "text": "Hallo"},
-    ).status_code == 409
-    assert client.patch(
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"][0]["type"] == "phrase_exists"
+    assert duplicate.json()["detail"][0]["loc"] == ["body", "text"]
+
+    renamed = client.patch(
         f"/api/phrases/{second.json()['id']}",
         data={"text": "Hallo"},
-    ).status_code == 409
+    )
+    assert renamed.status_code == 409
+    assert renamed.json()["detail"][0]["type"] == "phrase_exists"
 
     deleted = client.delete(f"/api/phrases/{first.json()['id']}")
     assert deleted.status_code == 204

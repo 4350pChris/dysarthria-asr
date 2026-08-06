@@ -53,7 +53,8 @@ def test_grammar_pattern_requires_its_placeholder(initialized_db: Path) -> None:
         data={"template": "Ich möchte Kaffee."},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == "grammar_placeholder_invalid"
 
 
 def test_grammar_routes_return_conflict_for_duplicate_slot_entries(initialized_db: Path) -> None:
@@ -63,11 +64,16 @@ def test_grammar_routes_return_conflict_for_duplicate_slot_entries(initialized_d
     first_pattern, second_pattern = thing_slot["patterns"][:2]
     first_value, second_value = thing_slot["values"][:2]
 
-    assert client.patch(
+    duplicate_pattern = client.patch(
         f"/api/grammar/patterns/{second_pattern['id']}",
         data={"template": first_pattern["template"]},
-    ).status_code == 409
-    assert client.patch(
+    )
+    assert duplicate_pattern.status_code == 409
+    assert duplicate_pattern.json()["detail"][0]["type"] == "grammar_pattern_exists"
+
+    duplicate_value = client.patch(
         f"/api/grammar/values/{second_value['id']}",
         data={"value": first_value["value"]},
-    ).status_code == 409
+    )
+    assert duplicate_value.status_code == 409
+    assert duplicate_value.json()["detail"][0]["type"] == "grammar_value_exists"

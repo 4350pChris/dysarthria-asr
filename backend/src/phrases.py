@@ -4,6 +4,7 @@ import sqlite3
 
 from fastapi import HTTPException
 
+from .api_errors import field_error
 from .database import connect_db
 
 def read_phrases() -> list[dict]:
@@ -42,7 +43,7 @@ def read_categories() -> list[dict]:
 def create_category(name: str) -> dict:
     clean_name = name.strip()
     if not clean_name:
-        raise HTTPException(status_code=400, detail="Category name is required.")
+        raise field_error(422, "name", "value_required")
     with connect_db() as db:
         try:
             cursor = db.execute(
@@ -50,21 +51,21 @@ def create_category(name: str) -> dict:
                 (clean_name,),
             )
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="Category already exists.") from error
+            raise field_error(409, "name", "category_exists") from error
         return {"id": cursor.lastrowid, "name": clean_name, "phrase_count": 0}
 
 
 def update_category(category_id: int, name: str) -> dict:
     clean_name = name.strip()
     if not clean_name:
-        raise HTTPException(status_code=400, detail="Category name is required.")
+        raise field_error(422, "name", "value_required")
     with connect_db() as db:
         try:
             cursor = db.execute("UPDATE categories SET name = ? WHERE id = ?", (clean_name, category_id))
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="Category already exists.") from error
+            raise field_error(409, "name", "category_exists") from error
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Category not found.")
+            raise field_error(404, "name", "category_not_found")
     return {"id": category_id, "name": clean_name}
 
 
@@ -72,38 +73,38 @@ def delete_category(category_id: int) -> None:
     with connect_db() as db:
         category = db.execute("SELECT id FROM categories WHERE id = ?", (category_id,)).fetchone()
         if not category:
-            raise HTTPException(status_code=404, detail="Category not found.")
+            raise field_error(404, "category_id", "category_not_found")
         db.execute("DELETE FROM phrases WHERE category_id = ?", (category_id,))
         db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
 def create_phrase(category_id: int, text: str) -> dict:
     clean_text = text.strip()
     if not clean_text:
-        raise HTTPException(status_code=400, detail="Phrase text is required.")
+        raise field_error(422, "text", "value_required")
     with connect_db() as db:
         category = db.execute("SELECT id FROM categories WHERE id = ?", (category_id,)).fetchone()
         if not category:
-            raise HTTPException(status_code=404, detail="Category not found.")
+            raise field_error(404, "category_id", "category_not_found")
         try:
             cursor = db.execute(
                 "INSERT INTO phrases (category_id, text) VALUES (?, ?)",
                 (category_id, clean_text),
             )
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="Phrase already exists in this category.") from error
+            raise field_error(409, "text", "phrase_exists") from error
         return {"id": cursor.lastrowid, "category_id": category_id, "text": clean_text}
 
 
 def update_phrase(phrase_id: int, text: str) -> dict:
     clean_text = text.strip()
     if not clean_text:
-        raise HTTPException(status_code=400, detail="Phrase text is required.")
+        raise field_error(422, "text", "value_required")
     with connect_db() as db:
         try:
             cursor = db.execute("UPDATE phrases SET text = ? WHERE id = ?", (clean_text, phrase_id))
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="Phrase already exists in this category.") from error
+            raise field_error(409, "text", "phrase_exists") from error
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Phrase not found.")
+            raise field_error(404, "text", "phrase_not_found")
         return {"id": phrase_id, "text": clean_text}
 
 
@@ -111,7 +112,7 @@ def delete_phrase(phrase_id: int) -> None:
     with connect_db() as db:
         cursor = db.execute("DELETE FROM phrases WHERE id = ?", (phrase_id,))
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Phrase not found.")
+            raise HTTPException(status_code=404, detail=[{"loc": ["path", "phrase_id"], "type": "phrase_not_found"}])
 def read_grammar() -> list[dict]:
     with connect_db() as db:
         slots = db.execute("SELECT id, name FROM grammar_slots ORDER BY id").fetchall()
@@ -151,7 +152,7 @@ def read_grammar() -> list[dict]:
 def update_grammar_pattern(pattern_id: int, template: str) -> dict:
     clean_template = template.strip()
     if not clean_template:
-        raise HTTPException(status_code=400, detail="Template is required.")
+        raise field_error(422, "template", "value_required")
     with connect_db() as db:
         pattern = db.execute(
             """
@@ -163,11 +164,11 @@ def update_grammar_pattern(pattern_id: int, template: str) -> dict:
             (pattern_id,),
         ).fetchone()
         if not pattern:
-            raise HTTPException(status_code=404, detail="Grammar pattern not found.")
+            raise field_error(404, "template", "grammar_pattern_not_found")
 
         marker = "{" + pattern["name"] + "}"
         if clean_template.count(marker) != 1:
-            raise HTTPException(status_code=400, detail="Template must contain the grammar slot once.")
+            raise field_error(422, "template", "grammar_placeholder_invalid")
 
         try:
             db.execute(
@@ -175,14 +176,14 @@ def update_grammar_pattern(pattern_id: int, template: str) -> dict:
                 (clean_template, pattern_id),
             )
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="Grammar pattern already exists for this slot.") from error
+            raise field_error(409, "template", "grammar_pattern_exists") from error
     return {"id": pattern_id, "template": clean_template}
 
 
 def update_grammar_value(value_id: int, value: str) -> dict:
     clean_value = value.strip()
     if not clean_value:
-        raise HTTPException(status_code=400, detail="Value is required.")
+        raise field_error(422, "value", "value_required")
     with connect_db() as db:
         try:
             cursor = db.execute(
@@ -190,7 +191,7 @@ def update_grammar_value(value_id: int, value: str) -> dict:
                 (clean_value, value_id),
             )
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="Grammar value already exists for this slot.") from error
+            raise field_error(409, "value", "grammar_value_exists") from error
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Grammar value not found.")
+            raise field_error(404, "value", "grammar_value_not_found")
     return {"id": value_id, "value": clean_value}

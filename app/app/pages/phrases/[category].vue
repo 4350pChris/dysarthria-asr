@@ -14,8 +14,8 @@ definePageMeta({
 })
 
 const category = computed(() => decodeURIComponent(String(route.params.category || '')))
-const status = ref('')
 const formState = reactive({ text: '' })
+const formErrors = ref<Record<string, string>>({})
 const editing = ref<Phrase>()
 const isSaving = ref(false)
 const phraseToDelete = ref<Phrase>()
@@ -32,21 +32,25 @@ const isDeleteModalOpen = computed(() => Boolean(phraseToDelete.value))
 function startEdit(phrase: Phrase) {
   editing.value = phrase
   formState.text = phrase.text
-  status.value = 'Satz bearbeiten.'
+  formErrors.value = {}
 }
 
 function resetForm() {
   editing.value = undefined
   formState.text = ''
+  formErrors.value = {}
 }
+
+watch(() => formState.text, () => formErrors.value = {})
 
 async function savePhrase() {
   const text = formState.text.trim()
   if (!text || isSaving.value) return
   if (!editing.value && !currentCategory.value) {
-    status.value = 'Kategorie konnte nicht gefunden werden.'
+    formErrors.value = { text: 'Diese Kategorie gibt es nicht mehr.' }
     return
   }
+  formErrors.value = {}
   isSaving.value = true
   try {
     await persistPhrase({
@@ -54,14 +58,9 @@ async function savePhrase() {
       categoryId: currentCategory.value?.id,
       phraseId: editing.value?.id
     })
-    if (editing.value) {
-      status.value = 'Satz gespeichert.'
-    } else {
-      status.value = 'Satz hinzugefügt.'
-    }
     resetForm()
-  } catch {
-    status.value = 'Satz konnte nicht gespeichert werden.'
+  } catch (error) {
+    formErrors.value = apiFormErrors(error, 'Satz konnte nicht gespeichert werden.')
   } finally {
     isSaving.value = false
   }
@@ -82,11 +81,10 @@ async function confirmDelete() {
   isDeleting.value = true
   try {
     await $fetch(`/api/phrases/${phraseToDelete.value.id}`, { method: 'DELETE' })
-    status.value = 'Satz gelöscht.'
     phraseToDelete.value = undefined
     await refreshPhrases()
-  } catch {
-    status.value = 'Satz konnte nicht gelöscht werden.'
+  } catch (error) {
+    formErrors.value = apiFormErrors(error, 'Satz konnte nicht gelöscht werden.')
   } finally {
     isDeleting.value = false
   }
@@ -95,13 +93,6 @@ async function confirmDelete() {
 
 <template>
   <div class="space-y-5">
-    <p
-      v-if="status"
-      class="text-lg font-semibold text-toned"
-    >
-      {{ status }}
-    </p>
-
     <CategoryManagement
       v-if="currentCategory"
       :category="currentCategory"
@@ -112,7 +103,10 @@ async function confirmDelete() {
       class="space-y-3"
       @submit="savePhrase"
     >
-      <UFormField :label="formLabel">
+      <UFormField
+        :error="formErrors.text || formErrors._form"
+        :label="formLabel"
+      >
         <UTextarea
           v-model="formState.text"
           class="w-full"
