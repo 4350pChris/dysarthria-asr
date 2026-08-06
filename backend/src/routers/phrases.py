@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, status
 
 from ..candidates import read_generated_candidates
 from ..phrases import (
@@ -40,7 +40,7 @@ def list_grammar() -> list[dict]:
     return read_grammar()
 
 
-@router.post("/categories")
+@router.post("/categories", status_code=status.HTTP_201_CREATED)
 async def add_category(name: str = Form(...)) -> dict:
     return create_category(name)
 
@@ -50,12 +50,12 @@ async def edit_category(category_id: int, name: str = Form(...)) -> dict:
     return update_category(category_id, name)
 
 
-@router.delete("/categories/{category_id}")
-def remove_category(category_id: int) -> dict:
-    return delete_category(category_id)
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_category(category_id: int) -> None:
+    delete_category(category_id)
 
 
-@router.post("/phrases")
+@router.post("/phrases", status_code=status.HTTP_201_CREATED)
 async def add_phrase(category_id: int = Form(...), text: str = Form(...)) -> dict:
     return create_phrase(category_id, text)
 
@@ -65,9 +65,9 @@ async def edit_phrase(phrase_id: int, text: str = Form(...)) -> dict:
     return update_phrase(phrase_id, text)
 
 
-@router.delete("/phrases/{phrase_id}")
-def remove_phrase(phrase_id: int) -> dict:
-    return delete_phrase(phrase_id)
+@router.delete("/phrases/{phrase_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_phrase(phrase_id: int) -> None:
+    delete_phrase(phrase_id)
 
 
 @router.patch("/grammar/patterns/{pattern_id}")

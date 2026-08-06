@@ -68,16 +68,13 @@ def update_category(category_id: int, name: str) -> dict:
     return {"id": category_id, "name": clean_name}
 
 
-def delete_category(category_id: int) -> dict:
+def delete_category(category_id: int) -> None:
     with connect_db() as db:
         category = db.execute("SELECT id FROM categories WHERE id = ?", (category_id,)).fetchone()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found.")
         db.execute("DELETE FROM phrases WHERE category_id = ?", (category_id,))
         db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
-    return {"ok": True}
-
-
 def create_phrase(category_id: int, text: str) -> dict:
     clean_text = text.strip()
     if not clean_text:
@@ -86,10 +83,13 @@ def create_phrase(category_id: int, text: str) -> dict:
         category = db.execute("SELECT id FROM categories WHERE id = ?", (category_id,)).fetchone()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found.")
-        cursor = db.execute(
-            "INSERT INTO phrases (category_id, text) VALUES (?, ?)",
-            (category_id, clean_text),
-        )
+        try:
+            cursor = db.execute(
+                "INSERT INTO phrases (category_id, text) VALUES (?, ?)",
+                (category_id, clean_text),
+            )
+        except sqlite3.IntegrityError as error:
+            raise HTTPException(status_code=409, detail="Phrase already exists in this category.") from error
         return {"id": cursor.lastrowid, "category_id": category_id, "text": clean_text}
 
 
@@ -98,20 +98,20 @@ def update_phrase(phrase_id: int, text: str) -> dict:
     if not clean_text:
         raise HTTPException(status_code=400, detail="Phrase text is required.")
     with connect_db() as db:
-        cursor = db.execute("UPDATE phrases SET text = ? WHERE id = ?", (clean_text, phrase_id))
+        try:
+            cursor = db.execute("UPDATE phrases SET text = ? WHERE id = ?", (clean_text, phrase_id))
+        except sqlite3.IntegrityError as error:
+            raise HTTPException(status_code=409, detail="Phrase already exists in this category.") from error
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Phrase not found.")
         return {"id": phrase_id, "text": clean_text}
 
 
-def delete_phrase(phrase_id: int) -> dict:
+def delete_phrase(phrase_id: int) -> None:
     with connect_db() as db:
         cursor = db.execute("DELETE FROM phrases WHERE id = ?", (phrase_id,))
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Phrase not found.")
-        return {"ok": True}
-
-
 def read_grammar() -> list[dict]:
     with connect_db() as db:
         slots = db.execute("SELECT id, name FROM grammar_slots ORDER BY id").fetchall()
@@ -169,10 +169,13 @@ def update_grammar_pattern(pattern_id: int, template: str) -> dict:
         if clean_template.count(marker) != 1:
             raise HTTPException(status_code=400, detail="Template must contain the grammar slot once.")
 
-        cursor = db.execute(
-            "UPDATE grammar_patterns SET template = ? WHERE id = ?",
-            (clean_template, pattern_id),
-        )
+        try:
+            db.execute(
+                "UPDATE grammar_patterns SET template = ? WHERE id = ?",
+                (clean_template, pattern_id),
+            )
+        except sqlite3.IntegrityError as error:
+            raise HTTPException(status_code=409, detail="Grammar pattern already exists for this slot.") from error
     return {"id": pattern_id, "template": clean_template}
 
 
@@ -181,10 +184,13 @@ def update_grammar_value(value_id: int, value: str) -> dict:
     if not clean_value:
         raise HTTPException(status_code=400, detail="Value is required.")
     with connect_db() as db:
-        cursor = db.execute(
-            "UPDATE grammar_slot_values SET value = ? WHERE id = ?",
-            (clean_value, value_id),
-        )
+        try:
+            cursor = db.execute(
+                "UPDATE grammar_slot_values SET value = ? WHERE id = ?",
+                (clean_value, value_id),
+            )
+        except sqlite3.IntegrityError as error:
+            raise HTTPException(status_code=409, detail="Grammar value already exists for this slot.") from error
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Grammar value not found.")
     return {"id": value_id, "value": clean_value}

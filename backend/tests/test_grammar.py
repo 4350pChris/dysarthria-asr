@@ -54,3 +54,20 @@ def test_grammar_pattern_requires_its_placeholder(initialized_db: Path) -> None:
     )
 
     assert response.status_code == 400
+
+
+def test_grammar_routes_return_conflict_for_duplicate_slot_entries(initialized_db: Path) -> None:
+    client = TestClient(create_app())
+    grammar = client.get("/api/grammar").json()
+    thing_slot = next(slot for slot in grammar if slot["name"] == "thing_acc")
+    first_pattern, second_pattern = thing_slot["patterns"][:2]
+    first_value, second_value = thing_slot["values"][:2]
+
+    assert client.patch(
+        f"/api/grammar/patterns/{second_pattern['id']}",
+        data={"template": first_pattern["template"]},
+    ).status_code == 409
+    assert client.patch(
+        f"/api/grammar/values/{second_value['id']}",
+        data={"value": first_value["value"]},
+    ).status_code == 409
