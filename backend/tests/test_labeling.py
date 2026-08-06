@@ -96,6 +96,37 @@ def test_import_whatsapp_zip_filters_audio_by_sender(
     assert row["original_filename"] == "00000001-AUDIO-2026-07-22-10-00-00.opus"
 
 
+def test_import_senders_lists_people_with_audio_messages(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    export = io.BytesIO()
+    with zipfile.ZipFile(export, "w") as archive:
+        archive.writestr(
+            "_chat.txt",
+            "\n".join(
+                [
+                    "22.07.2026, 10:00 - Target Person: one.opus",
+                    "22.07.2026, 10:01 - Friend: two.ogg",
+                    "22.07.2026, 10:02 - Text Only: Hello",
+                ]
+            ),
+        )
+        archive.writestr("one.opus", b"target audio")
+        archive.writestr("two.ogg", b"friend audio")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/labeling/import/senders",
+        files=[("archive", ("whatsapp.zip", export.getvalue(), "application/zip"))],
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"senders": ["Friend", "Target Person"]}
+
+
 def test_import_whatsapp_zip_without_sender_imports_all_audio(
     initialized_db: Path,
     monkeypatch,
@@ -156,4 +187,3 @@ def test_labeling_update_and_default_export_include_only_training_rows(
     text = export.text
     assert "Kaffee bitte." in text
     assert "Unsicher." not in text
-

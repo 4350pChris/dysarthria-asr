@@ -85,14 +85,6 @@ function submit() {
       @stop="speech.stopRecording"
     />
 
-    <SpeechCommandControl
-      :is-listening="speechCommands.isListening.value"
-      :is-supported="speechCommands.isSupported.value"
-      :status="speechCommands.status.value"
-      @start="speechCommands.start"
-      @stop="speechCommands.stop"
-    />
-
     <URadioGroup
       v-model="mode"
       class="w-full"
@@ -114,6 +106,14 @@ function submit() {
     <p class="min-h-7 text-center text-lg font-semibold text-toned">
       {{ speech.status.value }}
     </p>
+
+    <SpeechCommandControl
+      :is-listening="speechCommands.isListening.value"
+      :is-supported="speechCommands.isSupported.value"
+      :status="speechCommands.status.value"
+      @start="speechCommands.start"
+      @stop="speechCommands.stop"
+    />
 
     <section
       v-if="speech.hasSelection.value && mode === 'phrases'"

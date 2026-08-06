@@ -57,6 +57,32 @@ def audio_names_for_sender(archive: zipfile.ZipFile, target_sender: str) -> set[
     return selected
 
 
+def senders_for_zip(contents: bytes) -> list[str]:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(contents))
+    except zipfile.BadZipFile as error:
+        raise HTTPException(status_code=400, detail="Upload a valid WhatsApp ZIP export.") from error
+
+    names = archive.namelist()
+    chat_name = next((name for name in names if Path(name).name.lower().endswith(".txt")), "")
+    if not chat_name:
+        return []
+
+    audio_names = {
+        Path(name).name
+        for name in names
+        if Path(name).suffix.lower() in AUDIO_EXTENSIONS
+    }
+    senders = set()
+    text = archive.read(chat_name).decode("utf-8", errors="replace")
+    for line in text.splitlines():
+        sender = chat_sender(line)
+        filename = Path(line.rsplit(" ", 1)[-1]).name
+        if sender and filename in audio_names:
+            senders.add(sender)
+    return sorted(senders, key=str.casefold)
+
+
 def import_audio_bytes(
     contents: bytes,
     original_filename: str,
@@ -123,6 +149,16 @@ async def import_audio(
             raise HTTPException(status_code=400, detail="Upload audio files or a WhatsApp ZIP export.")
         items.append(import_audio_bytes(contents, audio.filename or "", audio.content_type or ""))
     return {"imported": len(items), "items": items, "counts": label_counts()}
+
+
+@router.post("/import/senders")
+async def list_import_senders(archive: UploadFile = File(...)) -> dict:
+    if Path(archive.filename or "").suffix.lower() != ".zip":
+        raise HTTPException(status_code=400, detail="Upload a WhatsApp ZIP export.")
+    contents = await archive.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Upload a non-empty WhatsApp ZIP export.")
+    return {"senders": senders_for_zip(contents)}
 
 
 @router.get("/items")

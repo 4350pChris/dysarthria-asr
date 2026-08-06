@@ -32,16 +32,13 @@ const statusOptions = [
   { label: 'Alle', value: 'all' }
 ]
 
-const files = ref<File[] | null>(null)
 const currentIndex = ref(0)
-const targetSender = ref('')
 const sourceFilter = ref<AudioSource | 'all'>('all')
 const statusFilter = ref<LabelStatus | 'all'>('draft')
 const unsureOnly = ref(false)
 const transcript = ref('')
 const notes = ref('')
 const unsure = ref(false)
-const isBusy = ref(false)
 const isSaving = ref(false)
 
 const emptyCounts: Record<LabelStatus | 'total', number> = {
@@ -90,24 +87,6 @@ watch(items, (nextItems) => {
   if (currentIndex.value >= nextItems.length) currentIndex.value = 0
 })
 
-async function importFiles() {
-  if (!files.value?.length || isBusy.value) return
-  isBusy.value = true
-  const form = new FormData()
-  files.value.forEach(file => form.append('files', file))
-  form.append('target_sender', targetSender.value.trim())
-  try {
-    await $fetch<ItemsResponse & { imported: number }>('/api/labeling/import', {
-      method: 'POST',
-      body: form
-    })
-    files.value = null
-    await refreshItems()
-  } finally {
-    isBusy.value = false
-  }
-}
-
 async function save(nextStatus: LabelStatus) {
   if (!current.value || isSaving.value) return
   isSaving.value = true
@@ -138,38 +117,15 @@ function moveCurrent(delta: number) {
 
 <template>
   <div class="space-y-5">
-    <section class="space-y-3">
-      <UFileUpload
-        v-model="files"
-        accept="audio/*,.zip,application/zip"
-        class="min-h-48"
-        description="WhatsApp-Export-ZIP oder einzelne Audiodateien"
-        label="ZIP oder Audios hier ablegen"
-        layout="list"
-        multiple
-        position="inside"
-        size="lg"
-      />
-      <UFormField label="Name der sprechenden Person im WhatsApp-Chat">
-        <UInput
-          v-model="targetSender"
-          class="w-full"
-          placeholder="Leer lassen, um alle Audios zu importieren"
-          size="lg"
-        />
-      </UFormField>
-      <UButton
-        block
-        class="min-h-14 justify-center font-extrabold"
-        color="primary"
-        icon="i-lucide-upload"
-        size="lg"
-        :loading="isBusy"
-        @click="importFiles"
-      >
-        WhatsApp-Audios importieren
-      </UButton>
-    </section>
+    <UButton
+      class="font-extrabold"
+      color="neutral"
+      icon="i-lucide-upload"
+      size="lg"
+      to="/whatsapp-import"
+    >
+      WhatsApp-Audios importieren
+    </UButton>
 
     <section class="grid gap-3 sm:grid-cols-3">
       <UFormField label="Quelle">
