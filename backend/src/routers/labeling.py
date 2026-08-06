@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import csv
 import io
+import os
+import tempfile
 import uuid
 import zipfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from ..asr import transcribe_german
 from ..corpus import (
@@ -15,7 +19,6 @@ from ..corpus import (
     create_audio_clip,
     delete_audio_clip,
     delete_label_items_without_asr,
-    export_labels_csv,
     label_counts,
     read_label_items,
     upsert_transcription_label,
@@ -26,6 +29,19 @@ from ..request_models import LabelUpdateRequest
 router = APIRouter(prefix="/api/labeling")
 
 AUDIO_EXTENSIONS = {".aac", ".flac", ".m4a", ".mp3", ".oga", ".ogg", ".opus", ".wav", ".webm"}
+TRAINING_EXPORT_FIELDS = [
+    "audio_id",
+    "audio_file",
+    "source",
+    "original_filename",
+    "asr_text",
+    "transcript",
+    "status",
+    "unsure",
+    "notes",
+    "created_at",
+    "updated_at",
+]
 
 
 def is_audio_upload(audio: UploadFile) -> bool:
@@ -244,6 +260,50 @@ def get_audio(audio_id: str) -> FileResponse:
     return FileResponse(audio_file_for_clip(audio_id, ROOT))
 
 
-@router.get("/export.csv")
-def export_labels(all: bool = False) -> Response:
-    return export_labels_csv(all_rows=all)
+def training_labels_csv(rows: list[dict]) -> str:
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=TRAINING_EXPORT_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    return output.getvalue()
+
+
+@router.get("/training-data.zip")
+def export_training_data() -> FileResponse:
+    rows = [
+        row
+        for row in read_label_items(limit=100000)
+        if row["status"] == "labeled" and not row["unsure"] and row["transcript"].strip()
+    ]
+    if not rows:
+        raise HTTPException(status_code=404, detail="No training-ready recordings are available.")
+
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as bundle:
+        bundle_path = Path(bundle.name)
+
+    try:
+        with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("training-labels.csv", training_labels_csv(rows))
+            archive.writestr(
+                "README.txt",
+                "This archive contains reviewed training data for dysarthria ASR.\n"
+                "Extract it into one directory. training-labels.csv refers to files in data/audio/.\n"
+                "Only labeled recordings with a non-empty transcript and no Unsure flag are included.\n",
+            )
+            for row in rows:
+                audio_path = audio_file_for_clip(row["audio_id"], ROOT)
+                try:
+                    arcname = audio_path.relative_to(ROOT).as_posix()
+                except ValueError as error:
+                    raise HTTPException(status_code=400, detail="Invalid audio file path.") from error
+                archive.write(audio_path, arcname=arcname)
+    except Exception:
+        bundle_path.unlink(missing_ok=True)
+        raise
+
+    return FileResponse(
+        bundle_path,
+        media_type="application/zip",
+        filename="dysarthria-asr-training-data.zip",
+        background=BackgroundTask(os.unlink, bundle_path),
+    )

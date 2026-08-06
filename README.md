@@ -122,10 +122,9 @@ Both WhatsApp uploads and clips from `Aufnehmen` use the same corpus tables.
 ASR output is only a draft; a clip is training-ready only after it is marked
 `labeled` and is not marked `unsure`.
 
-Default export:
+Training export:
 
-- `GET /api/labeling/export.csv`: reviewed, non-unsure labels with transcripts
-- `GET /api/labeling/export.csv?all=true`: all labels, including drafts and skipped clips
+- `GET /api/labeling/training-data.zip`: reviewed audio and `training-labels.csv` in one archive
 
 ## API
 
@@ -137,7 +136,7 @@ Main backend endpoints:
 - `GET /api/labeling/items/next`
 - `GET /api/labeling/audio/{audio_id}`
 - `PATCH /api/labeling/items/{audio_id}`
-- `GET /api/labeling/export.csv`
+- `GET /api/labeling/training-data.zip`
 - `GET /api/phrases`
 - `POST /api/phrases`
 - `DELETE /api/phrases/{phrase_id}`

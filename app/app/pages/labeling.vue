@@ -4,9 +4,9 @@ import type { AudioSource, LabelItem, LabelStatus } from '~/types/speech'
 definePageMeta({
   pageHeader: {
     action: {
-      icon: 'i-lucide-download',
-      label: 'CSV',
-      to: '/api/labeling/export.csv'
+      icon: 'i-lucide-package-down',
+      label: 'Training-ZIP',
+      to: '/api/labeling/training-data.zip'
     },
     eyebrow: 'Audio-Labels',
     showBack: true,

@@ -181,7 +181,7 @@ def test_import_does_not_store_audio_without_asr_text(
     assert len(list((initialized_db / "audio").glob("*.ogg"))) == 1
 
 
-def test_labeling_update_and_default_export_include_only_training_rows(
+def test_labeling_update_saves_training_ready_and_unsure_rows(
     initialized_db: Path,
     monkeypatch,
 ) -> None:
@@ -213,10 +213,47 @@ def test_labeling_update_and_default_export_include_only_training_rows(
         json={"transcript": "Unsicher.", "status": "labeled", "unsure": True, "notes": ""},
     )
 
-    export = client.get("/api/labeling/export.csv")
-    text = export.text
-    assert "Kaffee bitte." in text
-    assert "Unsicher." not in text
+def test_training_data_export_includes_labels_and_matching_audio(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    audio_dir = initialized_db / "audio"
+    audio_dir.mkdir()
+    (audio_dir / "included.ogg").write_bytes(b"included audio")
+    (audio_dir / "excluded.ogg").write_bytes(b"excluded audio")
+    create_audio_clip("included", "audio/included.ogg", "included.ogg")
+    upsert_transcription_label(
+        "included",
+        transcript="Kaffee bitte.",
+        status="labeled",
+        unsure=False,
+    )
+    create_audio_clip("excluded", "audio/excluded.ogg", "excluded.ogg")
+    upsert_transcription_label(
+        "excluded",
+        transcript="Unsicher.",
+        status="labeled",
+        unsure=True,
+    )
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).get("/api/labeling/training-data.zip")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert "dysarthria-asr-training-data.zip" in response.headers["content-disposition"]
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        assert set(archive.namelist()) == {
+            "README.txt",
+            "training-labels.csv",
+            "audio/included.ogg",
+        }
+        assert archive.read("audio/included.ogg") == b"included audio"
+        labels = archive.read("training-labels.csv").decode()
+    assert "Kaffee bitte." in labels
+    assert "Unsicher." not in labels
 
 
 def test_delete_labeling_item_removes_audio_and_label(

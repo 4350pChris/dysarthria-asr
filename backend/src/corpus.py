@@ -1,31 +1,15 @@
 from __future__ import annotations
 
-import csv
-import io
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import HTTPException
-from fastapi.responses import Response
 
 from .database import connect_db
 
 AUDIO_SOURCES = {"app_recording", "whatsapp_upload"}
 ASR_SOURCES = {"browser", "server"}
 LABEL_STATUSES = {"draft", "labeled", "skipped"}
-EXPORT_FIELDS = [
-    "audio_id",
-    "audio_file",
-    "source",
-    "original_filename",
-    "asr_text",
-    "transcript",
-    "status",
-    "unsure",
-    "notes",
-    "created_at",
-    "updated_at",
-]
 
 
 def now() -> str:
@@ -305,22 +289,3 @@ def delete_audio_clip(audio_id: str, root: Path) -> None:
         db.execute("DELETE FROM audio_clips WHERE id = ?", (audio_id,))
     audio_path.unlink(missing_ok=True)
 
-
-def export_labels_csv(all_rows: bool = False) -> Response:
-    rows = read_label_items(limit=100000)
-    if not all_rows:
-        rows = [
-            row
-            for row in rows
-            if row["status"] == "labeled" and not row["unsure"] and row["transcript"].strip()
-        ]
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=EXPORT_FIELDS, extrasaction="ignore")
-    writer.writeheader()
-    writer.writerows(rows)
-    filename = "transcription-labels-all.csv" if all_rows else "training-labels.csv"
-    return Response(
-        output.getvalue(),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
