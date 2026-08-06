@@ -232,6 +232,25 @@ def audio_file_for_clip(audio_id: str, root: Path) -> Path:
     return path
 
 
+def delete_audio_clip(audio_id: str, root: Path) -> None:
+    with connect_db() as db:
+        row = db.execute(
+            "SELECT file_path FROM audio_clips WHERE id = ?", (audio_id,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Audio clip not found.")
+
+    audio_path = (root / row["file_path"]).resolve()
+    try:
+        audio_path.relative_to(root.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid audio file path.")
+
+    with connect_db() as db:
+        db.execute("DELETE FROM audio_clips WHERE id = ?", (audio_id,))
+    audio_path.unlink(missing_ok=True)
+
+
 def export_labels_csv(all_rows: bool = False) -> Response:
     rows = read_label_items(limit=100000)
     if not all_rows:

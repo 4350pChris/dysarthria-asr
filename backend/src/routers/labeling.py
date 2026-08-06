@@ -12,6 +12,7 @@ from ..asr import transcribe_german
 from ..corpus import (
     audio_file_for_clip,
     create_audio_clip,
+    delete_audio_clip,
     export_labels_csv,
     label_counts,
     read_label_items,
@@ -189,6 +190,12 @@ def update_item(
         ),
         "counts": label_counts(),
     }
+
+
+@router.delete("/items/{audio_id}")
+def delete_item(audio_id: str) -> dict:
+    delete_audio_clip(audio_id, ROOT)
+    return {"counts": label_counts()}
 
 
 @router.get("/audio/{audio_id}")

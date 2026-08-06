@@ -282,6 +282,12 @@ function moveCurrent(delta: number) {
           Gelabelt + weiter
         </UButton>
       </div>
+
+      <RecordingDeletion
+        :recording="current"
+        :disabled="isSaving"
+        @deleted="refreshItems"
+      />
     </section>
 
     <p

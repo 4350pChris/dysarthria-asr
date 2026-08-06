@@ -187,3 +187,29 @@ def test_labeling_update_and_default_export_include_only_training_rows(
     text = export.text
     assert "Kaffee bitte." in text
     assert "Unsicher." not in text
+
+
+def test_delete_labeling_item_removes_audio_and_label(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(labeling, "transcribe_german", lambda audio_path: "")
+
+    from src.app import create_app
+
+    client = TestClient(create_app())
+    item = client.post(
+        "/api/labeling/import",
+        files=[("files", ("empty.ogg", b"audio", "audio/ogg"))],
+    ).json()["items"][0]
+
+    response = client.delete(f"/api/labeling/items/{item['audio_id']}")
+
+    assert response.status_code == 200
+    assert response.json()["counts"]["total"] == 0
+    assert not (initialized_db / item["audio_file"]).exists()
+    with database.connect_db() as db:
+        assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM transcription_labels").fetchone()[0] == 0
