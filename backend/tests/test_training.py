@@ -54,6 +54,27 @@ def test_guided_recording_rejects_unknown_prompt(initialized_db: Path, monkeypat
     assert response.status_code == 400
 
 
+def test_tatoeba_import_and_recording_use_the_cached_known_text(initialized_db: Path, monkeypatch) -> None:
+    prompts_file = initialized_db / "tatoeba.json"
+    monkeypatch.setattr(training, "ROOT", initialized_db)
+    monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    monkeypatch.setattr(training, "download_prompts", lambda: [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
+    client = TestClient(create_app())
+
+    imported = client.post("/api/training/tatoeba/import")
+    prompts = client.get("/api/training/prompts", params={"topic": "Tatoeba CC0"})
+    recording = client.post(
+        "/api/training/recordings",
+        data={"prompt_id": "tatoeba:123"},
+        files={"audio": ("reading.webm", b"audio bytes", "audio/webm")},
+    )
+
+    assert imported.json()["imported"] == 1
+    assert prompts.json()["prompts"][0]["source"] == "Tatoeba CC0"
+    assert recording.json()["item"]["transcript"] == "Das ist ein ausreichend langer deutscher Beispielsatz."
+
+
 def test_existing_database_is_upgraded_for_guided_reading(initialized_db: Path) -> None:
     with connect_db() as db:
         db.commit()

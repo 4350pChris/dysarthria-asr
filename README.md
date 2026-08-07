@@ -15,6 +15,7 @@ A German speech-assistance prototype for a person with dysarthria. The Nuxt web 
 - SQLite storage for audio clips, ASR drafts, corrected transcripts, and label state
 - Import of individual audio files or WhatsApp chat-export ZIP files
 - Guided reading: short original German prompts, one reviewed audio clip per prompt
+- Optional local import of short German CC0 prompts from Tatoeba
 - Training-data ZIP export with reviewed audio and labels
 
 ## Project layout
@@ -65,6 +66,8 @@ NUXT_API_BASE=https://example.com pnpm dev
 4. Use `Vorlesen`, copy the text, or share it. Native share is tried first; a WhatsApp tab opens only as a fallback. The app never sends a message without user action.
 5. Use `Lesetraining aufnehmen` to read one short displayed text at a time. You can listen back, retry, or save each take.
 6. Open `/labeling` to review saved recordings and prepare training data.
+
+In Lesetraining, choose `Tatoeba laden` to download Tatoeba's German CC0 sentence export once into `data/tatoeba/`. The app selects a random set of short prompts from that local cache; it does not fetch a prompt while recording. Each saved label records `Tatoeba CC0` as its source.
 
 To manage saved phrases, open `/phrases`. You can add, rename, and delete categories, and add, edit, or delete phrases.
 

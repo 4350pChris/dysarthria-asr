@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from random import sample
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from ..corpus import create_audio_clip, upsert_transcription_label
-from ..paths import AUDIO_DIR, ROOT
-from ..training_prompts import prompt_by_id, prompts_for_topic, topics
+from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
+from ..tatoeba import download_prompts, load_prompts, prompt_from_cache, write_prompts
+from ..training_prompts import TrainingPrompt, prompt_by_id, prompts_for_topic, topics
 
 router = APIRouter(prefix="/api/training")
 
@@ -18,15 +20,42 @@ def prompt_payload(prompt) -> dict:
 
 @router.get("/topics")
 def list_topics() -> dict:
-    return {"topics": topics()}
+    available_topics = topics()
+    if load_prompts(TATOEBA_PROMPTS_FILE):
+        available_topics.append("Tatoeba CC0")
+    return {"topics": available_topics}
 
 
 @router.get("/prompts")
 def list_prompts(topic: str) -> dict:
+    if topic == "Tatoeba CC0":
+        cached_prompts = load_prompts(TATOEBA_PROMPTS_FILE)
+        prompts = [
+            {"id": f"tatoeba:{prompt['id']}", "topic": topic, "text": prompt["text"], "source": "Tatoeba CC0"}
+            for prompt in sample(cached_prompts, k=min(200, len(cached_prompts)))
+        ]
+        if not prompts:
+            raise HTTPException(status_code=404, detail="Tatoeba CC0 prompts have not been imported yet.")
+        return {"prompts": prompts}
     prompts = prompts_for_topic(topic)
     if not prompts:
         raise HTTPException(status_code=404, detail="Unknown training topic.")
     return {"prompts": [prompt_payload(prompt) for prompt in prompts]}
+
+
+@router.get("/tatoeba")
+def tatoeba_status() -> dict:
+    return {"imported": len(load_prompts(TATOEBA_PROMPTS_FILE))}
+
+
+@router.post("/tatoeba/import")
+def import_tatoeba() -> dict:
+    try:
+        prompts = download_prompts()
+    except Exception as error:
+        raise HTTPException(status_code=502, detail="Tatoeba CC0 export could not be downloaded.") from error
+    write_prompts(TATOEBA_PROMPTS_FILE, prompts)
+    return {"imported": len(prompts), "topic": "Tatoeba CC0"}
 
 
 @router.post("/recordings")
@@ -34,7 +63,21 @@ async def save_training_recording(
     prompt_id: str = Form(...),
     audio: UploadFile = File(...),
 ) -> dict:
-    prompt = prompt_by_id(prompt_id)
+    is_tatoeba_prompt = prompt_id.startswith("tatoeba:")
+    if is_tatoeba_prompt:
+        cached = prompt_from_cache(TATOEBA_PROMPTS_FILE, prompt_id.removeprefix("tatoeba:"))
+        prompt = (
+            None
+            if cached is None
+            else TrainingPrompt(
+                id=prompt_id,
+                topic="Tatoeba CC0",
+                text=cached["text"],
+                source="Tatoeba CC0",
+            )
+        )
+    else:
+        prompt = prompt_by_id(prompt_id)
     if not prompt:
         raise HTTPException(status_code=400, detail="Unknown training prompt.")
     contents = await audio.read()

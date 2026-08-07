@@ -17,9 +17,14 @@ const stream = shallowRef<MediaStream>()
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
 
-const topicOptions = computed(() => topics.value.map(topic => ({ label: topic, value: topic })))
+const topicOptions = computed(() => topics.value.map(topic => ({
+  label: topic === 'Tatoeba CC0' ? 'Freie Beispielsätze' : topic,
+  value: topic
+})))
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
+const tatoebaImported = ref(0)
+const isImportingTatoeba = ref(false)
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items]
@@ -53,6 +58,23 @@ async function selectTopic(topic: string) {
   if (!topic || isRecording.value || isSaving.value) return
   selectedTopic.value = topic
   await loadPrompts(topic)
+}
+
+async function importTatoeba() {
+  if (isImportingTatoeba.value || isRecording.value || isSaving.value) return
+  isImportingTatoeba.value = true
+  errorMessage.value = ''
+  try {
+    const response = await $fetch<{ imported: number, topic: string }>('/api/training/tatoeba/import', { method: 'POST' })
+    tatoebaImported.value = response.imported
+    if (!topics.value.includes(response.topic)) topics.value.push(response.topic)
+    await selectTopic(response.topic)
+    toast.add({ title: 'Beispielsätze geladen', description: `${response.imported} kurze deutsche Sätze sind lokal verfügbar.`, color: 'success', icon: 'i-lucide-download-check' })
+  } catch {
+    errorMessage.value = 'Die Beispielsätze konnten nicht geladen werden. Bitte überprüfe die Internetverbindung und versuche es erneut.'
+  } finally {
+    isImportingTatoeba.value = false
+  }
 }
 
 async function startRecording() {
@@ -117,6 +139,7 @@ onMounted(async () => {
   try {
     const response = await $fetch<{ topics: string[] }>('/api/training/topics')
     topics.value = response.topics
+    tatoebaImported.value = (await $fetch<{ imported: number }>('/api/training/tatoeba')).imported
     selectedTopic.value = topics.value[0] || ''
     if (selectedTopic.value) await loadPrompts(selectedTopic.value)
   } catch {
@@ -137,7 +160,7 @@ onMounted(async () => {
 
     <UFormField
       label="Thema"
-      description="Kurze, originale deutsche Übungstexte – ohne Web-Scraping."
+      description="Originale Übungstexte oder lokal importierte freie Beispielsätze."
     >
       <USelect
         v-model="selectedTopic"
@@ -148,6 +171,26 @@ onMounted(async () => {
         @update:model-value="selectTopic"
       />
     </UFormField>
+
+    <UAlert
+      color="neutral"
+      icon="i-lucide-database"
+      title="Freie Beispielsätze"
+      :description="tatoebaImported ? `${tatoebaImported} kurze deutsche Sätze sind lokal gespeichert.` : 'Lädt einmalig eine Sammlung kurzer deutscher Sätze in die lokale Datenablage.'"
+    >
+      <template #actions>
+        <UButton
+          color="neutral"
+          icon="i-lucide-download"
+          :loading="isImportingTatoeba"
+          :disabled="isRecording || isSaving"
+          size="lg"
+          @click="importTatoeba"
+        >
+          {{ tatoebaImported ? 'Aktualisieren' : 'Beispielsätze laden' }}
+        </UButton>
+      </template>
+    </UAlert>
 
     <UAlert
       v-if="errorMessage"
