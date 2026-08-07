@@ -42,29 +42,26 @@ The API listens on <http://127.0.0.1:8000>. The first server-side transcription 
 
 ## Deploy a tuned ASR model
 
-The backend uses the unchanged `large-v3-turbo` model by default. To deploy a
-promoted local CTranslate2 model, set `ASR_MODEL` to its directory when you
-start the backend:
+Set `ASR_MODEL` to the full model reference before you start the backend. It
+is required. Use `@revision` to pin a Hugging Face model version:
 
 ```sh
 cd backend
-ASR_MODEL=/absolute/path/to/deployed-model uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
+ASR_MODEL=mobiuslabsgmbh/faster-whisper-large-v3-turbo \
+  uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
 ```
 
-The model directory must be made by
-`alignment-tools/promote_whisper_lora.py`. Set a different directory to switch
-model versions. Remove `ASR_MODEL` to return to the baseline.
+For Amsel v1, use `ASR_MODEL=dysarthria-asr/amsel@v1`. Set a different model
+reference to switch versions. A promoted local model directory also works.
 
-For a private Hugging Face model repository, use its model ID and a read-only
-token from the deployment secret store. Pin `ASR_MODEL_REVISION` to a commit
-hash. Do not add the token to a source file, image, or repository.
+For a private Hugging Face model repository, set the standard `HF_TOKEN`
+secret in the deployment environment. Do not add this token to a source file,
+image, or repository.
 
 ```sh
 cd backend
-ASR_MODEL=your-org/dysarthria-asr-speaker-v1 \
-ASR_MODEL_REVISION=commit-hash \
-ASR_HF_TOKEN=read-only-token \
-ASR_MODEL_CACHE_DIR=/var/lib/dysarthria-asr/models \
+ASR_MODEL=dysarthria-asr/amsel@v1 \
+HF_TOKEN=read-only-token \
 uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
 ```
 

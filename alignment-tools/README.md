@@ -54,8 +54,9 @@ uv run python promote_whisper_lora.py \
   --output-dir outputs/deployed/whisper-large-v3-turbo-combined-retry-int8
 ```
 
-Set `ASR_MODEL` to this deployed directory when you start the backend. Keep
-the default value to use the unchanged `large-v3-turbo` model.
+Set `ASR_MODEL` to this deployed directory when you start the backend. The
+backend requires this setting. Use
+`mobiuslabsgmbh/faster-whisper-large-v3-turbo` for the unchanged baseline.
 
 Test the converted model on the same held-out split before deployment:
 
