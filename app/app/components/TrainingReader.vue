@@ -3,11 +3,13 @@ import type { AudioQualityReport } from '~/utils/audioQuality'
 import type { ReadingPrompt } from '~/types/speech'
 
 const toast = useToast()
-const prompts = ref<ReadingPrompt[]>([])
+const { data: promptResponse, error: promptError } = await useFetch<{ prompts: ReadingPrompt[] }>('/api/training/prompts', {
+  default: () => ({ prompts: [] })
+})
+const prompts = computed(() => promptResponse.value.prompts)
 const promptIndex = ref(0)
-const isLoading = ref(true)
 const isSaving = ref(false)
-const errorMessage = ref('')
+const errorMessage = ref(promptError.value ? 'Die Lesetexte konnten nicht geladen werden.' : '')
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
 const audioQuality = ref<AudioQualityReport>()
@@ -24,35 +26,6 @@ const {
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
 const canSaveRecording = computed(() => Boolean(recording.value) && !isCheckingAudio.value && audioQuality.value?.canSave !== false)
-
-function shuffle<T>(items: T[]): T[] {
-  const copy = [...items]
-  for (let index = copy.length - 1; index > 0; index--) {
-    const replacement = Math.floor(Math.random() * (index + 1))
-    const selected = copy[index]!
-    copy[index] = copy[replacement]!
-    copy[replacement] = selected
-  }
-  return copy
-}
-
-async function loadPrompts() {
-  isLoading.value = true
-  errorMessage.value = ''
-  recording.value = undefined
-  audioQuality.value = undefined
-  if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
-  recordingUrl.value = ''
-  try {
-    const response = await $fetch<{ prompts: ReadingPrompt[] }>('/api/training/prompts')
-    prompts.value = shuffle(response.prompts)
-    promptIndex.value = 0
-  } catch {
-    errorMessage.value = 'Die Lesetexte konnten nicht geladen werden.'
-  } finally {
-    isLoading.value = false
-  }
-}
 
 function startRecording() {
   if (!currentPrompt.value || isRecording.value || isSaving.value) return
@@ -151,15 +124,6 @@ async function saveRecording() {
 onBeforeUnmount(() => {
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
 })
-
-onMounted(async () => {
-  try {
-    await loadPrompts()
-  } catch {
-    errorMessage.value = 'Die Lesetexte konnten nicht geladen werden.'
-    isLoading.value = false
-  }
-})
 </script>
 
 <template>
@@ -171,15 +135,7 @@ onMounted(async () => {
       :description="errorMessage"
     />
 
-    <div
-      v-if="isLoading"
-      class="space-y-3"
-    >
-      <USkeleton class="h-8 w-24" />
-      <USkeleton class="h-36 w-full" />
-    </div>
-
-    <template v-else-if="currentPrompt">
+    <template v-if="currentPrompt">
       <TrainingPrompt
         :index="promptIndex"
         :saved-count="savedCount"
