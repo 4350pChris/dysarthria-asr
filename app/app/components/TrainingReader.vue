@@ -17,6 +17,7 @@ const recording = shallowRef<Blob>()
 const audioQuality = ref<AudioQualityReport>()
 const isCheckingAudio = ref(false)
 const { checkAudio } = useAudioQualityCheck()
+const silenceDetection = useSilenceDetection(stopRecording)
 
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
@@ -60,6 +61,7 @@ async function startRecording() {
     recorder.value = new MediaRecorder(stream.value)
     recorder.value.ondataavailable = event => chunks.value.push(event.data)
     recorder.value.onstop = async () => {
+      silenceDetection.stop()
       stream.value?.getTracks().forEach(track => track.stop())
       stream.value = undefined
       recording.value = new Blob(chunks.value, { type: recorder.value?.mimeType || 'audio/webm' })
@@ -83,6 +85,7 @@ async function startRecording() {
       }
     }
     recorder.value.start()
+    silenceDetection.start(stream.value)
     isRecording.value = true
   } catch {
     errorMessage.value = 'Das Mikrofon ist nicht verfügbar. Bitte erlaube den Mikrofonzugriff.'
@@ -92,6 +95,31 @@ async function startRecording() {
 function stopRecording() {
   if (recorder.value?.state === 'recording') recorder.value.stop()
 }
+
+useSpeechCommand({
+  id: 'training-record',
+  label: 'Aufnehmen',
+  phrases: ['aufnehmen', 'aufnahme', 'start', 'los'],
+  handler: startRecording
+})
+useSpeechCommand({
+  id: 'training-stop',
+  label: 'Stopp',
+  phrases: ['stopp', 'stop', 'anhalten', 'fertig'],
+  handler: stopRecording
+})
+useSpeechCommand({
+  id: 'training-retry',
+  label: 'Neu aufnehmen',
+  phrases: ['neu aufnehmen', 'nochmal', 'wiederholen'],
+  handler: discardRecording
+})
+useSpeechCommand({
+  id: 'training-save',
+  label: 'Speichern',
+  phrases: ['speichern', 'aufnahme speichern', 'weiter'],
+  handler: saveRecording
+})
 
 function discardRecording() {
   recording.value = undefined
