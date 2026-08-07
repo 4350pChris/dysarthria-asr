@@ -9,22 +9,26 @@ from src.routers import training
 from src.tatoeba import ensure_prompts, write_prompts
 
 
-def test_training_prompts_are_grouped_by_topic() -> None:
+def test_training_prompts_come_from_cached_tatoeba(initialized_db: Path, monkeypatch) -> None:
+    prompts_file = initialized_db / "tatoeba.json"
+    monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
     client = TestClient(create_app())
 
-    topics = client.get("/api/training/topics").json()["topics"]
-    response = client.get("/api/training/prompts", params={"topic": topics[0]})
+    response = client.get("/api/training/prompts")
 
     assert response.status_code == 200
-    assert response.json()["prompts"]
-    assert {prompt["topic"] for prompt in response.json()["prompts"]} == {topics[0]}
+    assert response.json()["prompts"] == [{"id": "tatoeba:123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}]
 
 
 def test_guided_recording_saves_known_prompt_as_training_ready(initialized_db: Path, monkeypatch) -> None:
     monkeypatch.setattr(training, "ROOT", initialized_db)
     monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
+    prompts_file = initialized_db / "tatoeba.json"
+    monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
     client = TestClient(create_app())
-    prompt = client.get("/api/training/prompts", params={"topic": "Alltag"}).json()["prompts"][0]
+    prompt = client.get("/api/training/prompts").json()["prompts"][0]
 
     response = client.post(
         "/api/training/recordings",
@@ -63,14 +67,14 @@ def test_tatoeba_recording_uses_the_cached_known_text(initialized_db: Path, monk
     write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
     client = TestClient(create_app())
 
-    prompts = client.get("/api/training/prompts", params={"topic": "Tatoeba"})
+    prompts = client.get("/api/training/prompts")
     recording = client.post(
         "/api/training/recordings",
         data={"prompt_id": "tatoeba:123"},
         files={"audio": ("reading.webm", b"audio bytes", "audio/webm")},
     )
 
-    assert prompts.json()["prompts"][0]["source"] == "Tatoeba"
+    assert prompts.json()["prompts"][0]["id"] == "tatoeba:123"
     assert recording.json()["item"]["transcript"] == "Das ist ein ausreichend langer deutscher Beispielsatz."
 
 

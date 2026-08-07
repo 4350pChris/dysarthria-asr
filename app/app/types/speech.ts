@@ -32,11 +32,9 @@ export type TranscriptionResult = {
 export type LabelStatus = 'draft' | 'labeled' | 'skipped'
 export type AudioSource = 'app_recording' | 'whatsapp_upload' | 'training_reading'
 
-export type TrainingPrompt = {
+export type ReadingPrompt = {
   id: string
-  topic: string
   text: string
-  source: string
 }
 
 export type LabelItem = {

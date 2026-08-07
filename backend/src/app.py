@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,11 +22,21 @@ def configure_logging() -> None:
     logging.getLogger("src").setLevel(level)
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    try:
+        count = ensure_prompts(TATOEBA_PROMPTS_FILE)
+        logging.getLogger("src").info("Tatoeba prompt cache has %s prompts.", count)
+    except Exception:
+        logging.getLogger("src").warning("Tatoeba prompt download failed; continuing without it.", exc_info=True)
+    yield
+
+
 def create_app() -> FastAPI:
     configure_logging()
     init_db()
 
-    app = FastAPI(title="Dysarthria ASR Prototype")
+    app = FastAPI(title="Dysarthria ASR Prototype", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -36,14 +48,6 @@ def create_app() -> FastAPI:
     app.include_router(labeling.router)
     app.include_router(phrases.router)
     app.include_router(training.router)
-
-    @app.on_event("startup")
-    def initialize_tatoeba_prompts() -> None:
-        try:
-            count = ensure_prompts(TATOEBA_PROMPTS_FILE)
-            logging.getLogger("src").info("Tatoeba prompt cache has %s prompts.", count)
-        except Exception:
-            logging.getLogger("src").warning("Tatoeba prompt download failed; continuing without it.", exc_info=True)
 
     @app.get("/")
     def index() -> FileResponse:

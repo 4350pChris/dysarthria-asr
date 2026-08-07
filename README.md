@@ -14,8 +14,7 @@ A German speech-assistance prototype for a person with dysarthria. The Nuxt web 
 - A PWA that can be installed on an iPhone
 - SQLite storage for audio clips, ASR drafts, corrected transcripts, and label state
 - Import of individual audio files or WhatsApp chat-export ZIP files
-- Guided reading: short original German prompts, one reviewed audio clip per prompt
-- Optional local import of short German prompts from Tatoeba
+- Guided reading with short German Tatoeba prompts, one reviewed audio clip per prompt
 - Training-data ZIP export with reviewed audio and labels
 
 ## Project layout

@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import type { TrainingPrompt } from '~/types/speech'
+import type { ReadingPrompt } from '~/types/speech'
 
 const toast = useToast()
-const topics = ref<string[]>([])
-const selectedTopic = ref('')
-const prompts = ref<TrainingPrompt[]>([])
+const prompts = ref<ReadingPrompt[]>([])
 const promptIndex = ref(0)
 const isLoading = ref(true)
 const isRecording = ref(false)
@@ -16,10 +14,6 @@ const stream = shallowRef<MediaStream>()
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
 
-const topicOptions = computed(() => topics.value.map(topic => ({
-  label: topic === 'Tatoeba' ? 'Freie Beispielsätze' : topic,
-  value: topic
-})))
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
 
@@ -34,14 +28,14 @@ function shuffle<T>(items: T[]): T[] {
   return copy
 }
 
-async function loadPrompts(topic: string) {
+async function loadPrompts() {
   isLoading.value = true
   errorMessage.value = ''
   recording.value = undefined
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
   recordingUrl.value = ''
   try {
-    const response = await $fetch<{ prompts: TrainingPrompt[] }>('/api/training/prompts', { query: { topic } })
+    const response = await $fetch<{ prompts: ReadingPrompt[] }>('/api/training/prompts')
     prompts.value = shuffle(response.prompts)
     promptIndex.value = 0
   } catch {
@@ -49,12 +43,6 @@ async function loadPrompts(topic: string) {
   } finally {
     isLoading.value = false
   }
-}
-
-async function selectTopic(topic: string) {
-  if (!topic || isRecording.value || isSaving.value) return
-  selectedTopic.value = topic
-  await loadPrompts(topic)
 }
 
 async function startRecording() {
@@ -117,10 +105,7 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   try {
-    const response = await $fetch<{ topics: string[] }>('/api/training/topics')
-    topics.value = response.topics
-    selectedTopic.value = topics.value[0] || ''
-    if (selectedTopic.value) await loadPrompts(selectedTopic.value)
+    await loadPrompts()
   } catch {
     errorMessage.value = 'Die Lesetexte konnten nicht geladen werden.'
     isLoading.value = false
@@ -130,20 +115,6 @@ onMounted(async () => {
 
 <template>
   <section class="space-y-5">
-    <UFormField
-      label="Thema"
-      description="Originale Übungstexte oder lokal importierte freie Beispielsätze."
-    >
-      <USelect
-        v-model="selectedTopic"
-        class="w-full"
-        :items="topicOptions"
-        size="xl"
-        :disabled="isLoading || isRecording || isSaving"
-        @update:model-value="selectTopic"
-      />
-    </UFormField>
-
     <UAlert
       v-if="errorMessage"
       color="error"
