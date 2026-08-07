@@ -63,6 +63,9 @@ useSpeechCommand({
         </UButton>
         <LogoLockup :mark-size="40" />
       </template>
+      <template #right>
+        <UColorModeButton size="xl" />
+      </template>
     </UHeader>
 
     <section class="px-4 pt-4">
