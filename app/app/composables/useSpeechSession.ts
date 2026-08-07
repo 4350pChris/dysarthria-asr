@@ -3,17 +3,24 @@ import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
 type SpeechMode = 'phrases' | 'math'
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
-  const recorder = shallowRef<MediaRecorder>()
-  const chunks = ref<Blob[]>([])
   const result = ref<TranscriptionResult>()
   const selected = ref<Suggestion>()
   const status = ref('')
-  const isRecording = ref(false)
   const isBusy = ref(false)
   const isSaving = ref(false)
   const hasSaved = ref(false)
-  const recordingDone = shallowRef<Promise<void>>()
   const { isSafeToUpdate } = usePwaUpdateSafety()
+  const {
+    isRecording,
+    start: startAudioRecording,
+    stop: stopAudioRecording
+  } = useAudioRecording({
+    onComplete: transcribe,
+    onStopping: () => {
+      isBusy.value = true
+      status.value = 'Ich höre zu...'
+    }
+  })
 
   const suggestions = computed(() => result.value?.suggestions ?? [])
   const hasSelection = computed(() => Boolean(selected.value))
@@ -36,8 +43,6 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   onScopeDispose(() => {
     isSafeToUpdate.value = true
   })
-
-  const silenceDetection = useSilenceDetection(stopRecording)
 
   function setSelection(suggestion: Suggestion) {
     selected.value = suggestion
@@ -64,41 +69,16 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   async function startRecording() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    let resolveRecordingDone: () => void = () => {}
-    recordingDone.value = new Promise((resolve) => {
-      resolveRecordingDone = resolve
-    })
-    chunks.value = []
     result.value = undefined
     selected.value = undefined
     hasSaved.value = false
     status.value = ''
-    recorder.value = new MediaRecorder(stream)
-    recorder.value.ondataavailable = event => chunks.value.push(event.data)
-    recorder.value.onstop = async () => {
-      silenceDetection.stop()
-      stream.getTracks().forEach(track => track.stop())
-      await transcribe(
-        new Blob(chunks.value, {
-          type: recorder.value?.mimeType || 'audio/webm'
-        })
-      )
-      resolveRecordingDone()
-    }
-    recorder.value.start()
-    silenceDetection.start(stream)
-    isRecording.value = true
     status.value = 'Aufnahme läuft...'
-    await recordingDone.value
+    await startAudioRecording()
   }
 
   function stopRecording() {
-    if (!recorder.value || recorder.value.state === 'inactive') return
-    isRecording.value = false
-    isBusy.value = true
-    status.value = 'Ich höre zu...'
-    recorder.value.stop()
+    stopAudioRecording()
   }
 
   async function transcribe(blob: Blob) {

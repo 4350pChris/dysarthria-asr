@@ -31,7 +31,7 @@ const copy = computed(() => ({
   }
 })[state.value])
 
-function toggleRecording(start: boolean) {
+function toggleRecording() {
   if (disabledTimer.value) {
     return
   }
@@ -39,7 +39,7 @@ function toggleRecording(start: boolean) {
   setTimeout(() => {
     disabledTimer.value = false
   }, 2000)
-  if (start) {
+  if (!props.isRecording) {
     emit('start')
   } else {
     emit('stop')
@@ -48,44 +48,50 @@ function toggleRecording(start: boolean) {
 </script>
 
 <template>
-  <UButton
-    class="min-h-60 justify-center rounded-3xl text-center shadow-sm"
-    block
-    color="neutral"
-    size="xl"
-    type="button"
-    variant="soft"
-    :disabled="props.isBusy"
-    :ui="{ base: 'flex-col gap-0 ring ring-default hover:ring-primary/50' }"
-    @click="toggleRecording(!props.isRecording)"
+  <slot
+    :is-busy="props.isBusy"
+    :is-recording="props.isRecording"
+    :toggle="toggleRecording"
   >
-    <div class="flex flex-col items-center gap-3">
-      <div class="grid size-28 place-items-center">
-        <LogoMark
-          aria-hidden="true"
-          :size="112"
-          :state="state"
-        />
-      </div>
+    <UButton
+      class="min-h-60 justify-center rounded-3xl text-center shadow-sm"
+      block
+      color="neutral"
+      size="xl"
+      type="button"
+      variant="soft"
+      :disabled="props.isBusy"
+      :ui="{ base: 'flex-col gap-0 ring ring-default hover:ring-primary/50' }"
+      @click="toggleRecording"
+    >
+      <div class="flex flex-col items-center gap-3">
+        <div class="grid size-28 place-items-center">
+          <LogoMark
+            aria-hidden="true"
+            :size="112"
+            :state="state"
+          />
+        </div>
 
-      <div class="grid min-w-full place-items-center">
-        <Transition name="record-copy">
-          <div
-            :key="state"
-            class="col-start-1 row-start-1 flex flex-col items-center gap-3"
-          >
-            <span class="min-h-8 text-2xl font-extrabold text-highlighted">
-              {{ copy.title }}
-            </span>
+        <div class="grid min-w-full place-items-center">
+          <Transition name="record-copy">
+            <div
+              :key="state"
+              class="col-start-1 row-start-1 flex flex-col items-center gap-3"
+            >
+              <span class="min-h-8 text-2xl font-extrabold text-highlighted">
+                {{ copy.title }}
+              </span>
 
-            <span class="min-h-6 text-base font-semibold text-muted">
-              {{ copy.guidance }}
-            </span>
-          </div>
-        </Transition>
+              <span class="min-h-6 text-base font-semibold text-muted">
+                {{ copy.guidance }}
+              </span>
+            </div>
+          </Transition>
+        </div>
       </div>
-    </div>
-  </UButton>
+    </UButton>
+  </slot>
 </template>
 
 <style scoped>

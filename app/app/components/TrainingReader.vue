@@ -6,18 +6,20 @@ const toast = useToast()
 const prompts = ref<ReadingPrompt[]>([])
 const promptIndex = ref(0)
 const isLoading = ref(true)
-const isRecording = ref(false)
 const isSaving = ref(false)
 const errorMessage = ref('')
-const recorder = shallowRef<MediaRecorder>()
-const chunks = ref<Blob[]>([])
-const stream = shallowRef<MediaStream>()
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
 const audioQuality = ref<AudioQualityReport>()
 const isCheckingAudio = ref(false)
+const resumeVoiceCommands = ref(false)
 const { checkAudio } = useAudioQualityCheck()
-const silenceDetection = useSilenceDetection(stopRecording)
+const speechCommands = useSpeechCommands()
+const {
+  isRecording,
+  start: startAudioRecording,
+  stop: stopAudioRecording
+} = useAudioRecording({ onComplete: processRecording })
 
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
@@ -52,48 +54,47 @@ async function loadPrompts() {
   }
 }
 
-async function startRecording() {
+function startRecording() {
   if (!currentPrompt.value || isRecording.value || isSaving.value) return
   errorMessage.value = ''
-  try {
-    stream.value = await navigator.mediaDevices.getUserMedia({ audio: true })
-    chunks.value = []
-    recorder.value = new MediaRecorder(stream.value)
-    recorder.value.ondataavailable = event => chunks.value.push(event.data)
-    recorder.value.onstop = async () => {
-      silenceDetection.stop()
-      stream.value?.getTracks().forEach(track => track.stop())
-      stream.value = undefined
-      recording.value = new Blob(chunks.value, { type: recorder.value?.mimeType || 'audio/webm' })
-      if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
-      recordingUrl.value = URL.createObjectURL(recording.value)
-      isRecording.value = false
-      isCheckingAudio.value = true
-      try {
-        audioQuality.value = await checkAudio(recording.value)
-      } catch {
-        audioQuality.value = {
-          canSave: true,
-          issues: [{
-            code: 'quiet',
-            level: 'warning',
-            message: 'Die Audio-Prüfung ist nicht verfügbar. Höre die Aufnahme vor dem Speichern an.'
-          }]
-        }
-      } finally {
-        isCheckingAudio.value = false
-      }
-    }
-    recorder.value.start()
-    silenceDetection.start(stream.value)
-    isRecording.value = true
-  } catch {
+  resumeVoiceCommands.value = speechCommands.isListening.value
+  if (resumeVoiceCommands.value) speechCommands.stop()
+  void startAudioRecording().catch(() => {
     errorMessage.value = 'Das Mikrofon ist nicht verfügbar. Bitte erlaube den Mikrofonzugriff.'
-  }
+    if (resumeVoiceCommands.value) {
+      resumeVoiceCommands.value = false
+      speechCommands.start()
+    }
+  })
 }
 
 function stopRecording() {
-  if (recorder.value?.state === 'recording') recorder.value.stop()
+  stopAudioRecording()
+}
+
+async function processRecording(audio: Blob) {
+  recording.value = audio
+  if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
+  recordingUrl.value = URL.createObjectURL(audio)
+  isCheckingAudio.value = true
+  try {
+    audioQuality.value = await checkAudio(audio)
+  } catch {
+    audioQuality.value = {
+      canSave: true,
+      issues: [{
+        code: 'quiet',
+        level: 'warning',
+        message: 'Die Audio-Prüfung ist nicht verfügbar. Höre die Aufnahme vor dem Speichern an.'
+      }]
+    }
+  } finally {
+    isCheckingAudio.value = false
+    if (resumeVoiceCommands.value) {
+      resumeVoiceCommands.value = false
+      speechCommands.start()
+    }
+  }
 }
 
 useSpeechCommand({
@@ -101,12 +102,6 @@ useSpeechCommand({
   label: 'Aufnehmen',
   phrases: ['aufnehmen', 'aufnahme', 'start', 'los'],
   handler: startRecording
-})
-useSpeechCommand({
-  id: 'training-stop',
-  label: 'Stopp',
-  phrases: ['stopp', 'stop', 'anhalten', 'fertig'],
-  handler: stopRecording
 })
 useSpeechCommand({
   id: 'training-retry',
@@ -150,7 +145,6 @@ async function saveRecording() {
 }
 
 onBeforeUnmount(() => {
-  stream.value?.getTracks().forEach(track => track.stop())
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
 })
 
@@ -193,18 +187,27 @@ onMounted(async () => {
         </p>
       </UCard>
 
-      <UButton
+      <RecordControl
         v-if="!recording"
-        block
-        class="min-h-28 justify-center rounded-3xl text-xl font-extrabold"
-        :color="isRecording ? 'error' : 'primary'"
-        :disabled="isSaving"
-        :icon="isRecording ? 'i-lucide-square' : 'i-lucide-mic'"
-        size="xl"
-        @click="isRecording ? stopRecording() : startRecording()"
+        :is-busy="isSaving"
+        :is-recording="isRecording"
+        @start="startRecording"
+        @stop="stopRecording"
       >
-        {{ isRecording ? 'Aufnahme stoppen' : 'Diesen Text aufnehmen' }}
-      </UButton>
+        <template #default="{ isBusy, isRecording: recordingActive, toggle }">
+          <UButton
+            block
+            class="min-h-28 justify-center rounded-3xl text-xl font-extrabold"
+            :color="recordingActive ? 'error' : 'primary'"
+            :disabled="isBusy"
+            :icon="recordingActive ? 'i-lucide-square' : 'i-lucide-mic'"
+            size="xl"
+            @click="toggle"
+          >
+            {{ recordingActive ? 'Aufnahme stoppen' : 'Diesen Text aufnehmen' }}
+          </UButton>
+        </template>
+      </RecordControl>
 
       <template v-else>
         <audio
