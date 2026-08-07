@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 
 data/audio/
+data/tatoeba/
 data/corrections.jsonl
 data/*.sqlite
 data/voice_samples
