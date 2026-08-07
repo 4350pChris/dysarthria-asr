@@ -30,7 +30,7 @@ export default defineNuxtConfig({
           scope: '/',
           display: 'standalone',
           background_color: '#ffffff',
-          theme_color: '#0f766e',
+          theme_color: '#ec4899',
           icons: [
             {
               src: 'pwa-192x192.png',
