@@ -1,9 +1,7 @@
-type SilenceDetectionOptions = {
-  minDurationMs?: number
-  silenceMs?: number
-  maxDurationMs?: number
-  threshold?: number
-}
+const MIN_DURATION_MS = 1500
+const SILENCE_MS = 2000
+const MAX_DURATION_MS = 30000
+const SILENCE_THRESHOLD = 0.025
 
 export function useSilenceDetection(onStop: () => void) {
   const frame = ref<number>()
@@ -22,16 +20,11 @@ export function useSilenceDetection(onStop: () => void) {
     audioContext.value = undefined
   }
 
-  function start(stream: MediaStream, options: SilenceDetectionOptions = {}) {
+  function start(stream: MediaStream) {
     stop()
     stopped.value = false
     startedAt.value = performance.now()
     silentSince.value = undefined
-
-    const minDurationMs = options.minDurationMs ?? 1500
-    const silenceMs = options.silenceMs ?? 2000
-    const maxDurationMs = options.maxDurationMs ?? 10000
-    const threshold = options.threshold ?? 0.025
 
     audioContext.value = new AudioContext()
     const source = audioContext.value.createMediaStreamSource(stream)
@@ -55,15 +48,15 @@ export function useSilenceDetection(onStop: () => void) {
       const now = performance.now()
       const elapsed = now - startedAt.value
 
-      if (elapsed >= maxDurationMs) {
+      if (elapsed >= MAX_DURATION_MS) {
         stop()
         onStop()
         return
       }
 
-      if (elapsed >= minDurationMs && rms < threshold) {
+      if (elapsed >= MIN_DURATION_MS && rms < SILENCE_THRESHOLD) {
         silentSince.value ??= now
-        if (now - silentSince.value >= silenceMs) {
+        if (now - silentSince.value >= SILENCE_MS) {
           stop()
           onStop()
           return
