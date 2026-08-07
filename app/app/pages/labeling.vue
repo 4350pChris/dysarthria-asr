@@ -130,6 +130,7 @@ function moveCurrent(delta: number) {
       <UButton
         class="font-extrabold"
         color="primary"
+        external
         icon="i-lucide-download"
         size="lg"
         to="/api/labeling/training-data.zip"
