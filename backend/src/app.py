@@ -9,8 +9,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
-from .paths import STATIC_DIR
+from .paths import STATIC_DIR, TATOEBA_PROMPTS_FILE
 from .routers import labeling, phrases, training, transcription
+from .tatoeba import ensure_prompts
 
 
 def configure_logging() -> None:
@@ -35,6 +36,14 @@ def create_app() -> FastAPI:
     app.include_router(labeling.router)
     app.include_router(phrases.router)
     app.include_router(training.router)
+
+    @app.on_event("startup")
+    def initialize_tatoeba_prompts() -> None:
+        try:
+            count = ensure_prompts(TATOEBA_PROMPTS_FILE)
+            logging.getLogger("src").info("Tatoeba prompt cache has %s prompts.", count)
+        except Exception:
+            logging.getLogger("src").warning("Tatoeba prompt download failed; continuing without it.", exc_info=True)
 
     @app.get("/")
     def index() -> FileResponse:

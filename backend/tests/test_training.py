@@ -6,6 +6,7 @@ from src import database
 from src.app import create_app
 from src.database import connect_db
 from src.routers import training
+from src.tatoeba import ensure_prompts, write_prompts
 
 
 def test_training_prompts_are_grouped_by_topic() -> None:
@@ -54,25 +55,34 @@ def test_guided_recording_rejects_unknown_prompt(initialized_db: Path, monkeypat
     assert response.status_code == 400
 
 
-def test_tatoeba_import_and_recording_use_the_cached_known_text(initialized_db: Path, monkeypatch) -> None:
+def test_tatoeba_recording_uses_the_cached_known_text(initialized_db: Path, monkeypatch) -> None:
     prompts_file = initialized_db / "tatoeba.json"
     monkeypatch.setattr(training, "ROOT", initialized_db)
     monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
     monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
-    monkeypatch.setattr(training, "download_prompts", lambda: [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
+    write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
     client = TestClient(create_app())
 
-    imported = client.post("/api/training/tatoeba/import")
-    prompts = client.get("/api/training/prompts", params={"topic": "Tatoeba CC0"})
+    prompts = client.get("/api/training/prompts", params={"topic": "Tatoeba"})
     recording = client.post(
         "/api/training/recordings",
         data={"prompt_id": "tatoeba:123"},
         files={"audio": ("reading.webm", b"audio bytes", "audio/webm")},
     )
 
-    assert imported.json()["imported"] == 1
-    assert prompts.json()["prompts"][0]["source"] == "Tatoeba CC0"
+    assert prompts.json()["prompts"][0]["source"] == "Tatoeba"
     assert recording.json()["item"]["transcript"] == "Das ist ein ausreichend langer deutscher Beispielsatz."
+
+
+def test_tatoeba_cache_is_not_downloaded_when_it_exists(tmp_path: Path, monkeypatch) -> None:
+    prompts_file = tmp_path / "tatoeba.json"
+    write_prompts(prompts_file, [{"id": "123", "text": "Ein vorhandener Beispielsatz bleibt erhalten."}])
+    monkeypatch.setattr(
+        "src.tatoeba.download_prompts",
+        lambda: (_ for _ in ()).throw(AssertionError("Download must not run")),
+    )
+
+    assert ensure_prompts(prompts_file) == 1
 
 
 def test_existing_database_is_upgraded_for_guided_reading(initialized_db: Path) -> None:

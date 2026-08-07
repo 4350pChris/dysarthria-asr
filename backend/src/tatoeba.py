@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from urllib.request import urlopen
 
-TATOEBA_EXPORT_URL = "https://downloads.tatoeba.org/exports/per_language/deu/deu_sentences_CC0.tsv.bz2"
+TATOEBA_EXPORT_URL = "https://downloads.tatoeba.org/exports/per_language/deu/deu_sentences.tsv.bz2"
 MIN_CHARACTERS = 25
 MAX_CHARACTERS = 180
 MAX_WORDS = 28
@@ -57,6 +57,14 @@ def load_prompts(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def ensure_prompts(path: Path) -> int:
+    if path.exists():
+        return len(load_prompts(path))
+    prompts = download_prompts()
+    write_prompts(path, prompts)
+    return len(prompts)
 
 
 def prompt_from_cache(path: Path, prompt_id: str) -> dict[str, str] | None:
