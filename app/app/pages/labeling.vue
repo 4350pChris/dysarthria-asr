@@ -133,7 +133,7 @@ function moveCurrent(delta: number) {
         color="neutral"
         icon="i-lucide-chart-no-axes-column-increasing"
         size="lg"
-        to="/labeling/metrics"
+        to="/metrics"
       >
         ASR-Metriken
       </UButton>
