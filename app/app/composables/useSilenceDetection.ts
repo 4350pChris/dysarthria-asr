@@ -1,6 +1,6 @@
 const MIN_DURATION_MS = 1500
 const SILENCE_MS = 2000
-const MAX_DURATION_MS = 30000
+const MAX_DURATION_MS = 60000
 const SILENCE_THRESHOLD = 0.025
 
 export function useSilenceDetection(onStop: () => void) {
