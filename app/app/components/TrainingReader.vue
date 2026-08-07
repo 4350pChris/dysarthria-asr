@@ -163,15 +163,6 @@ onBeforeUnmount(() => {
       />
 
       <TrainingProgress :saved-count="savedCount" />
-
-      <UButton
-        block
-        color="primary"
-        label="Test increase"
-        size="sm"
-        variant="soft"
-        @click="savedCount += 1"
-      />
     </template>
   </section>
 </template>
