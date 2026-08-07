@@ -5,7 +5,7 @@ const props = withDefaults(defineProps<{
   speed?: 'reload' | 'warmup'
   variant?: 'full' | 'compact'
 }>(), {
-  label: 'Lädt',
+  label: '',
   size: 72,
   speed: 'reload',
   variant: 'full'
