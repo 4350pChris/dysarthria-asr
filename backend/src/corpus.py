@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from .database import connect_db
 
-AUDIO_SOURCES = {"app_recording", "whatsapp_upload"}
+AUDIO_SOURCES = {"app_recording", "whatsapp_upload", "training_reading"}
 ASR_SOURCES = {"browser", "server"}
 LABEL_STATUSES = {"draft", "labeled", "skipped"}
 
@@ -288,4 +288,3 @@ def delete_audio_clip(audio_id: str, root: Path) -> None:
     with connect_db() as db:
         db.execute("DELETE FROM audio_clips WHERE id = ?", (audio_id,))
     audio_path.unlink(missing_ok=True)
-

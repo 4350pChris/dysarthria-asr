@@ -183,7 +183,7 @@ def init_db() -> None:
                 file_path TEXT NOT NULL,
                 original_filename TEXT NOT NULL DEFAULT '',
                 content_type TEXT NOT NULL DEFAULT '',
-                source TEXT NOT NULL CHECK (source IN ('app_recording', 'whatsapp_upload')),
+                source TEXT NOT NULL CHECK (source IN ('app_recording', 'whatsapp_upload', 'training_reading')),
                 created_at TEXT NOT NULL
             )
             """
@@ -203,6 +203,7 @@ def init_db() -> None:
             )
             """
         )
+        migrate_audio_sources(db)
         label_columns = {
             row["name"]
             for row in db.execute("PRAGMA table_info(transcription_labels)")
@@ -257,6 +258,39 @@ def init_db() -> None:
                     "INSERT OR IGNORE INTO phrases (category_id, text) VALUES (?, ?)",
                     (category_id, text),
                 )
+
+
+def migrate_audio_sources(db: sqlite3.Connection) -> None:
+    """Allow the guided-reading source in databases created before this feature."""
+    schema = db.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'audio_clips'"
+    ).fetchone()["sql"]
+    if "training_reading" in schema:
+        return
+
+    # SQLite cannot alter a CHECK constraint. Rebuild just this parent table;
+    # transcription_labels keeps its existing audio_id values and FK target.
+    db.commit()
+    db.execute("PRAGMA foreign_keys = OFF")
+    try:
+        db.execute(
+            """
+            CREATE TABLE audio_clips_replacement (
+                id TEXT PRIMARY KEY,
+                file_path TEXT NOT NULL,
+                original_filename TEXT NOT NULL DEFAULT '',
+                content_type TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL CHECK (source IN ('app_recording', 'whatsapp_upload', 'training_reading')),
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        db.execute("INSERT INTO audio_clips_replacement SELECT * FROM audio_clips")
+        db.execute("DROP TABLE audio_clips")
+        db.execute("ALTER TABLE audio_clips_replacement RENAME TO audio_clips")
+        db.commit()
+    finally:
+        db.execute("PRAGMA foreign_keys = ON")
 
 
 def seed_grammar(db: sqlite3.Connection) -> None:

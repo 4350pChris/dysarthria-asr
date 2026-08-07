@@ -19,6 +19,7 @@ type ItemsResponse = {
 const sourceOptions = [
   { label: 'Alle Quellen', value: 'all' },
   { label: 'App-Aufnahmen', value: 'app_recording' },
+  { label: 'Geführtes Lesen', value: 'training_reading' },
   { label: 'WhatsApp', value: 'whatsapp_upload' }
 ]
 const statusOptions = [

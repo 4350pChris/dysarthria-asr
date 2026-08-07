@@ -156,6 +156,18 @@ function submit() {
     <UButton
       class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
       block
+      color="primary"
+      icon="i-lucide-book-open-check"
+      size="xl"
+      to="/training"
+      variant="soft"
+    >
+      Lesetraining aufnehmen
+    </UButton>
+
+    <UButton
+      class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+      block
       color="neutral"
       icon="i-lucide-list-checks"
       size="xl"
