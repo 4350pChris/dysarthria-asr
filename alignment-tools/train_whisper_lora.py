@@ -152,6 +152,10 @@ def main() -> int:
     parser.add_argument("--epochs", type=float, default=3)
     parser.add_argument("--evaluation-fraction", type=float, default=0.2)
     parser.add_argument("--precision", choices=["bf16", "fp32"], default="bf16")
+    parser.add_argument("--max-steps", type=int, default=-1, help="Stop after this many optimizer updates. Default: all.")
+    parser.add_argument("--only-audio-id", help="Train only this audio ID. Diagnostic use only.")
+    parser.add_argument("--skip-trainer-evaluation", action="store_true")
+    parser.add_argument("--skip-final-evaluation", action="store_true")
     arguments = parser.parse_args()
 
     if not torch.backends.mps.is_available():
@@ -162,6 +166,10 @@ def main() -> int:
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     dataset_dir = arguments.dataset.resolve()
     train_items, evaluation_items = split_items(read_items(dataset_dir), arguments.evaluation_fraction)
+    if arguments.only_audio_id:
+        train_items = [item for item in train_items if item.audio_id == arguments.only_audio_id]
+        if not train_items:
+            raise ValueError(f"Audio ID is not in the training split: {arguments.only_audio_id}")
     write_split(arguments.output_dir / "split.csv", train_items, evaluation_items, dataset_dir)
 
     model_name = "openai/whisper-large-v3-turbo"
@@ -184,8 +192,9 @@ def main() -> int:
         gradient_checkpointing=False,
         learning_rate=1e-4,
         num_train_epochs=arguments.epochs,
-        eval_strategy="epoch",
-        save_strategy="epoch",
+        max_steps=arguments.max_steps,
+        eval_strategy="no" if arguments.skip_trainer_evaluation else "epoch",
+        save_strategy="no" if arguments.skip_trainer_evaluation else "epoch",
         logging_steps=1,
         report_to="none",
         remove_unused_columns=False,
@@ -204,6 +213,8 @@ def main() -> int:
     trainer.train()
     model.save_pretrained(arguments.output_dir / "adapter")
     processor.save_pretrained(arguments.output_dir / "adapter")
+    if arguments.skip_final_evaluation:
+        return 0
     word_error_rate = evaluate(model, processor, WhisperDataset(evaluation_items, processor), "mps")
     (arguments.output_dir / "metrics.json").write_text(
         json.dumps({"evaluation_word_error_rate": word_error_rate, "train_clips": len(train_items), "evaluation_clips": len(evaluation_items)}, indent=2) + "\n",

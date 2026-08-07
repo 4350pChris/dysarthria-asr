@@ -9,6 +9,7 @@ data/tatoeba/
 data/corrections.jsonl
 data/*.sqlite
 data/voice_samples
+data/dysarthria-asr-training-data.zip
 
 index.db
 output/
@@ -22,3 +23,5 @@ alignment-tools/*.ogg
 alignment-tools/ocr.txt
 alignment-tools/part-*.txt
 alignment-tools/outputs/
+alignment-tools/reports/
+.agents/

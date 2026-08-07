@@ -42,3 +42,26 @@ Benchmark the current app baseline on the prepared clips:
 uv run python benchmark_asr.py training-reading --model small \
   --output-dir reports/reading-small
 ```
+
+## Deploy a trained adapter
+
+Merge a reviewed LoRA adapter and convert it for the backend's
+`faster-whisper` runtime:
+
+```sh
+uv run python promote_whisper_lora.py \
+  outputs/whisper-large-v3-turbo-lora-combined-retry \
+  --output-dir outputs/deployed/whisper-large-v3-turbo-combined-retry-int8
+```
+
+Set `ASR_MODEL` to this deployed directory when you start the backend. Keep
+the default value to use the unchanged `large-v3-turbo` model.
+
+Test the converted model on the same held-out split before deployment:
+
+```sh
+uv run python benchmark_asr.py training-combined \
+  --split outputs/whisper-large-v3-turbo-lora-combined-retry/split.csv \
+  --model deployed=outputs/deployed/whisper-large-v3-turbo-combined-retry-int8 \
+  --output-dir reports/deployed-combined-retry
+```

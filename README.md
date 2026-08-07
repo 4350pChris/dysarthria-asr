@@ -40,6 +40,34 @@ uv run uvicorn src.app:app --reload
 
 The API listens on <http://127.0.0.1:8000>. The first server-side transcription downloads the Whisper model.
 
+## Deploy a tuned ASR model
+
+The backend uses the unchanged `large-v3-turbo` model by default. To deploy a
+promoted local CTranslate2 model, set `ASR_MODEL` to its directory when you
+start the backend:
+
+```sh
+cd backend
+ASR_MODEL=/absolute/path/to/deployed-model uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
+```
+
+The model directory must be made by
+`alignment-tools/promote_whisper_lora.py`. Set a different directory to switch
+model versions. Remove `ASR_MODEL` to return to the baseline.
+
+For a private Hugging Face model repository, use its model ID and a read-only
+token from the deployment secret store. Pin `ASR_MODEL_REVISION` to a commit
+hash. Do not add the token to a source file, image, or repository.
+
+```sh
+cd backend
+ASR_MODEL=your-org/dysarthria-asr-speaker-v1 \
+ASR_MODEL_REVISION=commit-hash \
+ASR_HF_TOKEN=read-only-token \
+ASR_MODEL_CACHE_DIR=/var/lib/dysarthria-asr/models \
+uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
+```
+
 In a second terminal, start the frontend:
 
 ```sh

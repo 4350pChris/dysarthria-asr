@@ -62,6 +62,15 @@ def load_dataset(root: Path) -> list[DatasetItem]:
     return items
 
 
+def select_split(items: list[DatasetItem], split_path: Path, split_name: str) -> list[DatasetItem]:
+    with split_path.open(newline="", encoding="utf-8") as input_file:
+        audio_ids = {row["audio_id"] for row in csv.DictReader(input_file) if row["split"] == split_name}
+    selected = [item for item in items if item.audio_id in audio_ids]
+    if not selected:
+        raise ValueError(f"Split has no matching {split_name!r} clips: {split_path}")
+    return selected
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Compare local faster-whisper models on labeled audio clips.")
     parser.add_argument("dataset", type=Path, help="Directory with training-labels.csv and data/audio files.")
@@ -71,18 +80,23 @@ def main() -> int:
     parser.add_argument("--beam-size", type=int, default=5)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compute-type", default="int8")
+    parser.add_argument("--split", type=Path, help="Optional split.csv file. Benchmarks its evaluation clips by default.")
+    parser.add_argument("--split-name", default="evaluation")
     arguments = parser.parse_args()
 
     from faster_whisper import WhisperModel
 
     root = arguments.dataset.resolve()
     items = load_dataset(root)
+    if arguments.split:
+        items = select_split(items, arguments.split, arguments.split_name)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     details: list[dict[str, str | int | float]] = []
     summaries: list[dict[str, str | int | float]] = []
-    for model_name in arguments.model:
+    for model_specification in arguments.model:
+        model_name, model_path = model_specification.split("=", 1) if "=" in model_specification else (model_specification, model_specification)
         print(f"Loading {model_name}", file=sys.stderr)
-        model = WhisperModel(model_name, device=arguments.device, compute_type=arguments.compute_type)
+        model = WhisperModel(model_path, device=arguments.device, compute_type=arguments.compute_type)
         total_word_errors = total_words = total_character_errors = total_characters = 0
         total_seconds = 0.0
         for item in items:
