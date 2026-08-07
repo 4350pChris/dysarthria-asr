@@ -16,6 +16,21 @@ const state = computed(() => {
   return 'idle'
 })
 
+const copy = computed(() => ({
+  idle: {
+    title: 'Aufnehmen',
+    guidance: 'Tippe zum Sprechen'
+  },
+  recording: {
+    title: 'Aufnahme läuft',
+    guidance: 'Tippe zum Stoppen'
+  },
+  warming: {
+    title: 'Erkennung wird vorbereitet',
+    guidance: 'Einen Moment bitte'
+  }
+})[state.value])
+
 function toggleRecording(start: boolean) {
   if (disabledTimer.value) {
     return
@@ -44,118 +59,43 @@ function toggleRecording(start: boolean) {
     :ui="{ base: 'flex-col gap-0 ring ring-default hover:ring-primary/50' }"
     @click="toggleRecording(!props.isRecording)"
   >
-    <div :class="['record-control-content', `record-control-content--${state}`]">
-      <div class="record-logo-stage">
+    <div class="flex flex-col items-center gap-3">
+      <div class="grid size-28 place-items-center">
         <LogoMark
           aria-hidden="true"
-          class="record-logo record-logo--idle"
           :size="112"
-        />
-        <LogoSpinner
-          aria-hidden="true"
-          class="record-logo record-logo--recording"
-          label=""
-          :size="112"
-          variant="compact"
-        />
-        <LogoSpinner
-          aria-hidden="true"
-          class="record-logo record-logo--warming"
-          label=""
-          :size="112"
-          speed="warmup"
+          :state="state"
         />
       </div>
 
-      <div class="record-label">
-        <span class="record-copy record-copy--idle text-2xl font-extrabold text-highlighted">
-          Aufnehmen
-        </span>
-        <span class="record-copy record-copy--recording text-2xl font-extrabold text-highlighted">
-          Aufnahme läuft
-        </span>
-        <span class="record-copy record-copy--warming text-2xl font-extrabold text-highlighted">
-          Erkennung wird vorbereitet
-        </span>
-      </div>
+      <div class="grid min-w-full place-items-center">
+        <Transition name="record-copy">
+          <div
+            :key="state"
+            class="col-start-1 row-start-1 flex flex-col items-center gap-3"
+          >
+            <span class="min-h-8 text-2xl font-extrabold text-highlighted">
+              {{ copy.title }}
+            </span>
 
-      <div class="record-guidance">
-        <span class="record-copy record-copy--idle text-base font-semibold text-muted">
-          Tippe zum Sprechen
-        </span>
-        <span class="record-copy record-copy--recording text-base font-semibold text-muted">
-          Tippe zum Stoppen
-        </span>
-        <span class="record-copy record-copy--warming text-base font-semibold text-muted">
-          Einen Moment bitte
-        </span>
+            <span class="min-h-6 text-base font-semibold text-muted">
+              {{ copy.guidance }}
+            </span>
+          </div>
+        </Transition>
       </div>
     </div>
   </UButton>
 </template>
 
 <style scoped>
-.record-control-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
+.record-copy-enter-active,
+.record-copy-leave-active {
+  @apply transition-opacity duration-200 motion-reduce:transition-none;
 }
 
-.record-logo-stage {
-  display: grid;
-  width: 7rem;
-  height: 7rem;
-  place-items: center;
-}
-
-.record-logo,
-.record-copy {
-  grid-area: 1 / 1;
-  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.record-logo--idle,
-.record-copy--idle {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.record-logo--recording,
-.record-logo--warming,
-.record-copy--recording,
-.record-copy--warming {
-  opacity: 0;
-  transform: scale(0.82);
-}
-
-.record-label,
-.record-guidance {
-  display: grid;
-  min-width: 100%;
-  place-items: center;
-}
-
-.record-control-content--recording .record-logo--idle,
-.record-control-content--recording .record-copy--idle,
-.record-control-content--warming .record-logo--idle,
-.record-control-content--warming .record-copy--idle {
-  opacity: 0;
-  transform: scale(0.82);
-}
-
-.record-control-content--recording .record-logo--recording,
-.record-control-content--recording .record-copy--recording,
-.record-control-content--warming .record-logo--warming,
-.record-control-content--warming .record-copy--warming {
-  opacity: 1;
-  transform: scale(1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .record-logo,
-  .record-copy {
-    transition: none;
-  }
+.record-copy-enter-from,
+.record-copy-leave-to {
+  @apply opacity-0;
 }
 </style>
