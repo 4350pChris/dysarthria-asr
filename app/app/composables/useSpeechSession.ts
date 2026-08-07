@@ -169,7 +169,11 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     if (!outputText.value) return
     try {
       if (navigator.share) {
-        await navigator.share({ text: outputText.value })
+        const image = createShareImage(outputText.value)
+        const shareData = image && navigator.canShare?.({ files: [image] })
+          ? { text: outputText.value, files: [image] }
+          : { text: outputText.value }
+        await navigator.share(shareData)
         status.value = 'Geteilt.'
       } else {
         openWhatsapp(outputText.value)
@@ -186,6 +190,56 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     status.value = opened
       ? 'WhatsApp geöffnet.'
       : 'WhatsApp konnte nicht geöffnet werden.'
+  }
+
+  function createShareImage(text: string): File | undefined {
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+    if (!context) return undefined
+
+    const padding = 96
+    const maxWidth = 900
+    const font = 'bold 52px system-ui, sans-serif'
+    context.font = font
+    const lines = wrapShareText(context, text, maxWidth - padding * 2)
+    const lineHeight = 72
+    canvas.width = maxWidth
+    canvas.height = Math.max(360, padding * 2 + lines.length * lineHeight)
+
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#18181b'
+    context.font = font
+    context.textBaseline = 'top'
+    lines.forEach((line, index) => {
+      context.fillText(line, padding, padding + index * lineHeight)
+    })
+
+    const data = canvas.toDataURL('image/png').split(',', 2)[1]
+    if (!data) return undefined
+    const bytes = Uint8Array.from(atob(data), character => character.charCodeAt(0))
+    return new File([bytes], 'sprachhilfe-nachricht.png', { type: 'image/png' })
+  }
+
+  function wrapShareText(
+    context: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number
+  ) {
+    const lines: string[] = []
+    let line = ''
+
+    for (const word of text.split(/\s+/)) {
+      const nextLine = line ? `${line} ${word}` : word
+      if (line && context.measureText(nextLine).width > maxWidth) {
+        lines.push(line)
+        line = word
+      } else {
+        line = nextLine
+      }
+    }
+    if (line) lines.push(line)
+    return lines
   }
 
   async function saveAttempt() {
