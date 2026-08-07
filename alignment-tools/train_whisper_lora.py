@@ -122,7 +122,9 @@ def evaluate(model, processor: WhisperProcessor, dataset: WhisperDataset, device
     with torch.inference_mode():
         for index in range(len(dataset)):
             feature = dataset[index]
-            input_features = torch.tensor(feature["input_features"]).unsqueeze(0).to(device)
+            input_features = torch.tensor(feature["input_features"]).unsqueeze(0).to(
+                device=device, dtype=next(model.parameters()).dtype
+            )
             tokens = model.generate(input_features=input_features, max_new_tokens=128)
             prediction = processor.tokenizer.batch_decode(tokens, skip_special_tokens=True)[0]
             reference_words = normalized_words(feature["item"].transcript)
