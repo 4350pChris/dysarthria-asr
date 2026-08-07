@@ -25,6 +25,7 @@ from ..corpus import (
 )
 from ..paths import AUDIO_DIR, ROOT
 from ..request_models import LabelUpdateRequest
+from ..metrics import transcription_metrics
 
 router = APIRouter(prefix="/api/labeling")
 
@@ -215,6 +216,33 @@ def list_items(
         ),
         "counts": label_counts(),
     }
+
+
+@router.get("/training-metrics")
+def training_metrics() -> dict:
+    rows = [item for item in read_label_items(source="training_reading", limit=100000) if item["transcript"].strip()]
+    groups: dict[str, dict] = {}
+    for item in rows:
+        key = item["asr_source"] or "unknown"
+        group = groups.setdefault(key, {"source": key, "total": 0, "scored": 0, "word_error_total": 0.0, "character_error_total": 0.0})
+        group["total"] += 1
+        if not item["asr_text"].strip():
+            continue
+        word_error_rate, character_error_rate = transcription_metrics(item["transcript"], item["asr_text"])
+        group["scored"] += 1
+        group["word_error_total"] += word_error_rate
+        group["character_error_total"] += character_error_rate
+
+    return {"models": [
+        {
+            "source": group["source"],
+            "total": group["total"],
+            "scored": group["scored"],
+            "word_error_rate": group["word_error_total"] / group["scored"] if group["scored"] else None,
+            "character_error_rate": group["character_error_total"] / group["scored"] if group["scored"] else None,
+        }
+        for group in groups.values()
+    ]}
 
 
 @router.delete("/items/empty-asr")

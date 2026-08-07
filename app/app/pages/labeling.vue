@@ -131,6 +131,15 @@ function moveCurrent(delta: number) {
       <UButton
         class="font-extrabold"
         color="neutral"
+        icon="i-lucide-chart-no-axes-column-increasing"
+        size="lg"
+        to="/labeling/metrics"
+      >
+        ASR-Metriken
+      </UButton>
+      <UButton
+        class="font-extrabold"
+        color="neutral"
         icon="i-lucide-upload"
         size="lg"
         to="/whatsapp-import"
