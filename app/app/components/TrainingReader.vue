@@ -23,7 +23,7 @@ const {
 
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
-const canSaveRecording = computed(() => recording.value && !isCheckingAudio.value && audioQuality.value?.canSave !== false)
+const canSaveRecording = computed(() => Boolean(recording.value) && !isCheckingAudio.value && audioQuality.value?.canSave !== false)
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items]
@@ -115,7 +115,6 @@ useSpeechCommand({
   phrases: ['speichern', 'aufnahme speichern', 'weiter'],
   handler: saveRecording
 })
-
 function discardRecording() {
   recording.value = undefined
   audioQuality.value = undefined
@@ -136,7 +135,12 @@ async function saveRecording() {
     savedCount.value += 1
     discardRecording()
     promptIndex.value = (promptIndex.value + 1) % prompts.value.length
-    toast.add({ title: 'Aufnahme gespeichert', description: 'Text und Audio sind direkt als Trainingspaar markiert.', color: 'success', icon: 'i-lucide-check-circle' })
+    toast.add({
+      title: 'Gespeichert',
+      description: 'Eine Aufnahme mehr für deine Sprachhilfe.',
+      color: 'success',
+      icon: 'i-lucide-check-circle'
+    })
   } catch {
     errorMessage.value = 'Die Aufnahme konnte nicht gespeichert werden. Bitte versuche es noch einmal.'
   } finally {
@@ -176,84 +180,42 @@ onMounted(async () => {
     </div>
 
     <template v-else-if="currentPrompt">
-      <div class="flex items-center justify-between gap-3 text-sm font-semibold text-muted">
-        <span>Text {{ promptIndex + 1 }} von {{ prompts.length }}</span>
-        <span v-if="savedCount">{{ savedCount }} gespeichert</span>
-      </div>
+      <TrainingPrompt
+        :index="promptIndex"
+        :saved-count="savedCount"
+        :text="currentPrompt.text"
+        :total="prompts.length"
+      />
 
-      <UCard :ui="{ body: 'p-6 sm:p-8' }">
-        <p class="text-2xl leading-relaxed font-semibold text-highlighted sm:text-3xl">
-          {{ currentPrompt.text }}
-        </p>
-      </UCard>
-
-      <RecordControl
+      <TrainingRecordControl
         v-if="!recording"
         :is-busy="isSaving"
         :is-recording="isRecording"
         @start="startRecording"
         @stop="stopRecording"
-      >
-        <template #default="{ isBusy, isRecording: recordingActive, toggle }">
-          <UButton
-            block
-            class="min-h-28 justify-center rounded-3xl text-xl font-extrabold"
-            :color="recordingActive ? 'error' : 'primary'"
-            :disabled="isBusy"
-            :icon="recordingActive ? 'i-lucide-square' : 'i-lucide-mic'"
-            size="xl"
-            @click="toggle"
-          >
-            {{ recordingActive ? 'Aufnahme stoppen' : 'Diesen Text aufnehmen' }}
-          </UButton>
-        </template>
-      </RecordControl>
+      />
 
-      <template v-else>
-        <audio
-          class="w-full"
-          controls
-          :src="recordingUrl"
-        />
-        <UAlert
-          v-if="isCheckingAudio"
-          color="info"
-          icon="i-lucide-audio-lines"
-          title="Aufnahme wird geprüft"
-          description="Bitte warte kurz."
-        />
-        <UAlert
-          v-else-if="audioQuality?.issues.length"
-          :color="audioQuality.canSave ? 'warning' : 'error'"
-          icon="i-lucide-circle-alert"
-          title="Aufnahme prüfen"
-          :description="audioQuality.issues.map(issue => issue.message).join(' ')"
-        />
-        <div class="grid grid-cols-2 gap-3">
-          <UButton
-            block
-            color="neutral"
-            icon="i-lucide-rotate-ccw"
-            size="xl"
-            variant="soft"
-            :disabled="isSaving"
-            @click="discardRecording"
-          >
-            Neu aufnehmen
-          </UButton>
-          <UButton
-            block
-            color="primary"
-            icon="i-lucide-save"
-            size="xl"
-            :disabled="!canSaveRecording"
-            :loading="isSaving || isCheckingAudio"
-            @click="saveRecording"
-          >
-            Als Trainingspaar speichern
-          </UButton>
-        </div>
-      </template>
+      <TrainingRecordingReview
+        v-else
+        :audio-quality="audioQuality"
+        :can-save="canSaveRecording"
+        :is-checking-audio="isCheckingAudio"
+        :is-saving="isSaving"
+        :recording-url="recordingUrl"
+        @retry="discardRecording"
+        @save="saveRecording"
+      />
+
+      <TrainingProgress :saved-count="savedCount" />
+
+      <UButton
+        block
+        color="primary"
+        label="Test increase"
+        size="sm"
+        variant="soft"
+        @click="savedCount += 1"
+      />
     </template>
   </section>
 </template>

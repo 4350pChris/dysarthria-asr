@@ -26,6 +26,7 @@ def test_guided_recording_saves_known_prompt_as_training_ready(initialized_db: P
     monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
     prompts_file = initialized_db / "tatoeba.json"
     monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    monkeypatch.setattr(training, "transcribe_german", lambda audio_path: "Das ist ein Beispielsatz")
     write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
     client = TestClient(create_app())
     prompt = client.get("/api/training/prompts").json()["prompts"][0]
@@ -45,6 +46,9 @@ def test_guided_recording_saves_known_prompt_as_training_ready(initialized_db: P
     assert (initialized_db / item["audio_file"]).read_bytes() == b"audio bytes"
     with connect_db() as db:
         assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 1
+        assert db.execute(
+            "SELECT asr_text FROM transcription_labels WHERE audio_id = ?", (item["audio_id"],)
+        ).fetchone()["asr_text"] == "Das ist ein Beispielsatz"
 
 
 def test_guided_recording_rejects_unknown_prompt(initialized_db: Path, monkeypatch) -> None:
@@ -64,6 +68,7 @@ def test_tatoeba_recording_uses_the_cached_known_text(initialized_db: Path, monk
     monkeypatch.setattr(training, "ROOT", initialized_db)
     monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
     monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    monkeypatch.setattr(training, "transcribe_german", lambda audio_path: "Das ist ein Beispielsatz")
     write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}])
     client = TestClient(create_app())
 
@@ -76,6 +81,24 @@ def test_tatoeba_recording_uses_the_cached_known_text(initialized_db: Path, monk
 
     assert prompts.json()["prompts"][0]["id"] == "tatoeba:123"
     assert recording.json()["item"]["transcript"] == "Das ist ein ausreichend langer deutscher Beispielsatz."
+
+
+def test_guided_recording_saves_when_asr_is_unavailable(initialized_db: Path, monkeypatch) -> None:
+    monkeypatch.setattr(training, "ROOT", initialized_db)
+    monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
+    prompts_file = initialized_db / "tatoeba.json"
+    monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    monkeypatch.setattr(training, "transcribe_german", lambda audio_path: (_ for _ in ()).throw(RuntimeError()))
+    write_prompts(prompts_file, [{"id": "123", "text": "Das ist ein Beispielsatz."}])
+
+    response = TestClient(create_app()).post(
+        "/api/training/recordings",
+        data={"prompt_id": "tatoeba:123"},
+        files={"audio": ("reading.webm", b"audio bytes", "audio/webm")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["item"]["asr_text"] == ""
 
 
 def test_tatoeba_cache_is_not_downloaded_when_it_exists(tmp_path: Path, monkeypatch) -> None:

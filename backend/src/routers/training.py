@@ -4,13 +4,28 @@ import uuid
 from random import sample
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
+from ..asr import transcribe_german
 from ..corpus import create_audio_clip, upsert_transcription_label
 from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
 from ..tatoeba import load_prompts, prompt_from_cache
 
 router = APIRouter(prefix="/api/training")
+
+
+def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
+    try:
+        asr_text = transcribe_german(audio_path).strip()
+    except Exception:
+        return
+    if asr_text:
+        upsert_transcription_label(
+            audio_id=audio_id,
+            asr_text=asr_text,
+            asr_source="server",
+            status="labeled",
+        )
 
 
 @router.get("/prompts")
@@ -27,6 +42,7 @@ def list_prompts() -> dict:
 
 @router.post("/recordings")
 async def save_training_recording(
+    background_tasks: BackgroundTasks,
     prompt_id: str = Form(...),
     audio: UploadFile = File(...),
 ) -> dict:
@@ -63,4 +79,9 @@ async def save_training_recording(
     except Exception:
         audio_path.unlink(missing_ok=True)
         raise
-    return {"item": item, "prompt": {"id": prompt_id, "text": prompt["text"], "source": "Tatoeba"}}
+    background_tasks.add_task(transcribe_training_recording, audio_id, audio_path)
+    return {
+        "item": item,
+        "prompt": {"id": prompt_id, "text": prompt["text"], "source": "Tatoeba"},
+    }
+
