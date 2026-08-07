@@ -10,3 +10,7 @@ data/*.sqlite
 data/voice_samples
 
 index.db
+output/
+parts/
+reports/
+training-reading/

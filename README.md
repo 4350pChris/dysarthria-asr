@@ -14,6 +14,7 @@ A German speech-assistance prototype for a person with dysarthria. The Nuxt web 
 - A PWA that can be installed on an iPhone
 - SQLite storage for audio clips, ASR drafts, corrected transcripts, and label state
 - Import of individual audio files or WhatsApp chat-export ZIP files
+- Guided reading: short original German prompts, one reviewed audio clip per prompt
 - Training-data ZIP export with reviewed audio and labels
 
 ## Project layout
@@ -62,7 +63,8 @@ NUXT_API_BASE=https://example.com pnpm dev
 2. Select a saved phrase or tap `Aufnehmen` and speak.
 3. Wait for silence stop. Select a suggestion, or use math mode.
 4. Use `Vorlesen`, copy the text, or share it. Native share is tried first; a WhatsApp tab opens only as a fallback. The app never sends a message without user action.
-5. Open `/labeling` to correct saved recordings and prepare training data.
+5. Use `Lesetraining aufnehmen` to read one short displayed text at a time. You can listen back, retry, or save each take.
+6. Open `/labeling` to review saved recordings and prepare training data.
 
 To manage saved phrases, open `/phrases`. You can add, rename, and delete categories, and add, edit, or delete phrases.
 
@@ -84,7 +86,9 @@ Browser speech recognition differs by browser. Each saved label records if the b
 
 ## Labeling and export
 
-Open `/labeling` to review app recordings and WhatsApp uploads. Filter by source, status, uncertain labels, or missing ASR text. You can correct a transcript, add notes, mark it as `labeled`, `draft`, or `skipped`, and delete one recording. When the missing-ASR filter is active, you can also delete all matching recordings.
+Open `/labeling` to review app recordings, guided-reading clips, and WhatsApp uploads. Filter by source, status, uncertain labels, or missing ASR text. You can correct a transcript, add notes, mark it as `labeled`, `draft`, or `skipped`, and delete one recording. When the missing-ASR filter is active, you can also delete all matching recordings.
+
+Guided-reading clips are saved with the exact displayed prompt, marked `labeled`, and included in the training ZIP immediately. The included texts are original app content rather than scraped web pages, so every saved pair has a known local source.
 
 On `/whatsapp-import`, upload audio files or a WhatsApp export ZIP. For a ZIP, select the speaker whose audio you want to import. Files with no ASR text are skipped.
 
