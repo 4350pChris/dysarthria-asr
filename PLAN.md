@@ -41,7 +41,7 @@ Open:
 http://127.0.0.1:8000
 ```
 
-The first transcription downloads the Whisper `small` model.
+The first transcription downloads the Whisper `large-v3-turbo` model.
 
 ## Prototype Scope
 

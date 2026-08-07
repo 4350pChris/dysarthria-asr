@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
@@ -18,7 +18,6 @@ router = APIRouter(prefix="/api")
 @router.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),
-    browser_transcript: str | None = Form(default=None),
 ) -> dict:
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(audio.filename or "").suffix or ".webm"
@@ -29,14 +28,11 @@ async def transcribe(
         raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
     audio_path.write_bytes(contents)
 
-    transcript = (browser_transcript or "").strip()
-    recognition_source = "browser" if transcript else "server"
-    if not transcript:
-        try:
-            transcript = transcribe_german(audio_path).strip()
-        except Exception:
-            audio_path.unlink(missing_ok=True)
-            raise
+    try:
+        transcript = transcribe_german(audio_path).strip()
+    except Exception:
+        audio_path.unlink(missing_ok=True)
+        raise
     if not transcript:
         audio_path.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail="Keine Sprache erkannt.")
@@ -52,14 +48,13 @@ async def transcribe(
     upsert_transcription_label(
         audio_id=audio_id,
         asr_text=transcript,
-        asr_source=recognition_source,
+        asr_source="server",
     )
     emoji_text = replace_spoken_emojis(transcript)
     math = normalize_german_math(transcript)
     return {
         "audio_id": audio_id,
         "audio_path": relative_audio_path,
-        "recognition_source": recognition_source,
         "raw_transcript": transcript,
         "emoji_text": emoji_text,
         "math_corrected_text": math.corrected_text,

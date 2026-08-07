@@ -5,7 +5,7 @@ A German speech-assistance prototype for a person with dysarthria. The Nuxt web 
 ## Features
 
 - Push-to-talk recording with automatic silence stop
-- Browser speech recognition first; German `faster-whisper` (`small` on CPU) when the browser gives no transcript
+- German `faster-whisper` (`large-v3-turbo` on CPU) for every recording
 - Saved phrases, editable categories, and generated German phrase candidates
 - Math mode for spoken German arithmetic
 - Spoken German emoji names, for example `weißes Herz emoji` → 🤍

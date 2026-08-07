@@ -13,7 +13,7 @@ def _model():
             "faster-whisper is not installed. Run `pip install -r requirements.txt`."
         ) from exc
 
-    return WhisperModel("small", device="cpu", compute_type="int8")
+    return WhisperModel("large-v3-turbo", device="cpu", compute_type="int8")
 
 
 def transcribe_german(audio_path: Path) -> str:
@@ -24,4 +24,3 @@ def transcribe_german(audio_path: Path) -> str:
         vad_filter=True,
     )
     return " ".join(segment.text.strip() for segment in segments).strip()
-

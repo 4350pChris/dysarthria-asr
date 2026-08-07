@@ -48,50 +48,19 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
     }
 
 
-def test_transcribe_uses_browser_transcript_when_available(
-    initialized_db: Path,
-    monkeypatch,
-) -> None:
-    monkeypatch.setattr(transcription, "ROOT", initialized_db)
-    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
-    monkeypatch.setattr(
-        transcription,
-        "transcribe_german",
-        lambda audio_path: (_ for _ in ()).throw(AssertionError("Server ASR must not run")),
-    )
-
-    from src.app import create_app
-
-    response = TestClient(create_app()).post(
-        "/api/transcribe",
-        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
-        data={"browser_transcript": "ich möchte kaffee"},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["raw_transcript"] == "ich möchte kaffee"
-    assert body["emoji_text"] == "ich möchte kaffee"
-    assert body["recognition_source"] == "browser"
-
-    with database.connect_db() as db:
-        label = db.execute("SELECT asr_text, asr_source FROM transcription_labels").fetchone()
-    assert dict(label) == {"asr_text": "ich möchte kaffee", "asr_source": "browser"}
-
-
 def test_transcribe_returns_converted_emoji_text(
     initialized_db: Path,
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(transcription, "ROOT", initialized_db)
     monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "weißes Herz emoji")
 
     from src.app import create_app
 
     response = TestClient(create_app()).post(
         "/api/transcribe",
         files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
-        data={"browser_transcript": "weißes Herz emoji"},
     )
 
     assert response.status_code == 200

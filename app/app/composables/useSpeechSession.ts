@@ -13,7 +13,6 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const isSaving = ref(false)
   const hasSaved = ref(false)
   const recordingDone = shallowRef<Promise<void>>()
-  const browserTranscript = useBrowserTranscript()
   const { isSafeToUpdate } = usePwaUpdateSafety()
 
   const suggestions = computed(() => result.value?.suggestions ?? [])
@@ -79,18 +78,15 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     recorder.value.ondataavailable = event => chunks.value.push(event.data)
     recorder.value.onstop = async () => {
       silenceDetection.stop()
-      const transcript = await browserTranscript.stop()
       stream.getTracks().forEach(track => track.stop())
       await transcribe(
         new Blob(chunks.value, {
           type: recorder.value?.mimeType || 'audio/webm'
-        }),
-        transcript
+        })
       )
       resolveRecordingDone()
     }
     recorder.value.start()
-    browserTranscript.start()
     silenceDetection.start(stream)
     isRecording.value = true
     status.value = 'Aufnahme läuft...'
@@ -105,10 +101,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     recorder.value.stop()
   }
 
-  async function transcribe(blob: Blob, transcript?: string) {
+  async function transcribe(blob: Blob) {
     const form = new FormData()
     form.append('audio', blob, 'recording.webm')
-    if (transcript) form.append('browser_transcript', transcript)
 
     try {
       const response = await fetch('/api/transcribe', {

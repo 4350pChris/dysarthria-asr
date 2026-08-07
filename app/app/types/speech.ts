@@ -20,7 +20,6 @@ export type Category = {
 export type TranscriptionResult = {
   audio_id: string
   audio_path: string
-  recognition_source: 'browser' | 'server'
   raw_transcript: string
   emoji_text: string
   math_corrected_text: string
