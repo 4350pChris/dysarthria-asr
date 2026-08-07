@@ -80,13 +80,13 @@ function toggleRecording(start: boolean) {
       </div>
 
       <div class="record-guidance">
-        <span class="record-copy record-copy--idle text-base font-semibold text-primary">
+        <span class="record-copy record-copy--idle text-base font-semibold text-muted">
           Tippe zum Sprechen
         </span>
-        <span class="record-copy record-copy--recording text-base font-semibold text-primary">
+        <span class="record-copy record-copy--recording text-base font-semibold text-muted">
           Tippe zum Stoppen
         </span>
-        <span class="record-copy record-copy--warming text-base font-semibold text-primary">
+        <span class="record-copy record-copy--warming text-base font-semibold text-muted">
           Einen Moment bitte
         </span>
       </div>

@@ -37,3 +37,43 @@
     font-family: var(--font-display);
   }
 }
+
+:root {
+  --ui-bg: #fff7fa;
+  --ui-bg-muted: #fdf2f8;
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-accented: #fce7f3;
+  --ui-bg-inverted: #4a102a;
+
+  --ui-text: #4a102a;
+  --ui-text-muted: #9d5a75;
+  --ui-text-dimmed: #be7896;
+  --ui-text-toned: #722b4a;
+  --ui-text-highlighted: #2b0718;
+  --ui-text-inverted: #ffffff;
+
+  --ui-border: #fbcfe8;
+  --ui-border-muted: #fce7f3;
+  --ui-border-accented: #f9a8d4;
+  --ui-border-inverted: #4a102a;
+}
+
+.dark {
+  --ui-bg: #1f0c16;
+  --ui-bg-muted: #2b101e;
+  --ui-bg-elevated: #371426;
+  --ui-bg-accented: #4b1b35;
+  --ui-bg-inverted: #fff7fa;
+
+  --ui-text: #fff1f7;
+  --ui-text-muted: #e7a8c5;
+  --ui-text-dimmed: #bb7194;
+  --ui-text-toned: #f4c5da;
+  --ui-text-highlighted: #ffffff;
+  --ui-text-inverted: #2b0718;
+
+  --ui-border: #54203d;
+  --ui-border-muted: #3d172d;
+  --ui-border-accented: #7a2d57;
+  --ui-border-inverted: #fff1f7;
+}
