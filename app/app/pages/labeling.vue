@@ -68,6 +68,11 @@ const current = computed(() => items.value[currentIndex.value])
 const audioUrl = computed(() =>
   current.value ? `/api/labeling/audio/${current.value.audio_id}` : ''
 )
+const navigationLabel = computed(() =>
+  statusFilter.value === 'draft'
+    ? `Noch ${items.value.length} zu prüfen`
+    : `${items.value.length} in dieser Ansicht`
+)
 
 watch(
   current,
@@ -89,6 +94,7 @@ watch(items, (nextItems) => {
 
 async function save(nextStatus: LabelStatus) {
   if (!current.value || isSaving.value) return
+  const savedId = current.value.audio_id
   isSaving.value = true
   try {
     await $fetch(`/api/labeling/items/${current.value.audio_id}`, {
@@ -101,8 +107,12 @@ async function save(nextStatus: LabelStatus) {
       }
     })
     await refreshItems()
-    if (currentIndex.value < items.value.length - 1) currentIndex.value += 1
-    else currentIndex.value = 0
+    const savedItemIndex = items.value.findIndex(item => item.audio_id === savedId)
+    if (savedItemIndex === -1) {
+      if (currentIndex.value >= items.value.length) currentIndex.value = 0
+    } else if (items.value.length > 1) {
+      currentIndex.value = (savedItemIndex + 1) % items.value.length
+    }
   } finally {
     isSaving.value = false
   }
@@ -256,7 +266,7 @@ function moveCurrent(delta: number) {
         <p
           class="flex items-center justify-center text-sm font-semibold text-muted"
         >
-          {{ currentIndex + 1 }} / {{ items.length }}
+          {{ navigationLabel }}
         </p>
         <UButton
           block
