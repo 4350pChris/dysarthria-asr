@@ -59,10 +59,22 @@ def read_items(dataset_dir: Path) -> list[Item]:
 
 
 def split_items(items: list[Item], evaluation_fraction: float) -> tuple[list[Item], list[Item]]:
-    shuffled = items.copy()
-    random.Random(42).shuffle(shuffled)
-    evaluation_count = max(1, round(len(shuffled) * evaluation_fraction))
-    return shuffled[evaluation_count:], shuffled[:evaluation_count]
+    groups: dict[tuple[str, ...], list[Item]] = {}
+    for item in items:
+        groups.setdefault(tuple(normalized_words(item.transcript)), []).append(item)
+    group_keys = list(groups)
+    random.Random(42).shuffle(group_keys)
+    evaluation_count = max(1, round(len(items) * evaluation_fraction))
+    evaluation_keys: set[tuple[str, ...]] = set()
+    evaluation_size = 0
+    for key in group_keys:
+        if evaluation_size >= evaluation_count:
+            break
+        evaluation_keys.add(key)
+        evaluation_size += len(groups[key])
+    evaluation_items = [item for item in items if tuple(normalized_words(item.transcript)) in evaluation_keys]
+    train_items = [item for item in items if tuple(normalized_words(item.transcript)) not in evaluation_keys]
+    return train_items, evaluation_items
 
 
 class WhisperDataset(Dataset):

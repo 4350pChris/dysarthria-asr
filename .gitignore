@@ -15,6 +15,7 @@ output/
 parts/
 reports/
 training-reading/
+training-combined/
 
 # Private and generated local ASR experiment data
 alignment-tools/*.ogg
