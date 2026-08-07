@@ -4,10 +4,14 @@ version = "0.1.0"
 description = "Isolated local tools for reading-audio alignment"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+  "accelerate>=1.0",
   "faster-whisper",
+  "peft>=0.19.1",
   "mlx-qwen3-asr>=0.3.5",
   "qwen-asr",
+  "soundfile",
   "torch",
+  "transformers==4.57.6",
 ]
 
 [tool.uv]
