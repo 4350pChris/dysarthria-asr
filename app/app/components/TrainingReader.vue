@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AudioQualityReport } from '~/utils/audioQuality'
 import type { ReadingPrompt } from '~/types/speech'
 
 const toast = useToast()
@@ -13,9 +14,13 @@ const chunks = ref<Blob[]>([])
 const stream = shallowRef<MediaStream>()
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
+const audioQuality = ref<AudioQualityReport>()
+const isCheckingAudio = ref(false)
+const { checkAudio } = useAudioQualityCheck()
 
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
+const canSaveRecording = computed(() => recording.value && !isCheckingAudio.value && audioQuality.value?.canSave !== false)
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items]
@@ -32,6 +37,7 @@ async function loadPrompts() {
   isLoading.value = true
   errorMessage.value = ''
   recording.value = undefined
+  audioQuality.value = undefined
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
   recordingUrl.value = ''
   try {
@@ -53,13 +59,28 @@ async function startRecording() {
     chunks.value = []
     recorder.value = new MediaRecorder(stream.value)
     recorder.value.ondataavailable = event => chunks.value.push(event.data)
-    recorder.value.onstop = () => {
+    recorder.value.onstop = async () => {
       stream.value?.getTracks().forEach(track => track.stop())
       stream.value = undefined
       recording.value = new Blob(chunks.value, { type: recorder.value?.mimeType || 'audio/webm' })
       if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
       recordingUrl.value = URL.createObjectURL(recording.value)
       isRecording.value = false
+      isCheckingAudio.value = true
+      try {
+        audioQuality.value = await checkAudio(recording.value)
+      } catch {
+        audioQuality.value = {
+          canSave: true,
+          issues: [{
+            code: 'quiet',
+            level: 'warning',
+            message: 'Die Audio-Prüfung ist nicht verfügbar. Höre die Aufnahme vor dem Speichern an.'
+          }]
+        }
+      } finally {
+        isCheckingAudio.value = false
+      }
     }
     recorder.value.start()
     isRecording.value = true
@@ -74,17 +95,19 @@ function stopRecording() {
 
 function discardRecording() {
   recording.value = undefined
+  audioQuality.value = undefined
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
   recordingUrl.value = ''
 }
 
 async function saveRecording() {
-  if (!recording.value || !currentPrompt.value || isSaving.value) return
+  const audio = recording.value
+  if (!audio || !canSaveRecording.value || !currentPrompt.value || isSaving.value) return
   isSaving.value = true
   errorMessage.value = ''
   const form = new FormData()
   form.append('prompt_id', currentPrompt.value.id)
-  form.append('audio', recording.value, 'guided-reading.webm')
+  form.append('audio', audio, 'guided-reading.webm')
   try {
     await $fetch('/api/training/recordings', { method: 'POST', body: form })
     savedCount.value += 1
@@ -161,6 +184,20 @@ onMounted(async () => {
           controls
           :src="recordingUrl"
         />
+        <UAlert
+          v-if="isCheckingAudio"
+          color="info"
+          icon="i-lucide-audio-lines"
+          title="Aufnahme wird geprüft"
+          description="Bitte warte kurz."
+        />
+        <UAlert
+          v-else-if="audioQuality?.issues.length"
+          :color="audioQuality.canSave ? 'warning' : 'error'"
+          icon="i-lucide-circle-alert"
+          title="Aufnahme prüfen"
+          :description="audioQuality.issues.map(issue => issue.message).join(' ')"
+        />
         <div class="grid grid-cols-2 gap-3">
           <UButton
             block
@@ -178,7 +215,8 @@ onMounted(async () => {
             color="primary"
             icon="i-lucide-save"
             size="xl"
-            :loading="isSaving"
+            :disabled="!canSaveRecording"
+            :loading="isSaving || isCheckingAudio"
             @click="saveRecording"
           >
             Als Trainingspaar speichern
