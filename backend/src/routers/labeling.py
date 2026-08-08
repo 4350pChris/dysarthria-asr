@@ -40,6 +40,10 @@ TRAINING_EXPORT_FIELDS = [
     "status",
     "unsure",
     "notes",
+    "training_prompt_id",
+    "training_split",
+    "training_category",
+    "training_prompt_source",
     "created_at",
     "updated_at",
 ]
@@ -301,7 +305,12 @@ def export_training_data() -> FileResponse:
     rows = [
         row
         for row in read_label_items(limit=100000)
-        if row["status"] == "labeled" and not row["unsure"] and row["transcript"].strip()
+        if (
+            row["status"] == "labeled"
+            and not row["unsure"]
+            and row["transcript"].strip()
+            and (row["source"] != "training_reading" or row["training_split"] == "train")
+        )
     ]
     if not rows:
         raise HTTPException(status_code=404, detail="No training-ready recordings are available.")
@@ -316,7 +325,8 @@ def export_training_data() -> FileResponse:
                 "README.txt",
                 "This archive contains reviewed training data for dysarthria ASR.\n"
                 "Extract it into one directory. training-labels.csv refers to files in data/audio/.\n"
-                "Only labeled recordings with a non-empty transcript and no Unsure flag are included.\n",
+                "Only labeled recordings with a non-empty transcript and no Unsure flag are included.\n"
+                "Training readings from validation and test prompt splits are excluded.\n",
             )
             for row in rows:
                 audio_path = audio_file_for_clip(row["audio_id"], ROOT)

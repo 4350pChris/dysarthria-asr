@@ -91,7 +91,7 @@ NUXT_API_BASE=https://example.com pnpm dev
 5. Use `Lesetraining aufnehmen` to read one short displayed text at a time. You can listen back, retry, or save each take.
 6. Open `/labeling` to review saved recordings and prepare training data.
 
-When the backend starts, it downloads Tatoeba's German sentence export into `data/tatoeba/` only if the local cache does not already exist. The app selects a random set of short prompts from that cache; it does not fetch a prompt while recording. Each saved label records `Tatoeba` as its source.
+When the backend starts, it downloads Tatoeba's German sentence export into `data/tatoeba/` only if the local cache does not already exist. Each prompt has a stable ID, source, category, and split. The training page selects only the `train` split. The `validation` and `test` splits stay out of normal training and out of the training-data export, for controlled evaluation later.
 
 To manage saved phrases, open `/phrases`. You can add, rename, and delete categories, and add, edit, or delete phrases.
 

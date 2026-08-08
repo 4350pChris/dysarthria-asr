@@ -199,6 +199,10 @@ def init_db() -> None:
                 status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'labeled', 'skipped')),
                 unsure INTEGER NOT NULL DEFAULT 0,
                 notes TEXT NOT NULL DEFAULT '',
+                training_prompt_id TEXT NOT NULL DEFAULT '',
+                training_split TEXT NOT NULL DEFAULT 'train',
+                training_category TEXT NOT NULL DEFAULT '',
+                training_prompt_source TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL
             )
             """
@@ -213,6 +217,14 @@ def init_db() -> None:
                 "ALTER TABLE transcription_labels "
                 "ADD COLUMN asr_source TEXT NOT NULL DEFAULT 'server'"
             )
+        for column, definition in {
+            "training_prompt_id": "TEXT NOT NULL DEFAULT ''",
+            "training_split": "TEXT NOT NULL DEFAULT 'train'",
+            "training_category": "TEXT NOT NULL DEFAULT ''",
+            "training_prompt_source": "TEXT NOT NULL DEFAULT ''",
+        }.items():
+            if column not in label_columns:
+                db.execute(f"ALTER TABLE transcription_labels ADD COLUMN {column} {definition}")
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS grammar_slots (

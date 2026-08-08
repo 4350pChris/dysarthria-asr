@@ -222,6 +222,7 @@ def test_training_data_export_includes_labels_and_matching_audio(
     audio_dir.mkdir()
     (audio_dir / "included.ogg").write_bytes(b"included audio")
     (audio_dir / "excluded.ogg").write_bytes(b"excluded audio")
+    (audio_dir / "held-out.ogg").write_bytes(b"held out audio")
     create_audio_clip("included", "audio/included.ogg", "included.ogg")
     upsert_transcription_label(
         "included",
@@ -235,6 +236,13 @@ def test_training_data_export_includes_labels_and_matching_audio(
         transcript="Unsicher.",
         status="labeled",
         unsure=True,
+    )
+    create_audio_clip("held-out", "audio/held-out.ogg", "held-out.ogg", source="training_reading")
+    upsert_transcription_label(
+        "held-out",
+        transcript="Dieser Satz bleibt für den Test zurück.",
+        status="labeled",
+        training_split="test",
     )
 
     from src.app import create_app
@@ -254,6 +262,7 @@ def test_training_data_export_includes_labels_and_matching_audio(
         labels = archive.read("training-labels.csv").decode()
     assert "Kaffee bitte." in labels
     assert "Unsicher." not in labels
+    assert "Dieser Satz bleibt für den Test zurück." not in labels
 
 
 def test_delete_labeling_item_removes_audio_and_label(

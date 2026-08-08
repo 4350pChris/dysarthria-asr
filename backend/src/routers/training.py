@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Uploa
 from ..asr import transcribe_german
 from ..corpus import create_audio_clip, upsert_transcription_label
 from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
-from ..tatoeba import load_prompts, prompt_from_cache
+from ..training_prompts import find_prompt, prompt_bank
 
 router = APIRouter(prefix="/api/training")
 
@@ -30,11 +30,8 @@ def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
 
 @router.get("/prompts")
 def list_prompts() -> dict:
-    cached_prompts = load_prompts(TATOEBA_PROMPTS_FILE)
-    prompts = [
-        {"id": f"tatoeba:{prompt['id']}", "text": prompt["text"]}
-        for prompt in sample(cached_prompts, k=min(200, len(cached_prompts)))
-    ]
+    train_prompts = [prompt for prompt in prompt_bank(TATOEBA_PROMPTS_FILE) if prompt["split"] == "train"]
+    prompts = sample(train_prompts, k=min(200, len(train_prompts)))
     if not prompts:
         raise HTTPException(status_code=503, detail="Reading prompts are not available yet.")
     return {"prompts": prompts}
@@ -46,10 +43,8 @@ async def save_training_recording(
     prompt_id: str = Form(...),
     audio: UploadFile = File(...),
 ) -> dict:
-    if not prompt_id.startswith("tatoeba:"):
-        raise HTTPException(status_code=400, detail="Unknown training prompt.")
-    prompt = prompt_from_cache(TATOEBA_PROMPTS_FILE, prompt_id.removeprefix("tatoeba:"))
-    if not prompt:
+    prompt = find_prompt(TATOEBA_PROMPTS_FILE, prompt_id)
+    if not prompt or prompt["split"] != "train":
         raise HTTPException(status_code=400, detail="Unknown training prompt.")
     contents = await audio.read()
     if not contents:
@@ -74,7 +69,11 @@ async def save_training_recording(
             audio_id=audio_id,
             transcript=prompt["text"],
             status="labeled",
-            notes=f"Guided reading: {prompt_id}. Source: Tatoeba.",
+            notes=f"Guided reading: {prompt_id}. Source: {prompt['source']}.",
+            training_prompt_id=prompt["id"],
+            training_split=prompt["split"],
+            training_category=prompt["category"],
+            training_prompt_source=prompt["source"],
         )
     except Exception:
         audio_path.unlink(missing_ok=True)
@@ -82,6 +81,5 @@ async def save_training_recording(
     background_tasks.add_task(transcribe_training_recording, audio_id, audio_path)
     return {
         "item": item,
-        "prompt": {"id": prompt_id, "text": prompt["text"], "source": "Tatoeba"},
+        "prompt": prompt,
     }
-

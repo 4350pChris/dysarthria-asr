@@ -34,6 +34,9 @@ export type AudioSource = 'app_recording' | 'whatsapp_upload' | 'training_readin
 export type ReadingPrompt = {
   id: string
   text: string
+  category: string
+  source: string
+  split: 'train' | 'validation' | 'test'
 }
 
 export type LabelItem = {

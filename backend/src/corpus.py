@@ -66,6 +66,10 @@ def upsert_transcription_label(
     status: str = "draft",
     unsure: bool = False,
     notes: str | None = None,
+    training_prompt_id: str | None = None,
+    training_split: str | None = None,
+    training_category: str | None = None,
+    training_prompt_source: str | None = None,
 ) -> dict:
     if status not in LABEL_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid label status.")
@@ -97,6 +101,15 @@ def upsert_transcription_label(
         if notes is not None:
             fields.append("notes = ?")
             args.append(notes)
+        for field, value in {
+            "training_prompt_id": training_prompt_id,
+            "training_split": training_split,
+            "training_category": training_category,
+            "training_prompt_source": training_prompt_source,
+        }.items():
+            if value is not None:
+                fields.append(f"{field} = ?")
+                args.append(value)
         args.append(audio_id)
         db.execute(
             f"""
@@ -126,6 +139,10 @@ def read_label_item(audio_id: str) -> dict:
                 transcription_labels.status,
                 transcription_labels.unsure,
                 transcription_labels.notes,
+                transcription_labels.training_prompt_id,
+                transcription_labels.training_split,
+                transcription_labels.training_category,
+                transcription_labels.training_prompt_source,
                 transcription_labels.updated_at
             FROM audio_clips
             JOIN transcription_labels ON transcription_labels.audio_id = audio_clips.id
@@ -188,6 +205,10 @@ def read_label_items(
                 transcription_labels.status,
                 transcription_labels.unsure,
                 transcription_labels.notes,
+                transcription_labels.training_prompt_id,
+                transcription_labels.training_split,
+                transcription_labels.training_category,
+                transcription_labels.training_prompt_source,
                 transcription_labels.updated_at
             FROM audio_clips
             JOIN transcription_labels ON transcription_labels.audio_id = audio_clips.id
