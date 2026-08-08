@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from random import sample
 from typing import Annotated
 
 from fastapi import (
@@ -23,8 +22,8 @@ from ..corpus import create_audio_clip, update_transcription_label
 from ..database import get_session
 from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..models import AsrSource, AudioSource, LabelStatus
-from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
-from ..training_prompts import find_prompt, prompt_bank
+from ..paths import AUDIO_DIR, ROOT
+from ..training_prompts import find_prompt, read_training_prompts
 from ..validation import CleanText
 
 router = APIRouter(prefix="/api/training")
@@ -49,9 +48,8 @@ def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
 
 
 @router.get("/prompts")
-def list_prompts() -> dict:
-    train_prompts = [prompt for prompt in prompt_bank(TATOEBA_PROMPTS_FILE) if prompt["split"] == "train"]
-    prompts = sample(train_prompts, k=min(200, len(train_prompts)))
+def list_prompts(session: Session = Depends(get_session)) -> dict:
+    prompts = read_training_prompts(session)
     if not prompts:
         raise HTTPException(status_code=503, detail={"code": "training_prompts_unavailable"})
     return {"prompts": prompts}
@@ -64,7 +62,7 @@ async def save_training_recording(
     audio: UploadFile = File(...),
     session: Session = Depends(get_session),
 ) -> dict:
-    prompt = find_prompt(TATOEBA_PROMPTS_FILE, prompt_id)
+    prompt = find_prompt(session, prompt_id)
     if not prompt or prompt["split"] != "train":
         raise field_error(404, "prompt_id", "training_prompt_not_found")
     contents = await audio.read()

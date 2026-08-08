@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Optional
 
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, Index
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -76,6 +76,17 @@ class TranscriptionLabel(SQLModel, table=True):
     training_prompt_source: str = ""
     updated_at: str
     audio_clip: AudioClip | None = Relationship(back_populates="label")
+
+
+class TrainingPrompt(SQLModel, table=True):
+    __tablename__ = "training_prompts"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (Index("ix_training_prompts_split_id", "split", "id"),)
+
+    id: str = Field(primary_key=True)
+    text: str
+    split: str
+    category: str = "general"
+    source: str = "tatoeba"
 
 
 class GrammarSlot(SQLModel, table=True):

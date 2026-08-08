@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import json
 from hashlib import sha256
 from pathlib import Path
+from random import randrange
 
-from .tatoeba import load_prompts, prompt_from_cache
+from sqlalchemy import func, insert
+from sqlmodel import Session, col, select
+
+from .database import commit
+from .models import TrainingPrompt
+
+PROMPT_BATCH_SIZE = 1_000
 
 
 def prompt_split(text: str) -> str:
@@ -17,22 +25,53 @@ def prompt_split(text: str) -> str:
     return "test"
 
 
-def prompt_metadata(prompt: dict[str, str]) -> dict[str, str]:
+def prompt_metadata(prompt: TrainingPrompt) -> dict[str, str]:
     return {
-        "id": f"tatoeba:{prompt['id']}",
-        "text": prompt["text"],
-        "category": "general",
-        "source": "tatoeba",
-        "split": prompt_split(prompt["text"]),
+        "id": prompt.id,
+        "text": prompt.text,
+        "category": prompt.category,
+        "source": prompt.source,
+        "split": prompt.split,
     }
 
 
-def prompt_bank(path: Path) -> list[dict[str, str]]:
-    return [prompt_metadata(prompt) for prompt in load_prompts(path)]
+def import_prompts(path: Path, session: Session) -> int:
+    if session.exec(select(TrainingPrompt.id).limit(1)).first() is not None:
+        return 0
+    prompts = json.loads(path.read_text(encoding="utf-8"))
+    for offset in range(0, len(prompts), PROMPT_BATCH_SIZE):
+        rows = [
+            {
+                "id": f"tatoeba:{prompt['id']}",
+                "text": prompt["text"],
+                "split": prompt_split(prompt["text"]),
+                "category": "general",
+                "source": "tatoeba",
+            }
+            for prompt in prompts[offset : offset + PROMPT_BATCH_SIZE]
+        ]
+        session.execute(insert(TrainingPrompt), rows)
+    commit(session)
+    return len(prompts)
 
 
-def find_prompt(path: Path, prompt_id: str) -> dict[str, str] | None:
-    if not prompt_id.startswith("tatoeba:"):
-        return None
-    prompt = prompt_from_cache(path, prompt_id.removeprefix("tatoeba:"))
+def read_training_prompts(session: Session, limit: int = 200) -> list[dict[str, str]]:
+    count = session.exec(
+        select(func.count()).select_from(TrainingPrompt).where(col(TrainingPrompt.split) == "train")
+    ).one()
+    if count == 0:
+        return []
+    offset = randrange(max(1, count - limit + 1))
+    prompts = session.exec(
+        select(TrainingPrompt)
+        .where(col(TrainingPrompt.split) == "train")
+        .order_by(col(TrainingPrompt.id))
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return [prompt_metadata(prompt) for prompt in prompts]
+
+
+def find_prompt(session: Session, prompt_id: str) -> dict[str, str] | None:
+    prompt = session.get(TrainingPrompt, prompt_id)
     return prompt_metadata(prompt) if prompt else None
