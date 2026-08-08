@@ -9,12 +9,12 @@ from sqlmodel import Session
 from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
 from ..corpus import create_audio_clip, update_transcription_label
-from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
-from ..emoji_normalizer import replace_spoken_emojis
-from ..math_normalizer import normalize_german_math
-from ..paths import AUDIO_DIR, ROOT
 from ..database import get_session
+from ..emoji_normalizer import replace_spoken_emojis
+from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
+from ..math_normalizer import normalize_german_math
 from ..models import AsrSource, AudioSource
+from ..paths import AUDIO_DIR, ROOT
 
 router = APIRouter(prefix="/api")
 

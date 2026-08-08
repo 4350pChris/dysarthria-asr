@@ -23,7 +23,7 @@ class LabelStatus(StrEnum):
 
 
 class Category(SQLModel, table=True):
-    __tablename__ = "categories"
+    __tablename__ = "categories"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)
@@ -34,7 +34,7 @@ class Category(SQLModel, table=True):
 
 
 class Phrase(SQLModel, table=True):
-    __tablename__ = "phrases"
+    __tablename__ = "phrases"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True)
     category_id: int = Field(foreign_key="categories.id", ondelete="CASCADE")
@@ -43,7 +43,7 @@ class Phrase(SQLModel, table=True):
 
 
 class AudioClip(SQLModel, table=True):
-    __tablename__ = "audio_clips"
+    __tablename__ = "audio_clips"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (CheckConstraint("source IN ('app_recording', 'whatsapp_upload', 'training_reading')", name="audio_source"),)
 
     id: str = Field(primary_key=True)
@@ -59,7 +59,7 @@ class AudioClip(SQLModel, table=True):
 
 
 class TranscriptionLabel(SQLModel, table=True):
-    __tablename__ = "transcription_labels"
+    __tablename__ = "transcription_labels"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (CheckConstraint("asr_source IN ('browser', 'server')", name="asr_source"), CheckConstraint("status IN ('draft', 'labeled', 'skipped')", name="label_status"))
 
     id: int | None = Field(default=None, primary_key=True)
@@ -79,7 +79,7 @@ class TranscriptionLabel(SQLModel, table=True):
 
 
 class GrammarSlot(SQLModel, table=True):
-    __tablename__ = "grammar_slots"
+    __tablename__ = "grammar_slots"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True)
@@ -88,7 +88,7 @@ class GrammarSlot(SQLModel, table=True):
 
 
 class GrammarPattern(SQLModel, table=True):
-    __tablename__ = "grammar_patterns"
+    __tablename__ = "grammar_patterns"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True)
     slot_id: int = Field(foreign_key="grammar_slots.id", ondelete="CASCADE")
@@ -97,10 +97,9 @@ class GrammarPattern(SQLModel, table=True):
 
 
 class GrammarSlotValue(SQLModel, table=True):
-    __tablename__ = "grammar_slot_values"
+    __tablename__ = "grammar_slot_values"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True)
     slot_id: int = Field(foreign_key="grammar_slots.id", ondelete="CASCADE")
     value: str
     slot: GrammarSlot | None = Relationship(back_populates="values")
-

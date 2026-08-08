@@ -12,12 +12,12 @@ from ..phrases import (
     create_phrase,
     delete_category,
     delete_phrase,
-    read_grammar,
     read_categories,
+    read_grammar,
     read_phrases,
+    update_category,
     update_grammar_pattern,
     update_grammar_value,
-    update_category,
     update_phrase,
 )
 from ..validation import CleanText

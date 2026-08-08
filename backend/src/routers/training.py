@@ -1,21 +1,29 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
-from random import sample
 from pathlib import Path
+from random import sample
+from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
 from sqlmodel import Session
 
+from .. import database
 from ..api_errors import field_error
 from ..asr import transcribe_german
 from ..corpus import create_audio_clip, update_transcription_label
+from ..database import get_session
 from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..models import AsrSource, AudioSource, LabelStatus
 from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
-from ..database import get_session
-from .. import database
 from ..training_prompts import find_prompt, prompt_bank
 from ..validation import CleanText
 

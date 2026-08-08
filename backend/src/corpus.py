@@ -4,13 +4,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import HTTPException
-from sqlmodel import Session, col, select
 from sqlalchemy import func
+from sqlmodel import Session, col, select
 
-from .models import AsrSource, AudioClip, AudioSource, LabelStatus, TranscriptionLabel
-from . import database
 from .database import commit
 from .labeling_models import AudioClipCreate, TranscriptionLabelChanges
+from .models import AudioClip, LabelStatus, TranscriptionLabel
 
 
 def now() -> str:

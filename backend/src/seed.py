@@ -31,6 +31,7 @@ def seed_database(session: Session) -> None:
             slot = GrammarSlot(name=name)
             session.add(slot)
             session.flush()
+        assert slot.id is not None
         for template in data["patterns"]:
             if not session.exec(select(GrammarPattern).where(col(GrammarPattern.slot_id) == slot.id, col(GrammarPattern.template) == template)).first():
                 session.add(GrammarPattern(slot_id=slot.id, template=template))
@@ -47,5 +48,6 @@ def seed_database(session: Session) -> None:
             category = Category(name=name)
             session.add(category)
             session.flush()
+        assert category.id is not None
         if not session.exec(select(Phrase).where(col(Phrase.category_id) == category.id, col(Phrase.text) == text)).first():
             session.add(Phrase(category_id=category.id, text=text))

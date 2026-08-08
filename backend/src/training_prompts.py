@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .tatoeba import load_prompts, prompt_from_cache
 
+
 def prompt_split(text: str) -> str:
     """Return a stable split without changing the cached Tatoeba source file."""
     split_key = " ".join(text.casefold().split())

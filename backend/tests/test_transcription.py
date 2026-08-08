@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 from conftest import connect_test_db
+from fastapi.testclient import TestClient
 
 from src import database
 from src.routers import transcription

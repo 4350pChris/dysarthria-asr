@@ -5,8 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, select
 
 from .api_errors import field_error
-from .models import Category, GrammarPattern, GrammarSlot, GrammarSlotValue, Phrase
 from .database import commit
+from .models import Category, GrammarPattern, GrammarSlot, GrammarSlotValue, Phrase
 
 
 def read_phrases(session: Session) -> list[dict]:

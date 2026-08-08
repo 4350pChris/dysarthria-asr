@@ -4,11 +4,10 @@ import io
 import zipfile
 from pathlib import Path
 
+from conftest import change_label, connect_test_db, make_audio_clip
 from fastapi.testclient import TestClient
-from conftest import connect_test_db
 
 from src import database
-from conftest import change_label, make_audio_clip
 from src.routers import labeling
 
 

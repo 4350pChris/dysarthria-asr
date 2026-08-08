@@ -8,11 +8,18 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
+from sqlmodel import Session
 from starlette.background import BackgroundTask
-
-from ..models import AudioSource
 
 from ..asr import transcribe_german
 from ..corpus import (
@@ -25,11 +32,10 @@ from ..corpus import (
     read_label_items,
     update_transcription_label,
 )
-from ..paths import AUDIO_DIR, ROOT
-from sqlmodel import Session
-
 from ..database import get_session
 from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
+from ..models import AudioSource
+from ..paths import AUDIO_DIR, ROOT
 
 router = APIRouter(prefix="/api/labeling")
 

@@ -3,11 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import uuid4
 
+from conftest import change_label, make_audio_clip
 from fastapi.testclient import TestClient
 
-from src.candidates import candidate_suggestions, read_candidates, read_generated_candidates
+from src.candidates import (
+    candidate_suggestions,
+    read_candidates,
+    read_generated_candidates,
+)
 from src.corpus import label_counts, read_label_items
-from conftest import change_label, make_audio_clip
 from src.database import init_db
 from src.phrases import create_phrase, read_categories
 

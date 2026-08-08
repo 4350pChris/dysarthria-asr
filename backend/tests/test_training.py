@@ -1,11 +1,11 @@
+import sqlite3
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 from conftest import connect_test_db
+from fastapi.testclient import TestClient
 
 from src import database
 from src.app import create_app
-import sqlite3
 from src.routers import training
 from src.tatoeba import ensure_prompts, write_prompts
 from src.training_prompts import prompt_bank, prompt_split
