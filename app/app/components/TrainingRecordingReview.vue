@@ -4,7 +4,6 @@ import type { AudioQualityReport } from '~/utils/audioQuality'
 const props = defineProps<{
   audioQuality?: AudioQualityReport
   canSave: boolean
-  isCheckingAudio: boolean
   isSaving: boolean
   recordingUrl: string
 }>()
@@ -21,14 +20,7 @@ const emit = defineEmits<{
     :src="recordingUrl"
   />
   <UAlert
-    v-if="isCheckingAudio"
-    color="info"
-    icon="i-lucide-audio-lines"
-    title="Aufnahme wird geprüft"
-    description="Bitte warte kurz."
-  />
-  <UAlert
-    v-else-if="props.audioQuality?.issues.length"
+    v-if="props.audioQuality?.issues.length"
     :color="canSave ? 'warning' : 'error'"
     icon="i-lucide-circle-alert"
     title="Aufnahme prüfen"
@@ -53,7 +45,7 @@ const emit = defineEmits<{
       icon="i-lucide-save"
       size="xl"
       :disabled="!canSave"
-      :loading="isSaving || isCheckingAudio"
+      :loading="isSaving"
       type="submit"
     >
       Als Trainingspaar speichern

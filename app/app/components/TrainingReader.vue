@@ -17,7 +17,6 @@ const reviewForm = useTemplateRef('reviewForm')
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
 const audioQuality = ref<AudioQualityReport>()
-const isCheckingAudio = ref(false)
 const resumeVoiceCommands = ref(false)
 const { checkAudio } = useAudioQualityCheck()
 const speechCommands = useSpeechCommands()
@@ -31,7 +30,7 @@ const {
 
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
-const canSaveRecording = computed(() => Boolean(recording.value) && !isCheckingAudio.value && audioQuality.value?.canSave !== false)
+const canSaveRecording = computed(() => Boolean(recording.value) && audioQuality.value?.canSave !== false)
 
 watch(currentPrompt, (prompt) => {
   formState.promptId = prompt?.id || ''
@@ -61,7 +60,6 @@ async function processRecording(audio: Blob) {
   recording.value = audio
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
   recordingUrl.value = URL.createObjectURL(audio)
-  isCheckingAudio.value = true
   try {
     audioQuality.value = await checkAudio(audio)
   } catch {
@@ -74,7 +72,6 @@ async function processRecording(audio: Blob) {
       }]
     }
   } finally {
-    isCheckingAudio.value = false
     if (resumeVoiceCommands.value) {
       resumeVoiceCommands.value = false
       speechCommands.start()
@@ -169,7 +166,6 @@ onBeforeUnmount(() => {
           <TrainingRecordingReview
             :audio-quality="audioQuality"
             :can-save="canSaveRecording"
-            :is-checking-audio="isCheckingAudio"
             :is-saving="isSaving"
             :recording-url="recordingUrl"
             @retry="discardRecording"
