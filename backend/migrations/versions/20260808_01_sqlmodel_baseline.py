@@ -1,7 +1,7 @@
 """Create the SQLModel schema and upgrade the legacy SQLite schema."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "20260808_01"
 down_revision = None
@@ -16,6 +16,12 @@ def _columns(table: str) -> set[str]:
 def _audio_source_check_is_legacy() -> bool:
     checks = sa.inspect(op.get_bind()).get_check_constraints("audio_clips")
     return any("training_reading" not in (check.get("sqltext") or "") for check in checks)
+
+
+def _label_checks_are_legacy() -> bool:
+    checks = sa.inspect(op.get_bind()).get_check_constraints("transcription_labels")
+    check_text = " ".join(check.get("sqltext") or "" for check in checks)
+    return "asr_source IN ('browser', 'server')" not in check_text or "status IN ('draft', 'labeled', 'skipped')" not in check_text
 
 
 def upgrade() -> None:
@@ -35,6 +41,10 @@ def upgrade() -> None:
         op.create_table("transcription_labels", sa.Column("id", sa.Integer(), primary_key=True), sa.Column("audio_id", sa.Text(), sa.ForeignKey("audio_clips.id", ondelete="CASCADE"), nullable=False, unique=True), sa.Column("asr_text", sa.Text(), nullable=False, server_default=""), sa.Column("asr_source", sa.Text(), nullable=False, server_default="server"), sa.Column("transcript", sa.Text(), nullable=False, server_default=""), sa.Column("status", sa.Text(), nullable=False, server_default="draft"), sa.Column("unsure", sa.Boolean(), nullable=False, server_default=sa.false()), sa.Column("notes", sa.Text(), nullable=False, server_default=""), sa.Column("training_prompt_id", sa.Text(), nullable=False, server_default=""), sa.Column("training_split", sa.Text(), nullable=False, server_default="train"), sa.Column("training_category", sa.Text(), nullable=False, server_default=""), sa.Column("training_prompt_source", sa.Text(), nullable=False, server_default=""), sa.Column("updated_at", sa.Text(), nullable=False))
     elif "asr_source" not in _columns("transcription_labels"):
         op.add_column("transcription_labels", sa.Column("asr_source", sa.Text(), nullable=False, server_default="server"))
+    if "transcription_labels" in tables and _label_checks_are_legacy():
+        with op.batch_alter_table("transcription_labels", recreate="always") as batch:
+            batch.create_check_constraint("asr_source", "asr_source IN ('browser', 'server')")
+            batch.create_check_constraint("label_status", "status IN ('draft', 'labeled', 'skipped')")
     for column, default in (("training_prompt_id", ""), ("training_split", "train"), ("training_category", ""), ("training_prompt_source", "")):
         if "transcription_labels" in tables and column not in _columns("transcription_labels"):
             op.add_column("transcription_labels", sa.Column(column, sa.Text(), nullable=False, server_default=default))

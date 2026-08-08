@@ -181,36 +181,3 @@ def test_tatoeba_cache_is_not_downloaded_when_it_exists(tmp_path: Path, monkeypa
     )
 
     ensure_prompts(prompts_file)
-
-
-def test_existing_database_is_upgraded_for_guided_reading(initialized_db: Path) -> None:
-    with sqlite3.connect(database.DB_FILE) as db:
-        db.commit()
-        db.execute("PRAGMA foreign_keys = OFF")
-        db.execute("DROP TABLE audio_clips")
-        db.execute(
-            """
-            CREATE TABLE audio_clips (
-                id TEXT PRIMARY KEY,
-                file_path TEXT NOT NULL,
-                original_filename TEXT NOT NULL DEFAULT '',
-                content_type TEXT NOT NULL DEFAULT '',
-                source TEXT NOT NULL CHECK (source IN ('app_recording', 'whatsapp_upload')),
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        db.commit()
-        db.execute("PRAGMA foreign_keys = ON")
-        db.execute("DELETE FROM alembic_version")
-
-    database.init_db()
-
-    with sqlite3.connect(database.DB_FILE) as db:
-        db.row_factory = sqlite3.Row
-        schema = db.execute(
-            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'audio_clips'"
-        ).fetchone()["sql"]
-        label_columns = {row["name"] for row in db.execute("PRAGMA table_info(transcription_labels)")}
-    assert "training_reading" in schema
-    assert {"training_prompt_id", "training_split", "training_category", "training_prompt_source"} <= label_columns

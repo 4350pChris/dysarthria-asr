@@ -1,7 +1,7 @@
 """Store Tatoeba prompts in SQLite."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "20260808_02"
 down_revision = "20260808_01"
