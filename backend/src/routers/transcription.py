@@ -14,6 +14,7 @@ from ..emoji_normalizer import replace_spoken_emojis
 from ..math_normalizer import normalize_german_math
 from ..paths import AUDIO_DIR, ROOT
 from ..database import get_session
+from ..models import AsrSource, AudioSource
 
 router = APIRouter(prefix="/api")
 
@@ -47,13 +48,13 @@ async def transcribe(
         file_path=relative_audio_path,
         original_filename=audio.filename or "recording.webm",
         content_type=audio.content_type or "",
-        source="app_recording",
+        source=AudioSource.APP_RECORDING,
     ), session=session)
     update_transcription_label(
         audio_id,
         TranscriptionLabelChanges(
         asr_text=transcript,
-        asr_source="server",
+            asr_source=AsrSource.SERVER,
         ), session,
     )
     emoji_text = replace_spoken_emojis(transcript)

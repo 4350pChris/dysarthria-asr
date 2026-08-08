@@ -25,8 +25,8 @@ def create_category(name: str, session: Session) -> dict:
         raise field_error(422, "name", "value_required")
     category = Category(name=clean_name)
     try:
-        with session.begin():
-            session.add(category)
+        session.add(category)
+        commit(session)
     except IntegrityError as error:
         raise field_error(409, "name", "category_exists") from error
     return {"id": category.id, "name": category.name, "phrase_count": 0}
@@ -36,23 +36,23 @@ def update_category(category_id: int, name: str, session: Session) -> dict:
     clean_name = name.strip()
     if not clean_name:
         raise field_error(422, "name", "value_required")
+    category = session.get(Category, category_id)
+    if category is None:
+        raise field_error(404, "name", "category_not_found")
     try:
-        with session.begin():
-            category = session.get(Category, category_id)
-            if category is None:
-                raise field_error(404, "name", "category_not_found")
-            category.name = clean_name
+        category.name = clean_name
+        commit(session)
     except IntegrityError as error:
         raise field_error(409, "name", "category_exists") from error
     return {"id": category.id, "name": category.name}
 
 
 def delete_category(category_id: int, session: Session) -> None:
-    with session.begin():
-        category = session.get(Category, category_id)
-        if category is None:
-            raise field_error(404, "category_id", "category_not_found")
-        session.delete(category)
+    category = session.get(Category, category_id)
+    if category is None:
+        raise field_error(404, "category_id", "category_not_found")
+    session.delete(category)
+    commit(session)
 
 
 def create_phrase(category_id: int, text: str, session: Session) -> dict:
@@ -60,11 +60,11 @@ def create_phrase(category_id: int, text: str, session: Session) -> dict:
     if not clean_text:
         raise field_error(422, "text", "value_required")
     phrase = Phrase(category_id=category_id, text=clean_text)
+    if session.get(Category, category_id) is None:
+        raise field_error(404, "category_id", "category_not_found")
     try:
-        with session.begin():
-            if session.get(Category, category_id) is None:
-                raise field_error(404, "category_id", "category_not_found")
-            session.add(phrase)
+        session.add(phrase)
+        commit(session)
     except IntegrityError as error:
         raise field_error(409, "text", "phrase_exists") from error
     return {"id": phrase.id, "category_id": phrase.category_id, "text": phrase.text}
@@ -74,23 +74,23 @@ def update_phrase(phrase_id: int, text: str, session: Session) -> dict:
     clean_text = text.strip()
     if not clean_text:
         raise field_error(422, "text", "value_required")
+    phrase = session.get(Phrase, phrase_id)
+    if phrase is None:
+        raise field_error(404, "text", "phrase_not_found")
     try:
-        with session.begin():
-            phrase = session.get(Phrase, phrase_id)
-            if phrase is None:
-                raise field_error(404, "text", "phrase_not_found")
-            phrase.text = clean_text
+        phrase.text = clean_text
+        commit(session)
     except IntegrityError as error:
         raise field_error(409, "text", "phrase_exists") from error
     return {"id": phrase.id, "text": phrase.text}
 
 
 def delete_phrase(phrase_id: int, session: Session) -> None:
-    with session.begin():
-        phrase = session.get(Phrase, phrase_id)
-        if phrase is None:
-            raise HTTPException(status_code=404, detail=[{"loc": ["path", "phrase_id"], "type": "phrase_not_found"}])
-        session.delete(phrase)
+    phrase = session.get(Phrase, phrase_id)
+    if phrase is None:
+        raise HTTPException(status_code=404, detail=[{"loc": ["path", "phrase_id"], "type": "phrase_not_found"}])
+    session.delete(phrase)
+    commit(session)
 
 
 def read_grammar(session: Session) -> list[dict]:
@@ -102,14 +102,14 @@ def update_grammar_pattern(pattern_id: int, template: str, session: Session) -> 
     clean_template = template.strip()
     if not clean_template:
         raise field_error(422, "template", "value_required")
+    pattern = session.get(GrammarPattern, pattern_id)
+    if pattern is None:
+        raise field_error(404, "template", "grammar_pattern_not_found")
+    if clean_template.count("{" + pattern.slot.name + "}") != 1:
+        raise field_error(422, "template", "grammar_placeholder_invalid")
     try:
-        with session.begin():
-            pattern = session.get(GrammarPattern, pattern_id)
-            if pattern is None:
-                raise field_error(404, "template", "grammar_pattern_not_found")
-            if clean_template.count("{" + pattern.slot.name + "}") != 1:
-                raise field_error(422, "template", "grammar_placeholder_invalid")
-            pattern.template = clean_template
+        pattern.template = clean_template
+        commit(session)
     except IntegrityError as error:
         raise field_error(409, "template", "grammar_pattern_exists") from error
     return {"id": pattern.id, "template": pattern.template}
@@ -119,12 +119,12 @@ def update_grammar_value(value_id: int, value: str, session: Session) -> dict:
     clean_value = value.strip()
     if not clean_value:
         raise field_error(422, "value", "value_required")
+    item = session.get(GrammarSlotValue, value_id)
+    if item is None:
+        raise field_error(404, "value", "grammar_value_not_found")
     try:
-        with session.begin():
-            item = session.get(GrammarSlotValue, value_id)
-            if item is None:
-                raise field_error(404, "value", "grammar_value_not_found")
-            item.value = clean_value
+        item.value = clean_value
+        commit(session)
     except IntegrityError as error:
         raise field_error(409, "value", "grammar_value_exists") from error
     return {"id": item.id, "value": item.value}

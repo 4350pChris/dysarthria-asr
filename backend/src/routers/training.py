@@ -11,6 +11,7 @@ from ..api_errors import field_error
 from ..asr import transcribe_german
 from ..corpus import create_audio_clip, update_transcription_label
 from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
+from ..models import AsrSource, AudioSource, LabelStatus
 from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
 from ..database import get_session
 from .. import database
@@ -29,10 +30,11 @@ def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
             update_transcription_label(
                 audio_id,
                 TranscriptionLabelChanges(
-                asr_text=asr_text,
-                asr_source="server",
-                status="labeled",
-                ), session,
+                    asr_text=asr_text,
+                    asr_source=AsrSource.SERVER,
+                    status=LabelStatus.LABELED,
+                ),
+                session,
             )
 
 
@@ -72,19 +74,20 @@ async def save_training_recording(
             file_path=relative_audio_path,
             original_filename=f"training-{prompt_id}{suffix}",
             content_type=audio.content_type or "audio/webm",
-            source="training_reading",
+            source=AudioSource.TRAINING_READING,
         ), session=session)
         item = update_transcription_label(
             audio_id,
             TranscriptionLabelChanges(
-            transcript=prompt["text"],
-            status="labeled",
-            notes=f"Guided reading: {prompt_id}. Source: {prompt['source']}.",
-            training_prompt_id=prompt["id"],
-            training_split=prompt["split"],
-            training_category=prompt["category"],
-            training_prompt_source=prompt["source"],
-            ), session,
+                transcript=prompt["text"],
+                status=LabelStatus.LABELED,
+                notes=f"Guided reading: {prompt_id}. Source: {prompt['source']}.",
+                training_prompt_id=prompt["id"],
+                training_split=prompt["split"],
+                training_category=prompt["category"],
+                training_prompt_source=prompt["source"],
+            ),
+            session,
         )
     except Exception:
         audio_path.unlink(missing_ok=True)

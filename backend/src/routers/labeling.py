@@ -12,6 +12,8 @@ from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, 
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
+from ..models import AudioSource
+
 from ..asr import transcribe_german
 from ..corpus import (
     audio_file_for_clip,
@@ -136,7 +138,7 @@ def import_audio_bytes(
         file_path=relative_audio_path,
         original_filename=original_filename,
         content_type=content_type,
-        source="whatsapp_upload",
+        source=AudioSource.WHATSAPP_UPLOAD,
     ), session=session)
     return update_transcription_label(audio_id, TranscriptionLabelChanges(asr_text=asr_text, notes=notes), session)
 
