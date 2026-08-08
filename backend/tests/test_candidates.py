@@ -6,13 +6,14 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from src.candidates import candidate_suggestions, read_candidates, read_generated_candidates
-from src.corpus import create_audio_clip, label_counts, read_label_items, upsert_transcription_label
+from src.corpus import label_counts, read_label_items
+from conftest import change_label, make_audio_clip
 from src.database import init_db
 from src.phrases import create_phrase, read_categories
 
 
-def test_generated_candidates_rank_and_labels_save_provisional_transcript(initialized_db: Path) -> None:
-    generated = read_generated_candidates()
+def test_generated_candidates_rank_and_labels_save_provisional_transcript(initialized_db: Path, session) -> None:
+    generated = read_generated_candidates(session)
     assert any(item["text"] == "Ich möchte Kaffee." for item in generated)
     assert any(item["text"] == "Wo ist meine Brille?" for item in generated)
     assert any(item["text"] == "Ich muss zur Toilette." for item in generated)
@@ -33,35 +34,35 @@ def test_generated_candidates_rank_and_labels_save_provisional_transcript(initia
     assert not any(item["text"] == "Ich brauche kurz später." for item in generated)
     assert len(generated) < 250
 
-    suggestions = candidate_suggestions("ich möchte kaffee")
+    suggestions = candidate_suggestions("ich möchte kaffee", session)
     assert len(suggestions) >= 5
     assert suggestions[0]["id"]
 
     audio_id = uuid4().hex
-    create_audio_clip(audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
-    upsert_transcription_label(
+    make_audio_clip(session, audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
+    change_label(session,
         audio_id=audio_id,
         asr_text="ich möchte kaffee",
         transcript="Ich möchte Kaffee.",
     )
 
-    labels = read_label_items()
+    labels = read_label_items(session=session)
     assert labels[0]["audio_id"] == audio_id
     assert labels[0]["transcript"] == "Ich möchte Kaffee."
     assert labels[0]["status"] == "draft"
 
 
-def test_label_counts_track_status(initialized_db: Path) -> None:
+def test_label_counts_track_status(initialized_db: Path, session) -> None:
     audio_id = uuid4().hex
-    create_audio_clip(audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
-    upsert_transcription_label(
+    make_audio_clip(session, audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
+    change_label(session,
         audio_id=audio_id,
         asr_text="Ich möchte Kaffee.",
         transcript="ich möchte kaffee",
         status="labeled",
     )
 
-    assert label_counts() == {
+    assert label_counts(session) == {
         "total": 1,
         "draft": 0,
         "labeled": 1,
@@ -69,12 +70,12 @@ def test_label_counts_track_status(initialized_db: Path) -> None:
     }
 
 
-def test_init_db_preserves_existing_labels_and_seed_rows(initialized_db: Path) -> None:
-    category_count = len(read_categories())
-    generated_count = len(read_generated_candidates())
+def test_init_db_preserves_existing_labels_and_seed_rows(initialized_db: Path, session) -> None:
+    category_count = len(read_categories(session))
+    generated_count = len(read_generated_candidates(session))
     audio_id = uuid4().hex
-    create_audio_clip(audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
-    upsert_transcription_label(
+    make_audio_clip(session, audio_id, "data/audio/test.webm", "test.webm", "audio/webm", "app_recording")
+    change_label(session,
         audio_id=audio_id,
         asr_text="Ich möchte Kaffee.",
         transcript="Ich möchte Kaffee.",
@@ -82,16 +83,16 @@ def test_init_db_preserves_existing_labels_and_seed_rows(initialized_db: Path) -
 
     init_db()
 
-    assert read_label_items()[0]["audio_id"] == audio_id
-    assert len(read_categories()) == category_count
-    assert len(read_generated_candidates()) == generated_count
+    assert read_label_items(session=session)[0]["audio_id"] == audio_id
+    assert len(read_categories(session)) == category_count
+    assert len(read_generated_candidates(session)) == generated_count
 
 
-def test_read_candidates_deduplicates_generated_text_when_phrase_exists(initialized_db: Path) -> None:
-    category = read_categories()[0]
-    create_phrase(category["id"], "Ich möchte Kaffee.")
+def test_read_candidates_deduplicates_generated_text_when_phrase_exists(initialized_db: Path, session) -> None:
+    category = read_categories(session)[0]
+    create_phrase(category["id"], "Ich möchte Kaffee.", session)
 
-    matches = [item for item in read_candidates() if item["text"] == "Ich möchte Kaffee."]
+    matches = [item for item in read_candidates(session) if item["text"] == "Ich möchte Kaffee."]
 
     assert len(matches) == 1
     assert matches[0]["source"] == "phrase"

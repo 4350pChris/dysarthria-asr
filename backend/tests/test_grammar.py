@@ -8,7 +8,7 @@ from src.app import create_app
 from src.candidates import read_generated_candidates
 
 
-def test_grammar_endpoint_updates_generated_candidates(initialized_db: Path) -> None:
+def test_grammar_endpoint_updates_generated_candidates(initialized_db: Path, session) -> None:
     client = TestClient(create_app())
     grammar = client.get("/api/grammar").json()
     thing_slot = next(slot for slot in grammar if slot["name"] == "thing_acc")
@@ -20,12 +20,12 @@ def test_grammar_endpoint_updates_generated_candidates(initialized_db: Path) -> 
     )
 
     assert response.status_code == 200
-    generated_texts = {item["text"] for item in read_generated_candidates()}
+    generated_texts = {item["text"] for item in read_generated_candidates(session)}
     assert "Ich möchte Kakao." in generated_texts
     assert "Ich möchte Kaffee." not in generated_texts
 
 
-def test_grammar_endpoint_updates_pattern_templates(initialized_db: Path) -> None:
+def test_grammar_endpoint_updates_pattern_templates(initialized_db: Path, session) -> None:
     client = TestClient(create_app())
     grammar = client.get("/api/grammar").json()
     thing_slot = next(slot for slot in grammar if slot["name"] == "thing_acc")
@@ -37,7 +37,7 @@ def test_grammar_endpoint_updates_pattern_templates(initialized_db: Path) -> Non
     )
 
     assert response.status_code == 200
-    generated_texts = {item["text"] for item in read_generated_candidates()}
+    generated_texts = {item["text"] for item in read_generated_candidates(session)}
     assert "Bitte bring mir Kaffee." in generated_texts
     assert "Ich möchte Kaffee." not in generated_texts
 

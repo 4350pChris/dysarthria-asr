@@ -3,14 +3,17 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlmodel import Session
 
 from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
-from ..corpus import create_audio_clip, upsert_transcription_label
+from ..corpus import create_audio_clip, update_transcription_label
+from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..emoji_normalizer import replace_spoken_emojis
 from ..math_normalizer import normalize_german_math
 from ..paths import AUDIO_DIR, ROOT
+from ..database import get_session
 
 router = APIRouter(prefix="/api")
 
@@ -18,6 +21,7 @@ router = APIRouter(prefix="/api")
 @router.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),
+    session: Session = Depends(get_session),
 ) -> dict:
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(audio.filename or "").suffix or ".webm"
@@ -38,17 +42,19 @@ async def transcribe(
         raise HTTPException(status_code=422, detail="Keine Sprache erkannt.")
 
     relative_audio_path = str(audio_path.relative_to(ROOT))
-    create_audio_clip(
+    create_audio_clip(AudioClipCreate(
         id=audio_id,
         file_path=relative_audio_path,
         original_filename=audio.filename or "recording.webm",
         content_type=audio.content_type or "",
         source="app_recording",
-    )
-    upsert_transcription_label(
-        audio_id=audio_id,
+    ), session=session)
+    update_transcription_label(
+        audio_id,
+        TranscriptionLabelChanges(
         asr_text=transcript,
         asr_source="server",
+        ), session,
     )
     emoji_text = replace_spoken_emojis(transcript)
     math = normalize_german_math(transcript)
@@ -60,5 +66,5 @@ async def transcribe(
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
         "math_text": math.math_text,
-        "suggestions": candidate_suggestions(transcript),
+        "suggestions": candidate_suggestions(transcript, session),
     }

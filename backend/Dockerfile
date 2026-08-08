@@ -14,7 +14,9 @@ RUN uv sync --frozen --no-cache
 
 COPY seed/phrases.csv /app/seed/phrases.csv
 COPY src ./src
+COPY migrations ./migrations
+COPY alembic.ini ./
 COPY static ./static
 
 EXPOSE 8000
-CMD ["uv", "run", "--frozen", "uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uv run --frozen alembic upgrade head && uv run --frozen uvicorn src.app:app --host 0.0.0.0 --port 8000"]

@@ -4,12 +4,16 @@ import uuid
 from random import sample
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from sqlmodel import Session
 
 from ..api_errors import field_error
 from ..asr import transcribe_german
-from ..corpus import create_audio_clip, upsert_transcription_label
+from ..corpus import create_audio_clip, update_transcription_label
+from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
+from ..database import get_session
+from .. import database
 from ..training_prompts import find_prompt, prompt_bank
 
 router = APIRouter(prefix="/api/training")
@@ -21,12 +25,15 @@ def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
     except Exception:
         return
     if asr_text:
-        upsert_transcription_label(
-            audio_id=audio_id,
-            asr_text=asr_text,
-            asr_source="server",
-            status="labeled",
-        )
+        with Session(database.engine, expire_on_commit=False) as session:
+            update_transcription_label(
+                audio_id,
+                TranscriptionLabelChanges(
+                asr_text=asr_text,
+                asr_source="server",
+                status="labeled",
+                ), session,
+            )
 
 
 @router.get("/prompts")
@@ -43,6 +50,7 @@ async def save_training_recording(
     background_tasks: BackgroundTasks,
     prompt_id: str = Form(...),
     audio: UploadFile = File(...),
+    session: Session = Depends(get_session),
 ) -> dict:
     prompt = find_prompt(TATOEBA_PROMPTS_FILE, prompt_id)
     if not prompt or prompt["split"] != "train":
@@ -59,15 +67,16 @@ async def save_training_recording(
 
     try:
         relative_audio_path = str(audio_path.relative_to(ROOT))
-        create_audio_clip(
+        create_audio_clip(AudioClipCreate(
             id=audio_id,
             file_path=relative_audio_path,
             original_filename=f"training-{prompt_id}{suffix}",
             content_type=audio.content_type or "audio/webm",
             source="training_reading",
-        )
-        item = upsert_transcription_label(
-            audio_id=audio_id,
+        ), session=session)
+        item = update_transcription_label(
+            audio_id,
+            TranscriptionLabelChanges(
             transcript=prompt["text"],
             status="labeled",
             notes=f"Guided reading: {prompt_id}. Source: {prompt['source']}.",
@@ -75,6 +84,7 @@ async def save_training_recording(
             training_split=prompt["split"],
             training_category=prompt["category"],
             training_prompt_source=prompt["source"],
+            ), session,
         )
     except Exception:
         audio_path.unlink(missing_ok=True)

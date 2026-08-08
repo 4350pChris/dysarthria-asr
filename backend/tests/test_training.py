@@ -1,10 +1,11 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from conftest import connect_test_db
 
 from src import database
 from src.app import create_app
-from src.database import connect_db
+import sqlite3
 from src.routers import training
 from src.tatoeba import ensure_prompts, write_prompts
 from src.training_prompts import prompt_bank, prompt_split
@@ -59,7 +60,7 @@ def test_guided_recording_saves_known_prompt_as_training_ready(initialized_db: P
     assert item["status"] == "labeled"
     assert item["unsure"] is False
     assert (initialized_db / item["audio_file"]).read_bytes() == b"audio bytes"
-    with connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 1
         assert db.execute(
             "SELECT asr_text FROM transcription_labels WHERE audio_id = ?", (item["audio_id"],)
@@ -176,7 +177,7 @@ def test_tatoeba_cache_is_not_downloaded_when_it_exists(tmp_path: Path, monkeypa
 
 
 def test_existing_database_is_upgraded_for_guided_reading(initialized_db: Path) -> None:
-    with connect_db() as db:
+    with sqlite3.connect(database.DB_FILE) as db:
         db.commit()
         db.execute("PRAGMA foreign_keys = OFF")
         db.execute("DROP TABLE audio_clips")
@@ -194,10 +195,12 @@ def test_existing_database_is_upgraded_for_guided_reading(initialized_db: Path) 
         )
         db.commit()
         db.execute("PRAGMA foreign_keys = ON")
+        db.execute("DELETE FROM alembic_version")
 
     database.init_db()
 
-    with connect_db() as db:
+    with sqlite3.connect(database.DB_FILE) as db:
+        db.row_factory = sqlite3.Row
         schema = db.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'audio_clips'"
         ).fetchone()["sql"]
