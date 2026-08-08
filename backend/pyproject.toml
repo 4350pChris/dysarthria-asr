@@ -14,6 +14,8 @@ dependencies = [
   "text2num>=3.0.2",
   "tokenizers",
   "emoji>=2.0.0",
+  "sqlmodel>=0.0.27",
+  "alembic>=1.16",
 ]
 
 [dependency-groups]
