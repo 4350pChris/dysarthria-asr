@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const disabledTimer = ref(false)
+const { isTargetReady } = useStartupLogoTransition()
 const state = computed(() => {
   if (props.isRecording) return 'recording'
   if (props.isBusy) return 'warming'
@@ -65,7 +66,11 @@ function toggleRecording() {
       @click="toggleRecording"
     >
       <div class="flex flex-col items-center gap-3">
-        <div class="grid size-28 place-items-center">
+        <div
+          data-startup-logo-target
+          class="grid size-28 place-items-center"
+          :class="{ 'opacity-0': !isTargetReady }"
+        >
           <LogoMark
             aria-hidden="true"
             :size="112"
