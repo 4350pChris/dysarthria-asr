@@ -14,6 +14,8 @@ RUN uv sync --frozen --no-cache
 
 COPY seed/phrases.csv /app/seed/phrases.csv
 COPY src ./src
+COPY migrations ./migrations
+COPY alembic.ini ./
 COPY static ./static
 
 EXPOSE 8000

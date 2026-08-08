@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from conftest import connect_test_db
 from fastapi.testclient import TestClient
 
 from src import database
@@ -30,7 +31,7 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
     assert body["audio_path"].startswith("audio/")
     assert body["suggestions"][0]["text"] == "Ich möchte Kaffee."
 
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         audio = db.execute("SELECT file_path, content_type, source FROM audio_clips").fetchone()
         label = db.execute(
             "SELECT asr_text, asr_source, transcript, status FROM transcription_labels"
@@ -99,6 +100,6 @@ def test_transcribe_does_not_store_audio_without_asr_text(
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Keine Sprache erkannt."
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
     assert not list((initialized_db / "audio").glob("*.webm"))

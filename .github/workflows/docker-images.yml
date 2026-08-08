@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -40,6 +43,12 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --frozen --group dev
 
+      - name: Lint backend
+        run: uv run ruff check src tests
+
+      - name: Type-check backend
+        run: uv run pyright
+
       - name: Run backend tests
         run: |
           mkdir -p reports
@@ -63,6 +72,7 @@ jobs:
           fail-on-error: false
 
   build-and-push:
+    if: github.event_name != 'pull_request'
     needs: backend-tests
     runs-on: ubuntu-latest
     steps:

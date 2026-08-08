@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
-from .database import init_db
+from . import database
 from .paths import STATIC_DIR, TATOEBA_PROMPTS_FILE
 from .routers import labeling, phrases, training, transcription
 from .tatoeba import ensure_prompts
+from .training_prompts import import_prompts
 
 
 def configure_logging() -> None:
@@ -23,18 +25,23 @@ def configure_logging() -> None:
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     try:
-        count = ensure_prompts(TATOEBA_PROMPTS_FILE)
-        logging.getLogger("src").info("Tatoeba prompt cache has %s prompts.", count)
+        ensure_prompts(TATOEBA_PROMPTS_FILE)
+        with Session(database.engine) as session:
+            imported = import_prompts(TATOEBA_PROMPTS_FILE, session)
+        if imported:
+            logging.getLogger("src").info(
+                "Imported %s Tatoeba prompts.", imported)
     except Exception:
-        logging.getLogger("src").warning("Tatoeba prompt download failed; continuing without it.", exc_info=True)
+        logging.getLogger("src").warning(
+            "Tatoeba prompt setup failed; continuing without it.", exc_info=True)
     yield
 
 
 def create_app() -> FastAPI:
     configure_logging()
-    init_db()
+    database.init_db()
 
     app = FastAPI(title="Dysarthria ASR Prototype", lifespan=lifespan)
     app.add_middleware(

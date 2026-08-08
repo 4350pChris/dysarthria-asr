@@ -8,8 +8,17 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
+from sqlmodel import Session
 from starlette.background import BackgroundTask
 
 from ..asr import transcribe_german
@@ -21,10 +30,12 @@ from ..corpus import (
     delete_label_items_without_asr,
     label_counts,
     read_label_items,
-    upsert_transcription_label,
+    update_transcription_label,
 )
+from ..database import get_session
+from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
+from ..models import AudioSource
 from ..paths import AUDIO_DIR, ROOT
-from ..request_models import LabelUpdateRequest
 
 router = APIRouter(prefix="/api/labeling")
 
@@ -111,6 +122,7 @@ def import_audio_bytes(
     contents: bytes,
     original_filename: str,
     content_type: str,
+    session: Session,
 ) -> dict | None:
     suffix = Path(original_filename).suffix.lower() or ".ogg"
     audio_id = uuid.uuid4().hex
@@ -127,17 +139,17 @@ def import_audio_bytes(
         return None
 
     relative_audio_path = str(audio_path.relative_to(ROOT))
-    create_audio_clip(
+    create_audio_clip(AudioClipCreate(
         id=audio_id,
         file_path=relative_audio_path,
         original_filename=original_filename,
         content_type=content_type,
-        source="whatsapp_upload",
-    )
-    return upsert_transcription_label(audio_id=audio_id, asr_text=asr_text, notes=notes)
+        source=AudioSource.WHATSAPP_UPLOAD,
+    ), session=session)
+    return update_transcription_label(audio_id, TranscriptionLabelChanges(asr_text=asr_text, notes=notes), session)
 
 
-def import_zip(contents: bytes, target_sender: str) -> list[dict | None]:
+def import_zip(contents: bytes, target_sender: str, session: Session) -> list[dict | None]:
     try:
         archive = zipfile.ZipFile(io.BytesIO(contents))
     except zipfile.BadZipFile as error:
@@ -154,6 +166,7 @@ def import_zip(contents: bytes, target_sender: str) -> list[dict | None]:
                 archive.read(name),
                 path.name,
                 "audio/ogg" if path.suffix.lower() in {".ogg", ".opus"} else "",
+                session,
             )
         )
     return items
@@ -163,6 +176,7 @@ def import_zip(contents: bytes, target_sender: str) -> list[dict | None]:
 async def import_audio(
     files: list[UploadFile] = File(...),
     target_sender: str = Form(""),
+    session: Session = Depends(get_session),
 ) -> dict:
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     imported_items: list[dict | None] = []
@@ -171,17 +185,17 @@ async def import_audio(
         if not contents:
             raise HTTPException(status_code=400, detail="Upload non-empty audio files.")
         if Path(audio.filename or "").suffix.lower() == ".zip":
-            imported_items.extend(import_zip(contents, target_sender))
+            imported_items.extend(import_zip(contents, target_sender, session))
             continue
         if not is_audio_upload(audio):
             raise HTTPException(status_code=400, detail="Upload audio files or a WhatsApp ZIP export.")
-        imported_items.append(import_audio_bytes(contents, audio.filename or "", audio.content_type or ""))
+        imported_items.append(import_audio_bytes(contents, audio.filename or "", audio.content_type or "", session))
     items = [item for item in imported_items if item is not None]
     return {
         "imported": len(items),
         "skipped": len(imported_items) - len(items),
         "items": items,
-        "counts": label_counts(),
+        "counts": label_counts(session),
     }
 
 
@@ -202,6 +216,7 @@ def list_items(
     unsure: bool | None = None,
     missing_asr: bool | None = None,
     limit: int = Query(100, ge=1, le=500),
+    session: Session = Depends(get_session),
 ) -> dict:
     return {
         "items": read_label_items(
@@ -209,15 +224,15 @@ def list_items(
             status=status,
             unsure=unsure,
             missing_asr=missing_asr,
-            limit=limit,
+            limit=limit, session=session,
         ),
         "filtered_count": count_label_items(
             source=source,
             status=status,
             unsure=unsure,
-            missing_asr=missing_asr,
+            missing_asr=missing_asr, session=session,
         ),
-        "counts": label_counts(),
+        "counts": label_counts(session),
     }
 
 
@@ -226,42 +241,41 @@ def delete_empty_asr_items(
     source: str | None = None,
     status: str | None = None,
     unsure: bool | None = None,
+    session: Session = Depends(get_session),
 ) -> dict:
     deleted = delete_label_items_without_asr(
         ROOT,
         source=source,
         status=status,
-        unsure=unsure,
+        unsure=unsure, session=session,
     )
-    return {"deleted": deleted, "counts": label_counts()}
+    return {"deleted": deleted, "counts": label_counts(session)}
 
 
 @router.patch("/items/{audio_id}")
 def update_item(
     audio_id: str,
-    data: LabelUpdateRequest,
+    changes: TranscriptionLabelChanges,
+    session: Session = Depends(get_session),
 ) -> dict:
     return {
-        "item": upsert_transcription_label(
-            audio_id=audio_id,
-            transcript=data.transcript,
-            status=data.status,
-            unsure=data.unsure,
-            notes=data.notes,
+        "item": update_transcription_label(
+            audio_id,
+            changes, session,
         ),
-        "counts": label_counts(),
+        "counts": label_counts(session),
     }
 
 
 @router.delete("/items/{audio_id}")
-def delete_item(audio_id: str) -> dict:
-    delete_audio_clip(audio_id, ROOT)
-    return {"counts": label_counts()}
+def delete_item(audio_id: str, session: Session = Depends(get_session)) -> dict:
+    delete_audio_clip(audio_id, ROOT, session)
+    return {"counts": label_counts(session)}
 
 
 @router.get("/audio/{audio_id}")
-def get_audio(audio_id: str) -> FileResponse:
-    return FileResponse(audio_file_for_clip(audio_id, ROOT))
+def get_audio(audio_id: str, session: Session = Depends(get_session)) -> FileResponse:
+    return FileResponse(audio_file_for_clip(audio_id, ROOT, session))
 
 
 def training_labels_csv(rows: list[dict]) -> str:
@@ -273,10 +287,10 @@ def training_labels_csv(rows: list[dict]) -> str:
 
 
 @router.get("/training-data.zip")
-def export_training_data() -> FileResponse:
+def export_training_data(session: Session = Depends(get_session)) -> FileResponse:
     rows = [
         row
-        for row in read_label_items(limit=100000)
+        for row in read_label_items(limit=100000, session=session)
         if (
             row["status"] == "labeled"
             and not row["unsure"]
@@ -301,7 +315,7 @@ def export_training_data() -> FileResponse:
                 "Training readings from validation and test prompt splits are excluded.\n",
             )
             for row in rows:
-                audio_path = audio_file_for_clip(row["audio_id"], ROOT)
+                audio_path = audio_file_for_clip(row["audio_id"], ROOT, session)
                 try:
                     arcname = audio_path.relative_to(ROOT).as_posix()
                 except ValueError as error:

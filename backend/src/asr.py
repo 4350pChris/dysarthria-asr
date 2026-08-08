@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from functools import lru_cache
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict
 
@@ -39,7 +39,7 @@ def _model():
         from faster_whisper import WhisperModel
     except ImportError as exc:
         raise RuntimeError(
-            "faster-whisper is not installed. Run `pip install -r requirements.txt`."
+            "faster-whisper is not installed. Run `uv sync`."
         ) from exc
 
     return WhisperModel(**model_settings())

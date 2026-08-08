@@ -4,10 +4,10 @@ import io
 import zipfile
 from pathlib import Path
 
+from conftest import change_label, connect_test_db, make_audio_clip
 from fastapi.testclient import TestClient
 
 from src import database
-from src.corpus import create_audio_clip, upsert_transcription_label
 from src.routers import labeling
 
 
@@ -31,7 +31,7 @@ def test_import_creates_whatsapp_draft_labels(initialized_db: Path, monkeypatch)
     assert body["imported"] == 2
     assert body["counts"]["draft"] == 2
 
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         clips = db.execute("SELECT source, original_filename FROM audio_clips").fetchall()
         labels = db.execute("SELECT asr_text, status FROM transcription_labels").fetchall()
     assert [dict(row)["source"] for row in clips] == ["whatsapp_upload", "whatsapp_upload"]
@@ -92,7 +92,7 @@ def test_import_whatsapp_zip_filters_audio_by_sender(
 
     assert response.status_code == 200
     assert response.json()["imported"] == 1
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         row = db.execute("SELECT original_filename FROM audio_clips").fetchone()
     assert row["original_filename"] == "00000001-AUDIO-2026-07-22-10-00-00.opus"
 
@@ -174,7 +174,7 @@ def test_import_does_not_store_audio_without_asr_text(
     assert response.status_code == 200
     assert response.json()["imported"] == 1
     assert response.json()["skipped"] == 1
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         clips = db.execute("SELECT original_filename, file_path FROM audio_clips").fetchall()
     assert [row["original_filename"] for row in clips] == ["speech.ogg"]
     assert (initialized_db / clips[0]["file_path"]).exists()
@@ -216,6 +216,7 @@ def test_labeling_update_saves_training_ready_and_unsure_rows(
 def test_training_data_export_includes_labels_and_matching_audio(
     initialized_db: Path,
     monkeypatch,
+    session,
 ) -> None:
     monkeypatch.setattr(labeling, "ROOT", initialized_db)
     audio_dir = initialized_db / "audio"
@@ -223,22 +224,22 @@ def test_training_data_export_includes_labels_and_matching_audio(
     (audio_dir / "included.ogg").write_bytes(b"included audio")
     (audio_dir / "excluded.ogg").write_bytes(b"excluded audio")
     (audio_dir / "held-out.ogg").write_bytes(b"held out audio")
-    create_audio_clip("included", "audio/included.ogg", "included.ogg")
-    upsert_transcription_label(
+    make_audio_clip(session, "included", "audio/included.ogg", "included.ogg")
+    change_label(session,
         "included",
         transcript="Kaffee bitte.",
         status="labeled",
         unsure=False,
     )
-    create_audio_clip("excluded", "audio/excluded.ogg", "excluded.ogg")
-    upsert_transcription_label(
+    make_audio_clip(session, "excluded", "audio/excluded.ogg", "excluded.ogg")
+    change_label(session,
         "excluded",
         transcript="Unsicher.",
         status="labeled",
         unsure=True,
     )
-    create_audio_clip("held-out", "audio/held-out.ogg", "held-out.ogg", source="training_reading")
-    upsert_transcription_label(
+    make_audio_clip(session, "held-out", "audio/held-out.ogg", "held-out.ogg", source="training_reading")
+    change_label(session,
         "held-out",
         transcript="Dieser Satz bleibt für den Test zurück.",
         status="labeled",
@@ -286,7 +287,7 @@ def test_delete_labeling_item_removes_audio_and_label(
     assert response.status_code == 200
     assert response.json()["counts"]["total"] == 0
     assert not (initialized_db / item["audio_file"]).exists()
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM transcription_labels").fetchone()[0] == 0
 
@@ -294,6 +295,7 @@ def test_delete_labeling_item_removes_audio_and_label(
 def test_labeling_items_can_filter_missing_asr_text(
     initialized_db: Path,
     monkeypatch,
+    session,
 ) -> None:
     monkeypatch.setattr(labeling, "ROOT", initialized_db)
     monkeypatch.setattr(labeling, "AUDIO_DIR", initialized_db / "audio")
@@ -305,12 +307,13 @@ def test_labeling_items_can_filter_missing_asr_text(
         ("text", "text.ogg", "has text"),
         ("spaces", "spaces.ogg", "  "),
     ]:
-        create_audio_clip(
+        make_audio_clip(
+            session,
             id=audio_id,
             file_path=f"audio/{filename}",
             original_filename=filename,
         )
-        upsert_transcription_label(audio_id=audio_id, asr_text=asr_text)
+        change_label(session, audio_id=audio_id, asr_text=asr_text)
 
     response = client.get("/api/labeling/items?missing_asr=true")
 
@@ -324,6 +327,7 @@ def test_labeling_items_can_filter_missing_asr_text(
 def test_delete_empty_asr_items_uses_active_filters(
     initialized_db: Path,
     monkeypatch,
+    session,
 ) -> None:
     monkeypatch.setattr(labeling, "ROOT", initialized_db)
     for audio_id, status, asr_text in [
@@ -331,8 +335,8 @@ def test_delete_empty_asr_items_uses_active_filters(
         ("empty-skipped", "skipped", ""),
         ("text-draft", "draft", "text"),
     ]:
-        create_audio_clip(id=audio_id, file_path=f"audio/{audio_id}.ogg")
-        upsert_transcription_label(audio_id=audio_id, asr_text=asr_text, status=status)
+        make_audio_clip(session, audio_id, f"audio/{audio_id}.ogg")
+        change_label(session, audio_id=audio_id, asr_text=asr_text, status=status)
 
     from src.app import create_app
 
@@ -344,6 +348,6 @@ def test_delete_empty_asr_items_uses_active_filters(
 
     assert response.status_code == 200
     assert response.json()["deleted"] == 1
-    with database.connect_db() as db:
+    with connect_test_db(database.DB_FILE) as db:
         remaining = db.execute("SELECT id FROM audio_clips ORDER BY id").fetchall()
     assert [row["id"] for row in remaining] == ["empty-skipped", "text-draft"]

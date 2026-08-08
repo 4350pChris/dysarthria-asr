@@ -4,8 +4,7 @@ version = "0.1.0"
 description = "Local FastAPI backend for dysarthria ASR experiments"
 requires-python = ">=3.14"
 dependencies = [
-  "fastapi",
-  "uvicorn[standard]",
+  "fastapi[standard]",
   "python-multipart",
   "faster-whisper",
   "huggingface-hub",
@@ -20,7 +19,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "pyright",
   "pytest",
+  "ruff",
 ]
 
 [tool.uv]
@@ -29,3 +30,14 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["F", "I"]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"

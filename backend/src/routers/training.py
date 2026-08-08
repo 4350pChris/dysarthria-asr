@@ -1,16 +1,30 @@
 from __future__ import annotations
 
 import uuid
-from random import sample
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
+from sqlmodel import Session
 
+from .. import database
 from ..api_errors import field_error
 from ..asr import transcribe_german
-from ..corpus import create_audio_clip, upsert_transcription_label
-from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
-from ..training_prompts import find_prompt, prompt_bank
+from ..corpus import create_audio_clip, update_transcription_label
+from ..database import get_session
+from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
+from ..models import AsrSource, AudioSource, LabelStatus
+from ..paths import AUDIO_DIR, ROOT
+from ..training_prompts import find_prompt, read_training_prompts
+from ..validation import CleanText
 
 router = APIRouter(prefix="/api/training")
 
@@ -21,18 +35,21 @@ def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
     except Exception:
         return
     if asr_text:
-        upsert_transcription_label(
-            audio_id=audio_id,
-            asr_text=asr_text,
-            asr_source="server",
-            status="labeled",
-        )
+        with Session(database.engine, expire_on_commit=False) as session:
+            update_transcription_label(
+                audio_id,
+                TranscriptionLabelChanges(
+                    asr_text=asr_text,
+                    asr_source=AsrSource.SERVER,
+                    status=LabelStatus.LABELED,
+                ),
+                session,
+            )
 
 
 @router.get("/prompts")
-def list_prompts() -> dict:
-    train_prompts = [prompt for prompt in prompt_bank(TATOEBA_PROMPTS_FILE) if prompt["split"] == "train"]
-    prompts = sample(train_prompts, k=min(200, len(train_prompts)))
+def list_prompts(session: Session = Depends(get_session)) -> dict:
+    prompts = read_training_prompts(session)
     if not prompts:
         raise HTTPException(status_code=503, detail={"code": "training_prompts_unavailable"})
     return {"prompts": prompts}
@@ -41,10 +58,11 @@ def list_prompts() -> dict:
 @router.post("/recordings")
 async def save_training_recording(
     background_tasks: BackgroundTasks,
-    prompt_id: str = Form(...),
+    prompt_id: Annotated[CleanText, Form()],
     audio: UploadFile = File(...),
+    session: Session = Depends(get_session),
 ) -> dict:
-    prompt = find_prompt(TATOEBA_PROMPTS_FILE, prompt_id)
+    prompt = find_prompt(session, prompt_id)
     if not prompt or prompt["split"] != "train":
         raise field_error(404, "prompt_id", "training_prompt_not_found")
     contents = await audio.read()
@@ -59,22 +77,25 @@ async def save_training_recording(
 
     try:
         relative_audio_path = str(audio_path.relative_to(ROOT))
-        create_audio_clip(
+        create_audio_clip(AudioClipCreate(
             id=audio_id,
             file_path=relative_audio_path,
             original_filename=f"training-{prompt_id}{suffix}",
             content_type=audio.content_type or "audio/webm",
-            source="training_reading",
-        )
-        item = upsert_transcription_label(
-            audio_id=audio_id,
-            transcript=prompt["text"],
-            status="labeled",
-            notes=f"Guided reading: {prompt_id}. Source: {prompt['source']}.",
-            training_prompt_id=prompt["id"],
-            training_split=prompt["split"],
-            training_category=prompt["category"],
-            training_prompt_source=prompt["source"],
+            source=AudioSource.TRAINING_READING,
+        ), session=session)
+        item = update_transcription_label(
+            audio_id,
+            TranscriptionLabelChanges(
+                transcript=prompt["text"],
+                status=LabelStatus.LABELED,
+                notes=f"Guided reading: {prompt_id}. Source: {prompt['source']}.",
+                training_prompt_id=prompt["id"],
+                training_split=prompt["split"],
+                training_category=prompt["category"],
+                training_prompt_source=prompt["source"],
+            ),
+            session,
         )
     except Exception:
         audio_path.unlink(missing_ok=True)

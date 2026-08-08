@@ -53,19 +53,8 @@ def write_prompts(path: Path, prompts: list[dict[str, str]]) -> None:
     temporary_path.replace(path)
 
 
-def load_prompts(path: Path) -> list[dict[str, str]]:
-    if not path.exists():
-        return []
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def ensure_prompts(path: Path) -> int:
+def ensure_prompts(path: Path) -> None:
     if path.exists():
-        return len(load_prompts(path))
+        return
     prompts = download_prompts()
     write_prompts(path, prompts)
-    return len(prompts)
-
-
-def prompt_from_cache(path: Path, prompt_id: str) -> dict[str, str] | None:
-    return next((prompt for prompt in load_prompts(path) if prompt["id"] == prompt_id), None)
