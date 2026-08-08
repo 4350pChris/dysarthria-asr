@@ -7,6 +7,8 @@ from pathlib import Path
 
 
 LABEL_FIELDS = ["audio_id", "audio_file", "source", "transcript"]
+MIN_CLIP_SECONDS = 2
+MAX_CLIP_SECONDS = 25
 
 
 def read_rows(csv_path: Path) -> list[dict[str, str]]:
@@ -14,7 +16,7 @@ def read_rows(csv_path: Path) -> list[dict[str, str]]:
         rows = list(csv.DictReader(input_file))
     if not rows:
         raise ValueError(f"{csv_path} has no clip rows.")
-    required = {"clip_id", "text", "start_seconds", "end_seconds"}
+    required = {"clip_id", "text", "start_seconds", "end_seconds", "approved"}
     if not required.issubset(rows[0]):
         raise ValueError(f"{csv_path} is not an alignment CSV.")
     return rows
@@ -73,11 +75,19 @@ def main() -> int:
             raise FileNotFoundError(audio_path)
         source = csv_path.stem.removesuffix("-alignment")
         for row in read_rows(csv_path):
+            if row["approved"].strip().casefold() != "yes":
+                continue
             transcript = row["text"].strip()
             start = float(row["start_seconds"])
             end = float(row["end_seconds"])
             if not transcript or end <= start:
                 raise ValueError(f"Invalid row {row['clip_id']} in {csv_path}")
+            duration = end - start
+            if not MIN_CLIP_SECONDS <= duration <= MAX_CLIP_SECONDS:
+                raise ValueError(
+                    f"Row {row['clip_id']} in {csv_path} has unsafe length {duration:.2f}s "
+                    f"(must be {MIN_CLIP_SECONDS}-{MAX_CLIP_SECONDS}s)."
+                )
             audio_id = f"reading-{source}-{int(row['clip_id']):03d}"
             clip_path = audio_dir / f"{audio_id}.wav"
             cut_clip(audio_path, start, end, clip_path)
