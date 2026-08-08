@@ -86,7 +86,25 @@ def test_guided_recording_rejects_unknown_prompt(initialized_db: Path, monkeypat
         files={"audio": ("reading.webm", b"audio bytes", "audio/webm")},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 404
+    assert response.json()["detail"] == [{"loc": ["body", "prompt_id"], "type": "training_prompt_not_found"}]
+
+
+def test_guided_recording_rejects_empty_audio(initialized_db: Path, monkeypatch) -> None:
+    monkeypatch.setattr(training, "ROOT", initialized_db)
+    monkeypatch.setattr(training, "AUDIO_DIR", initialized_db / "audio")
+    prompts_file = initialized_db / "tatoeba.json"
+    monkeypatch.setattr(training, "TATOEBA_PROMPTS_FILE", prompts_file)
+    prompt = write_train_prompt(prompts_file, "Das ist ein ausreichend langer deutscher Beispielsatz")
+
+    response = TestClient(create_app()).post(
+        "/api/training/recordings",
+        data={"prompt_id": prompt["id"]},
+        files={"audio": ("reading.webm", b"", "audio/webm")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == [{"loc": ["body", "audio"], "type": "audio_required"}]
 
 
 def test_guided_recording_rejects_validation_and_test_prompts(initialized_db: Path, monkeypatch) -> None:
@@ -104,7 +122,8 @@ def test_guided_recording_rejects_validation_and_test_prompts(initialized_db: Pa
         files={"audio": ("reading.webm", b"audio bytes", "audio/webm")},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 404
+    assert response.json()["detail"] == [{"loc": ["body", "prompt_id"], "type": "training_prompt_not_found"}]
 
 
 def test_tatoeba_recording_uses_the_cached_known_text(initialized_db: Path, monkeypatch) -> None:

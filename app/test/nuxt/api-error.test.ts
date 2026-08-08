@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apiErrorCode, apiErrorMessage } from '~/utils/apiError'
+import { apiErrorCode, apiErrorMessage, apiFormErrors } from '~/utils/apiError'
 
 describe('apiErrorMessage', () => {
   it('returns a German message for an API error code', () => {
@@ -11,5 +11,11 @@ describe('apiErrorMessage', () => {
 
   it('returns the fallback for an unknown error', () => {
     expect(apiErrorMessage(new Error('Network error'), 'Fallback')).toBe('Fallback')
+  })
+
+  it('maps training field errors to German form messages', () => {
+    const error = { data: { detail: [{ loc: ['body', 'prompt_id'], type: 'training_prompt_not_found' }] } }
+
+    expect(apiFormErrors(error, 'Fallback')).toEqual({ prompt_id: 'Dieser Lesetext gibt es nicht mehr.' })
   })
 })

@@ -11,7 +11,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   retry: []
-  save: []
 }>()
 </script>
 
@@ -43,6 +42,7 @@ const emit = defineEmits<{
       size="xl"
       variant="soft"
       :disabled="isSaving"
+      type="button"
       @click="emit('retry')"
     >
       Neu aufnehmen
@@ -54,7 +54,7 @@ const emit = defineEmits<{
       size="xl"
       :disabled="!canSave"
       :loading="isSaving || isCheckingAudio"
-      @click="emit('save')"
+      type="submit"
     >
       Als Trainingspaar speichern
     </UButton>

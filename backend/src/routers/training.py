@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
+from ..api_errors import field_error
 from ..asr import transcribe_german
 from ..corpus import create_audio_clip, upsert_transcription_label
 from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
@@ -33,7 +34,7 @@ def list_prompts() -> dict:
     train_prompts = [prompt for prompt in prompt_bank(TATOEBA_PROMPTS_FILE) if prompt["split"] == "train"]
     prompts = sample(train_prompts, k=min(200, len(train_prompts)))
     if not prompts:
-        raise HTTPException(status_code=503, detail="Reading prompts are not available yet.")
+        raise HTTPException(status_code=503, detail={"code": "training_prompts_unavailable"})
     return {"prompts": prompts}
 
 
@@ -45,10 +46,10 @@ async def save_training_recording(
 ) -> dict:
     prompt = find_prompt(TATOEBA_PROMPTS_FILE, prompt_id)
     if not prompt or prompt["split"] != "train":
-        raise HTTPException(status_code=400, detail="Unknown training prompt.")
+        raise field_error(404, "prompt_id", "training_prompt_not_found")
     contents = await audio.read()
     if not contents:
-        raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
+        raise field_error(422, "audio", "audio_required")
 
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(audio.filename or "").suffix.lower() or ".webm"
