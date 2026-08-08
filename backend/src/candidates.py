@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from .models import GrammarPattern, GrammarSlot, GrammarSlotValue, Phrase
 from .semantic_matching import semantic_scores
@@ -12,12 +12,12 @@ FUZZY_FALLBACK_THRESHOLD = 0.72
 
 
 def read_generated_candidates(session: Session) -> list[dict]:
-    rows = session.exec(select(GrammarPattern, GrammarSlot, GrammarSlotValue).join(GrammarSlot, GrammarPattern.slot_id == GrammarSlot.id).join(GrammarSlotValue, GrammarSlotValue.slot_id == GrammarSlot.id).order_by(GrammarPattern.id, GrammarSlotValue.id)).all()
+    rows = session.exec(select(GrammarPattern, GrammarSlot, GrammarSlotValue).join(GrammarSlot, col(GrammarPattern.slot_id) == col(GrammarSlot.id)).join(GrammarSlotValue, col(GrammarSlotValue.slot_id) == col(GrammarSlot.id)).order_by(col(GrammarPattern.id), col(GrammarSlotValue.id))).all()
     return [{"id": f"generated:{pattern.id}:{value.id}", "source": "generated", "text": pattern.template.replace("{" + slot.name + "}", value.value), "pattern_id": pattern.id, "slot_values": {slot.name: value.value}} for pattern, slot, value in rows]
 
 
 def read_candidates(session: Session) -> list[dict]:
-    phrases = session.exec(select(Phrase).order_by(Phrase.id)).all()
+    phrases = session.exec(select(Phrase).order_by(col(Phrase.id))).all()
     candidates = [{"id": f"phrase:{phrase.id}", "source": "phrase", "text": phrase.text} for phrase in phrases] + read_generated_candidates(session)
     return list({normalize_text(item["text"]): item for item in reversed(candidates)}.values())
 

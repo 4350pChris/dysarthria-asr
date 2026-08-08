@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from .models import Category, GrammarPattern, GrammarSlot, GrammarSlotValue, Phrase
 from .paths import PHRASES_FILE, SEED_PHRASES_FILE
@@ -26,26 +26,26 @@ GRAMMAR_SEED = {
 
 def seed_database(session: Session) -> None:
     for name, data in GRAMMAR_SEED.items():
-        slot = session.exec(select(GrammarSlot).where(GrammarSlot.name == name)).first()
+        slot = session.exec(select(GrammarSlot).where(col(GrammarSlot.name) == name)).first()
         if slot is None:
             slot = GrammarSlot(name=name)
             session.add(slot)
             session.flush()
         for template in data["patterns"]:
-            if not session.exec(select(GrammarPattern).where(GrammarPattern.slot_id == slot.id, GrammarPattern.template == template)).first():
+            if not session.exec(select(GrammarPattern).where(col(GrammarPattern.slot_id) == slot.id, col(GrammarPattern.template) == template)).first():
                 session.add(GrammarPattern(slot_id=slot.id, template=template))
         for value in data["values"]:
-            if not session.exec(select(GrammarSlotValue).where(GrammarSlotValue.slot_id == slot.id, GrammarSlotValue.value == value)).first():
+            if not session.exec(select(GrammarSlotValue).where(col(GrammarSlotValue.slot_id) == slot.id, col(GrammarSlotValue.value) == value)).first():
                 session.add(GrammarSlotValue(slot_id=slot.id, value=value))
     seed_file = PHRASES_FILE if PHRASES_FILE.exists() else SEED_PHRASES_FILE
     if not seed_file.exists():
         return
     for row in csv.DictReader(seed_file.open(newline="", encoding="utf-8")):
         name, text = row["category"].strip(), row["text"].strip()
-        category = session.exec(select(Category).where(Category.name == name)).first()
+        category = session.exec(select(Category).where(col(Category.name) == name)).first()
         if category is None:
             category = Category(name=name)
             session.add(category)
             session.flush()
-        if not session.exec(select(Phrase).where(Phrase.category_id == category.id, Phrase.text == text)).first():
+        if not session.exec(select(Phrase).where(col(Phrase.category_id) == category.id, col(Phrase.text) == text)).first():
             session.add(Phrase(category_id=category.id, text=text))

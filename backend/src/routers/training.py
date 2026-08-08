@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 from random import sample
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from ..paths import AUDIO_DIR, ROOT, TATOEBA_PROMPTS_FILE
 from ..database import get_session
 from .. import database
 from ..training_prompts import find_prompt, prompt_bank
+from ..validation import CleanText
 
 router = APIRouter(prefix="/api/training")
 
@@ -50,7 +52,7 @@ def list_prompts() -> dict:
 @router.post("/recordings")
 async def save_training_recording(
     background_tasks: BackgroundTasks,
-    prompt_id: str = Form(...),
+    prompt_id: Annotated[CleanText, Form()],
     audio: UploadFile = File(...),
     session: Session = Depends(get_session),
 ) -> dict:

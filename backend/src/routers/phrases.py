@@ -20,10 +20,11 @@ from ..phrases import (
     update_category,
     update_phrase,
 )
+from ..validation import CleanText
 
 router = APIRouter(prefix="/api")
 
-RequiredText = Annotated[str, Body(embed=True, min_length=1)]
+RequiredText = Annotated[CleanText, Body(embed=True)]
 
 
 @router.get("/phrases")

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 from sqlalchemy import func
 
 from .models import AsrSource, AudioClip, AudioSource, LabelStatus, TranscriptionLabel
@@ -27,7 +27,7 @@ def create_audio_clip(clip_data: AudioClipCreate, session: Session) -> dict:
 def update_transcription_label(audio_id: str, changes: TranscriptionLabelChanges, session: Session) -> dict:
     if session.get(AudioClip, audio_id) is None:
         raise HTTPException(status_code=404, detail="Audio clip not found.")
-    label = session.exec(select(TranscriptionLabel).where(TranscriptionLabel.audio_id == audio_id)).first()
+    label = session.exec(select(TranscriptionLabel).where(col(TranscriptionLabel.audio_id) == audio_id)).first()
     if label is None:
         label = TranscriptionLabel(audio_id=audio_id, updated_at=now())
         session.add(label)
@@ -47,25 +47,25 @@ def _item(clip: AudioClip, label: TranscriptionLabel) -> dict:
 def _filtered_statement(source: str | None, status: str | None, unsure: bool | None, missing_asr: bool | None):
     statement = select(AudioClip, TranscriptionLabel).join(TranscriptionLabel)
     if source:
-        statement = statement.where(AudioClip.source == source)
+        statement = statement.where(col(AudioClip.source) == source)
     if status:
-        statement = statement.where(TranscriptionLabel.status == status)
+        statement = statement.where(col(TranscriptionLabel.status) == status)
     if unsure is not None:
-        statement = statement.where(TranscriptionLabel.unsure == unsure)
+        statement = statement.where(col(TranscriptionLabel.unsure) == unsure)
     if missing_asr:
-        statement = statement.where(func.trim(TranscriptionLabel.asr_text) == "")
+        statement = statement.where(func.trim(col(TranscriptionLabel.asr_text)) == "")
     return statement
 
 
 def read_label_item(audio_id: str, session: Session) -> dict:
-    row = session.exec(select(AudioClip, TranscriptionLabel).join(TranscriptionLabel).where(AudioClip.id == audio_id)).first()
+    row = session.exec(select(AudioClip, TranscriptionLabel).join(TranscriptionLabel).where(col(AudioClip.id) == audio_id)).first()
     if row is None:
         raise HTTPException(status_code=404, detail="Label item not found.")
     return _item(*row)
 
 
 def read_label_items(source: str | None = None, status: str | None = None, unsure: bool | None = None, missing_asr: bool | None = None, limit: int = 100, *, session: Session) -> list[dict]:
-    rows = session.exec(_filtered_statement(source, status, unsure, missing_asr).order_by(AudioClip.created_at, AudioClip.id).limit(limit)).all()
+    rows = session.exec(_filtered_statement(source, status, unsure, missing_asr).order_by(col(AudioClip.created_at), col(AudioClip.id)).limit(limit)).all()
     return [_item(*row) for row in rows]
 
 
