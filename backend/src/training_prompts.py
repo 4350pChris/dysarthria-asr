@@ -5,7 +5,7 @@ from hashlib import sha256
 from pathlib import Path
 from random import randrange
 
-from sqlalchemy import func, insert
+from sqlalchemy import func, insert, literal_column
 from sqlmodel import Session, col, select
 
 from .database import commit
@@ -56,19 +56,22 @@ def import_prompts(path: Path, session: Session) -> int:
 
 
 def read_training_prompts(session: Session, limit: int = 200) -> list[dict[str, str]]:
-    count = session.exec(
-        select(func.count()).select_from(TrainingPrompt).where(col(TrainingPrompt.split) == "train")
-    ).one()
-    if count == 0:
+    rowid = literal_column("rowid")
+    maximum_rowid = session.exec(select(func.max(rowid)).select_from(TrainingPrompt)).one()
+    if maximum_rowid is None:
         return []
-    offset = randrange(max(1, count - limit + 1))
-    prompts = session.exec(
+    start_rowid = randrange(1, maximum_rowid + 1)
+    prompts = list(session.exec(
         select(TrainingPrompt)
-        .where(col(TrainingPrompt.split) == "train")
-        .order_by(col(TrainingPrompt.id))
-        .offset(offset)
+        .where(col(TrainingPrompt.split) == "train", rowid >= start_rowid)
         .limit(limit)
-    ).all()
+    ).all())
+    if len(prompts) < limit:
+        prompts += session.exec(
+            select(TrainingPrompt)
+            .where(col(TrainingPrompt.split) == "train", rowid < start_rowid)
+            .limit(limit - len(prompts))
+        ).all()
     return [prompt_metadata(prompt) for prompt in prompts]
 
 
