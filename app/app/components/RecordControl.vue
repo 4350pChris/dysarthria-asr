@@ -65,8 +65,8 @@ function toggleRecording() {
       :ui="{ base: 'flex-col gap-0 ring ring-default hover:ring-primary/50' }"
       @click="toggleRecording"
     >
-      <div class="flex flex-col items-center gap-3">
-        <div
+      <span class="flex flex-col items-center gap-3">
+        <span
           data-startup-logo-target
           class="grid size-28 place-items-center"
           :class="{ 'opacity-0': !isTargetReady }"
@@ -76,11 +76,11 @@ function toggleRecording() {
             :size="112"
             :state="state"
           />
-        </div>
+        </span>
 
-        <div class="grid min-w-full place-items-center">
+        <span class="grid min-w-full place-items-center">
           <Transition name="record-copy">
-            <div
+            <span
               :key="state"
               class="col-start-1 row-start-1 flex flex-col items-center gap-3"
             >
@@ -91,10 +91,10 @@ function toggleRecording() {
               <span class="min-h-6 text-base font-semibold text-muted">
                 {{ copy.guidance }}
               </span>
-            </div>
+            </span>
           </Transition>
-        </div>
-      </div>
+        </span>
+      </span>
     </UButton>
   </slot>
 </template>
