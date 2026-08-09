@@ -8,7 +8,8 @@ defineProps<{
 
 defineEmits<{
   copy: []
-  share: []
+  shareInstagram: []
+  shareText: []
 }>()
 
 function confidence(suggestion?: Suggestion) {
@@ -55,7 +56,8 @@ function sourceLabel(suggestion?: Suggestion) {
 
     <ResultActions
       :disabled="!selected"
-      @share="$emit('share')"
+      @share-instagram="$emit('shareInstagram')"
+      @share-text="$emit('shareText')"
     />
   </section>
 </template>

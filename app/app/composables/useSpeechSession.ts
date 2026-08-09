@@ -145,16 +145,37 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     }
   }
 
-  async function shareSelected() {
+  async function shareToInstagram() {
+    if (!outputText.value) return
+    const image = createShareImage(outputText.value)
+    if (!image) {
+      status.value = 'Bild konnte nicht erstellt werden.'
+      return
+    }
+
+    if (!navigator.share || !navigator.canShare?.({ files: [image] })) {
+      status.value = 'Instagram-Teilen wird auf diesem Gerät nicht unterstützt.'
+      return
+    }
+
+    try {
+      await navigator.share({
+        text: outputText.value,
+        files: [image]
+      })
+      status.value = 'Bild zum Teilen geöffnet.'
+    } catch {
+      status.value = 'Instagram-Teilen abgebrochen.'
+    }
+    void saveAttempt()
+  }
+
+  async function shareText() {
     if (!outputText.value) return
     try {
       if (navigator.share) {
-        const image = createShareImage(outputText.value)
-        const shareData = image && navigator.canShare?.({ files: [image] })
-          ? { text: outputText.value, files: [image] }
-          : { text: outputText.value }
-        await navigator.share(shareData)
-        status.value = 'Geteilt.'
+        await navigator.share({ text: outputText.value })
+        status.value = 'Text geteilt.'
       } else {
         openWhatsapp(outputText.value)
       }
@@ -262,6 +283,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     stopRecording,
     speakSelected,
     copySelected,
-    shareSelected
+    shareToInstagram,
+    shareText
   }
 }

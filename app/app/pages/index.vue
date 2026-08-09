@@ -22,7 +22,8 @@ useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'auf
 useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], handler: speech.stopRecording })
 useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], handler: submit })
 useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], handler: speech.copySelected })
-useSpeechCommand({ id: 'share', label: 'Teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], handler: speech.shareSelected })
+useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], handler: speech.shareText })
+useSpeechCommand({ id: 'share-instagram', label: 'Instagram', phrases: ['instagram', 'insta', 'bild teilen'], handler: speech.shareToInstagram })
 useSpeechCommand({
   id: 'phrases-mode',
   label: 'Satzmodus',
@@ -122,7 +123,8 @@ function submit() {
         :raw-transcript="speech.result.value?.raw_transcript"
         :selected="speech.selected.value"
         @copy="speech.copySelected"
-        @share="speech.shareSelected"
+        @share-instagram="speech.shareToInstagram"
+        @share-text="speech.shareText"
       />
 
       <SuggestionList
@@ -137,7 +139,8 @@ function submit() {
       :math-text="speech.result.value.math_text"
       :corrected-text="speech.result.value.math_corrected_text"
       @copy="speech.copySelected"
-      @share="speech.shareSelected"
+      @share-instagram="speech.shareToInstagram"
+      @share-text="speech.shareText"
     />
 
     <UButton

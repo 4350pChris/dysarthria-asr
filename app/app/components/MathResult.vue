@@ -6,7 +6,8 @@ defineProps<{
 
 defineEmits<{
   copy: []
-  share: []
+  shareInstagram: []
+  shareText: []
 }>()
 </script>
 
@@ -30,6 +31,9 @@ defineEmits<{
       </p>
     </UCard>
 
-    <ResultActions @share="$emit('share')" />
+    <ResultActions
+      @share-instagram="$emit('shareInstagram')"
+      @share-text="$emit('shareText')"
+    />
   </section>
 </template>
