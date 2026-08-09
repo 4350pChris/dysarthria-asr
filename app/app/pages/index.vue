@@ -12,7 +12,7 @@ const mode = ref<'phrases' | 'math'>('phrases')
 const modeOptions = [
   { label: 'Sätze', value: 'phrases' },
   { label: 'Mathe', value: 'math' }
-]
+] as const
 const speech = useSpeechSession(mode)
 const { byId, ready } = usePhrases()
 const speechCommands = useSpeechCommands()
@@ -95,23 +95,28 @@ function submit() {
       @stop="speech.stopRecording"
     />
 
-    <URadioGroup
-      v-model="mode"
-      class="w-full"
-      color="primary"
-      indicator="hidden"
-      :items="modeOptions"
-      legend="Modus"
-      orientation="horizontal"
-      size="xl"
-      variant="table"
-      :ui="{
-        legend: 'sr-only',
-        fieldset: 'w-full',
-        item: 'min-h-16 flex-1 items-center justify-center',
-        label: 'text-lg font-extrabold'
-      }"
-    />
+    <div
+      aria-label="Modus"
+      class="grid w-full grid-cols-2 gap-3"
+      role="radiogroup"
+    >
+      <UButton
+        v-for="option in modeOptions"
+        :key="option.value"
+        block
+        class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+        :color="mode === option.value ? 'primary' : 'neutral'"
+        role="radio"
+        size="xl"
+        type="button"
+        :aria-checked="mode === option.value"
+        :tabindex="mode === option.value ? 0 : -1"
+        :variant="mode === option.value ? 'solid' : 'subtle'"
+        @click="mode = option.value"
+      >
+        {{ option.label }}
+      </UButton>
+    </div>
 
     <p class="min-h-7 text-center text-lg font-semibold text-toned">
       {{ speech.status.value }}
