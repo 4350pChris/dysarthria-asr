@@ -126,7 +126,7 @@ function submit() {
       v-if="speech.hasSelection.value && mode === 'phrases'"
       class="space-y-4"
     >
-      <MatchedPhrase
+      <LazyMatchedPhrase
         :raw-transcript="speech.result.value?.raw_transcript"
         :selected="speech.selected.value"
         @copy="speech.copySelected"
@@ -134,14 +134,14 @@ function submit() {
         @share-text="speech.shareText"
       />
 
-      <SuggestionList
+      <LazySuggestionList
         :suggestions="speech.suggestions.value"
         :selected="speech.selected.value"
         @select="speech.setSelection"
       />
     </section>
 
-    <MathResult
+    <LazyMathResult
       v-if="speech.hasMathResult.value && speech.result.value"
       :math-text="speech.result.value.math_text"
       :corrected-text="speech.result.value.math_corrected_text"
