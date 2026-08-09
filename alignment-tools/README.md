@@ -90,3 +90,41 @@ uv run python benchmark_asr.py data/datasets/combined-v2 \
   --model v2=models/deployed/whisper-large-v3-turbo-combined-v2-int8 \
   --output-dir runs/reports/combined-v2-final-comparison
 ```
+
+## Benchmark German Parakeet
+
+Compare the German-focused PrimeLine Parakeet model with the same held-out
+clips. This uses the NeMo runtime and downloads the model during the first run:
+
+```sh
+uv run python benchmark_parakeet.py data/datasets/combined-v2 \
+  --split runs/training/whisper-large-v3-turbo-lora-combined-v2/split.csv \
+  --output-dir runs/reports/combined-v2-parakeet
+```
+
+## Fine-tune German Parakeet on Modal
+
+The Modal job uses the same fixed split. It uploads `combined-v2` to Modal for
+the duration of the run and writes the trained `.nemo` model and `metrics.json`
+to the `dysarthria-asr-training-results` Modal Volume.
+
+```sh
+uv run modal run modal_train_parakeet.py
+```
+
+The job keeps the existing 32-clip test set unchanged. It splits the remaining
+129 clips into 110 training clips and 19 validation clips. It trains only the
+joint network, with a `1e-5` learning rate. It saves the checkpoint with the
+lowest validation WER and stops after three validation epochs with no
+improvement.
+
+### Encoder low-rank adapter test
+
+PrimeLine Parakeet does not expose NeMo's built-in encoder adapter interface.
+This test adds zero-initialized low-rank adapters to the query and value
+projections in the last eight encoder layers. The original model weights stay
+fixed. It writes the adapter weights and metrics to the Modal Volume.
+
+```sh
+uv run modal run modal_train_parakeet_adapter.py
+```
