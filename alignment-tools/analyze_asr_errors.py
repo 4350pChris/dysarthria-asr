@@ -71,7 +71,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Create local word-error reports from benchmark details.csv.")
     parser.add_argument("dataset", type=Path, help="Directory with training-labels.csv.")
     parser.add_argument("details", type=Path, help="details.csv made by benchmark_asr.py.")
-    parser.add_argument("--output-dir", type=Path, default=Path("reports/asr-error-analysis"))
+    parser.add_argument("--output-dir", type=Path, default=Path("runs/reports/asr-error-analysis"))
     arguments = parser.parse_args()
 
     sources = load_sources(arguments.dataset.resolve())

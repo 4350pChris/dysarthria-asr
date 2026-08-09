@@ -57,7 +57,7 @@ def main() -> int:
         required=True,
         help="One reviewed alignment CSV and its matching audio part. Repeat for every part.",
     )
-    parser.add_argument("--output-dir", type=Path, default=Path("training-reading"))
+    parser.add_argument("--output-dir", type=Path, default=Path("data/datasets/reading"))
     arguments = parser.parse_args()
 
     output_dir = arguments.output_dir

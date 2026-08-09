@@ -75,7 +75,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Compare local faster-whisper models on labeled audio clips.")
     parser.add_argument("dataset", type=Path, help="Directory with training-labels.csv and data/audio files.")
     parser.add_argument("--model", action="append", required=True, help="Model name. Repeat to compare models.")
-    parser.add_argument("--output-dir", type=Path, default=Path("reports/asr-benchmark"))
+    parser.add_argument("--output-dir", type=Path, default=Path("runs/reports/asr-benchmark"))
     parser.add_argument("--language", default="de")
     parser.add_argument("--beam-size", type=int, default=5)
     parser.add_argument("--device", default="cpu")

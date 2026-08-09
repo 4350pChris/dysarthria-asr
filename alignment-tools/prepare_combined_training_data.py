@@ -49,7 +49,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Combine app training ZIP data with prepared reading clips.")
     parser.add_argument("app_zip", type=Path)
     parser.add_argument("reading_dataset", type=Path)
-    parser.add_argument("--output-dir", type=Path, default=Path("training-combined"))
+    parser.add_argument("--output-dir", type=Path, default=Path("data/datasets/combined"))
     arguments = parser.parse_args()
     if arguments.output_dir.exists():
         raise FileExistsError(f"Output directory already exists: {arguments.output_dir}")

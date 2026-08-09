@@ -167,7 +167,7 @@ def evaluate(model, processor: WhisperProcessor, dataset: WhisperDataset, device
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fine-tune Whisper large-v3-turbo with LoRA on local Apple Silicon.")
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--output-dir", type=Path, default=Path("outputs/whisper-large-v3-turbo-lora"))
+    parser.add_argument("--output-dir", type=Path, default=Path("runs/training/whisper-large-v3-turbo-lora"))
     parser.add_argument("--model-name", default="openai/whisper-large-v3-turbo")
     parser.add_argument("--epochs", type=float, default=12)
     parser.add_argument("--learning-rate", type=float, default=5e-5)

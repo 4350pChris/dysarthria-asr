@@ -22,7 +22,7 @@ def main() -> int:
         description="Create editable spoken-text files from the original reading text."
     )
     parser.add_argument("text", type=Path, nargs="+", help="Original part text files.")
-    parser.add_argument("--output-dir", type=Path, default=Path("spoken"))
+    parser.add_argument("--output-dir", type=Path, default=Path("data/reading/spoken"))
     parser.add_argument("--force", action="store_true", help="Replace existing spoken-text files.")
     arguments = parser.parse_args()
 

@@ -19,10 +19,10 @@ reports/
 training-reading/
 training-combined/
 
-# Private and generated local ASR experiment data
-alignment-tools/*.ogg
-alignment-tools/ocr.txt
-alignment-tools/part-*.txt
-alignment-tools/outputs/
-alignment-tools/reports/
+# Private local ASR material and generated experiment artifacts
+alignment-tools/.venv/
+alignment-tools/__pycache__/
+alignment-tools/data/
+alignment-tools/runs/
+alignment-tools/models/
 .agents/
