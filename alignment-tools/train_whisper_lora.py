@@ -5,6 +5,7 @@ import csv
 import json
 import random
 import re
+import shutil
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -93,8 +94,7 @@ class WhisperDataset(Dataset):
         if sample_rate != 16_000:
             raise ValueError(f"Expected 16 kHz audio: {item.audio_path}")
         features = self.processor.feature_extractor(audio, sampling_rate=sample_rate).input_features[0]
-        labels = self.processor.tokenizer(item.transcript).input_ids
-        return {"input_features": features, "labels": labels, "item": item}
+        return {"input_features": features, "transcript": item.transcript, "item": item}
 
 
 @dataclass
@@ -105,8 +105,11 @@ class Collator:
         input_features = self.processor.feature_extractor.pad(
             [{"input_features": feature["input_features"]} for feature in features], return_tensors="pt"
         )
-        labels = self.processor.tokenizer.pad(
-            [{"input_ids": feature["labels"]} for feature in features], return_tensors="pt"
+        input_features["input_features"].requires_grad_(True)
+        labels = self.processor.tokenizer(
+            [feature["transcript"] for feature in features],
+            padding=True,
+            return_tensors="pt",
         )
         input_features["labels"] = labels["input_ids"].masked_fill(labels.attention_mask.ne(1), -100)
         return input_features
@@ -125,7 +128,23 @@ def write_split(path: Path, train_items: list[Item], evaluation_items: list[Item
                         "audio_file": item.audio_path.relative_to(dataset_dir).as_posix(),
                         "transcript": item.transcript,
                     }
-                )
+                    )
+
+
+def save_best_adapter(trainer: Seq2SeqTrainer, output_dir: Path, processor: WhisperProcessor) -> None:
+    adapter_dir = output_dir / "adapter"
+    adapter_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_name = trainer.state.best_model_checkpoint
+    if checkpoint_name:
+        checkpoint = Path(checkpoint_name)
+        for name in ("adapter_config.json", "adapter_model.safetensors"):
+            source = checkpoint / name
+            if not source.is_file():
+                raise FileNotFoundError(source)
+            shutil.copy2(source, adapter_dir / name)
+    else:
+        trainer.model.save_pretrained(adapter_dir)
+    processor.save_pretrained(adapter_dir)
 
 
 def evaluate(model, processor: WhisperProcessor, dataset: WhisperDataset, device: str) -> float:
@@ -149,7 +168,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Fine-tune Whisper large-v3-turbo with LoRA on local Apple Silicon.")
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/whisper-large-v3-turbo-lora"))
-    parser.add_argument("--epochs", type=float, default=3)
+    parser.add_argument("--model-name", default="openai/whisper-large-v3-turbo")
+    parser.add_argument("--epochs", type=float, default=12)
+    parser.add_argument("--learning-rate", type=float, default=5e-5)
+    parser.add_argument("--warmup-ratio", type=float, default=0.1)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--evaluation-fraction", type=float, default=0.2)
     parser.add_argument("--precision", choices=["bf16", "fp32"], default="bf16")
     parser.add_argument("--max-steps", type=int, default=-1, help="Stop after this many optimizer updates. Default: all.")
@@ -172,7 +196,7 @@ def main() -> int:
             raise ValueError(f"Audio ID is not in the training split: {arguments.only_audio_id}")
     write_split(arguments.output_dir / "split.csv", train_items, evaluation_items, dataset_dir)
 
-    model_name = "openai/whisper-large-v3-turbo"
+    model_name = arguments.model_name
     processor = WhisperProcessor.from_pretrained(model_name, language="German", task="transcribe")
     model = WhisperForConditionalGeneration.from_pretrained(model_name, torch_dtype=torch.bfloat16 if arguments.precision == "bf16" else torch.float32)
     model.generation_config.language = "german"
@@ -180,26 +204,35 @@ def main() -> int:
     model.generation_config.forced_decoder_ids = None
     model.config.use_cache = False
     model.add_adapter(LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, target_modules=["q_proj", "v_proj"]))
+    model.enable_input_require_grads()
     trainable_parameters = sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
     total_parameters = sum(parameter.numel() for parameter in model.parameters())
     print(f"Trainable parameters: {trainable_parameters:,} / {total_parameters:,}")
 
+    evaluation_enabled = not arguments.skip_trainer_evaluation
     training_arguments = Seq2SeqTrainingArguments(
         output_dir=str(arguments.output_dir / "checkpoints"),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=arguments.batch_size,
         per_device_eval_batch_size=1,
-        gradient_accumulation_steps=8,
-        gradient_checkpointing=False,
-        learning_rate=1e-4,
+        gradient_accumulation_steps=arguments.gradient_accumulation_steps,
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
+        learning_rate=arguments.learning_rate,
+        warmup_ratio=arguments.warmup_ratio,
         num_train_epochs=arguments.epochs,
         max_steps=arguments.max_steps,
-        eval_strategy="no" if arguments.skip_trainer_evaluation else "epoch",
-        save_strategy="no" if arguments.skip_trainer_evaluation else "epoch",
+        eval_strategy="epoch" if evaluation_enabled else "no",
+        save_strategy="epoch" if evaluation_enabled else "no",
+        load_best_model_at_end=False,
+        metric_for_best_model="eval_loss" if evaluation_enabled else None,
+        greater_is_better=False if evaluation_enabled else None,
+        save_total_limit=2 if evaluation_enabled else None,
         logging_steps=1,
         report_to="none",
         remove_unused_columns=False,
         bf16=arguments.precision == "bf16",
         dataloader_num_workers=0,
+        dataloader_pin_memory=False,
         optim="adamw_torch",
     )
     trainer = Seq2SeqTrainer(
@@ -211,8 +244,7 @@ def main() -> int:
         processing_class=processor.feature_extractor,
     )
     trainer.train()
-    model.save_pretrained(arguments.output_dir / "adapter")
-    processor.save_pretrained(arguments.output_dir / "adapter")
+    save_best_adapter(trainer, arguments.output_dir, processor)
     if arguments.skip_final_evaluation:
         return 0
     word_error_rate = evaluate(model, processor, WhisperDataset(evaluation_items, processor), "mps")
