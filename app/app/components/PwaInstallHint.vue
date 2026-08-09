@@ -24,7 +24,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <UAlert
+  <LazyUAlert
     v-if="isVisible"
     color="primary"
     icon="i-lucide-square-plus"
@@ -40,5 +40,5 @@ onMounted(() => {
         @click="dismiss"
       />
     </template>
-  </UAlert>
+  </LazyUAlert>
 </template>

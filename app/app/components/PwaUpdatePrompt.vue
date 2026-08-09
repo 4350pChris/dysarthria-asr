@@ -32,7 +32,7 @@ async function dismiss() {
 <template>
   <PwaUpdateOverlay :open="isUpdating" />
 
-  <UAlert
+  <LazyUAlert
     v-if="isVisible"
     color="primary"
     icon="i-lucide-download"
@@ -56,5 +56,5 @@ async function dismiss() {
         @click="dismiss"
       />
     </template>
-  </UAlert>
+  </LazyUAlert>
 </template>

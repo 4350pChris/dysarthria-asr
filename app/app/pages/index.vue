@@ -78,13 +78,15 @@ function submit() {
     class="flex flex-1 flex-col justify-start gap-5"
     @submit.prevent="submit"
   >
-    <SpeechCommandControl
-      :is-listening="speechCommands.isListening.value"
-      :is-supported="speechCommands.isSupported.value"
-      :status="speechCommands.status.value"
-      @start="speechCommands.start"
-      @stop="speechCommands.stop"
-    />
+    <ClientOnly>
+      <SpeechCommandControl
+        :is-listening="speechCommands.isListening.value"
+        :is-supported="speechCommands.isSupported.value"
+        :status="speechCommands.status.value"
+        @start="speechCommands.start"
+        @stop="speechCommands.stop"
+      />
+    </ClientOnly>
 
     <RecordControl
       :is-recording="speech.isRecording.value"

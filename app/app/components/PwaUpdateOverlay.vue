@@ -12,7 +12,7 @@ defineProps<{
     aria-busy="true"
     aria-live="assertive"
   >
-    <LogoSpinner
+    <LazyLogoSpinner
       label="PWA-Aktualisierung wird geladen"
       :size="96"
       speed="reload"
