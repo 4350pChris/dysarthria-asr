@@ -1,130 +1,81 @@
-# Reading-audio alignment tools
+# Alignment and training tools
 
-This is an isolated project. It does not change the app or the backend Python environment.
+These are internal tools for making a reviewed speech dataset and evaluating or training ASR models. They are not needed to run the app.
 
-It uses MLX Qwen ASR on Apple Silicon to make word timestamps. Then it maps your exact text to these timestamps. Use audio parts of five minutes or less. For the 12-minute recording, split the audio and the matching text into three corresponding parts first.
+The workflow can process private speech data. Keep source audio, transcripts, generated datasets, and trained models out of Git unless you have clear permission to publish them.
 
-Create the isolated environment:
+## Set up
 
 ```sh
 cd alignment-tools
 uv sync
 ```
 
-First, make timestamp JSON with the local Apple GPU:
+## Create a reviewed dataset
+
+Prepare an audio file and its matching text. Split long recordings into matching audio and text parts of five minutes or less.
+
+1. Create word timestamps. This command uses MLX on Apple Silicon:
+
+   ```sh
+   uv run mlx-qwen3-asr data/source/session-01.ogg \
+     --language German --timestamps -f json -o runs/alignment/timestamps
+   ```
+
+2. Create an editable copy of the text. Edit this copy until it matches exactly what the speaker said, including expanded abbreviations and spoken punctuation:
+
+   ```sh
+   uv run python make_spoken_text.py data/source/session-01.txt \
+     --output-dir runs/alignment/spoken
+   ```
+
+3. Map the reviewed text to the timestamp JSON:
+
+   ```sh
+   uv run python align_reading.py \
+     runs/alignment/spoken/session-01.txt \
+     runs/alignment/timestamps/session-01.json \
+     --output runs/alignment/review/session-01.csv
+   ```
+
+4. Review the CSV. Set `approved` to `yes` only when the audio and text match. The clip tool ignores unapproved rows and rejects clips outside 2–25 seconds.
+
+5. Create 16 kHz mono WAV clips and `training-labels.csv`. Repeat `--part` for each audio part:
+
+   ```sh
+   uv run python make_training_clips.py \
+     --part runs/alignment/review/session-01.csv data/source/session-01.ogg \
+     --output-dir data/datasets/session-01
+   ```
+
+## Evaluate models
+
+Use one fixed held-out split to compare models. For example:
 
 ```sh
-uv run mlx-qwen3-asr data/reading/parts/part-01.ogg --language German --timestamps -f json -o runs/alignment/mlx
+uv run python benchmark_asr.py data/datasets/session-01 \
+  --split runs/training/model-name/split.csv \
+  --model base=mobiuslabsgmbh/faster-whisper-large-v3-turbo \
+  --model adapted=models/deployed/model-name \
+  --output-dir runs/reports/model-name
 ```
 
-Create editable spoken-text files. They expand the known differences between
-the printed text and the speech, such as `Dr. B.` and `vgl. S.`:
+The report contains WER, character error rate, and one row per audio clip. Do not compare results from different test splits.
+
+## Train and deploy Whisper
+
+Train a LoRA adapter, then merge and convert it for the backend's `faster-whisper` runtime:
 
 ```sh
-uv run python make_spoken_text.py \
-  data/reading/transcripts/part-01.txt \
-  data/reading/transcripts/part-02.txt \
-  data/reading/transcripts/part-03.txt
+uv run python train_whisper_lora.py data/datasets/session-01 \
+  --output-dir runs/training/model-name
+
+uv run python promote_whisper_lora.py runs/training/model-name \
+  --output-dir models/deployed/model-name
 ```
 
-Review `data/reading/spoken/part-*.txt` and correct every remaining spoken-text difference.
-Then make a review CSV from the spoken text:
+Set `ASR_MODEL` to the deployed model directory when you run the backend. Use the unchanged base model as the benchmark control.
 
-```sh
-uv run python align_reading.py data/reading/spoken/part-01.txt runs/alignment/mlx/part-01.json \
-  --output runs/alignment/part-01-alignment.csv
-```
+## Other experiments
 
-The CSV has short text clips and estimated start and end times. Every row requires review. Set `approved` to `yes` only after the audio and text match. The clip tool ignores all unapproved rows and refuses clips outside 2–25 seconds.
-
-After review, make 16 kHz mono WAV training clips and a manifest that works with the benchmark script:
-
-```sh
-uv run python make_training_clips.py \
-  --part runs/alignment/review-v2/part-01-alignment.csv data/reading/parts/part-01.ogg \
-  --part runs/alignment/review-v2/part-02-alignment.csv data/reading/parts/part-02.ogg \
-  --part runs/alignment/review-v2/part-03-alignment.csv data/reading/parts/part-03.ogg \
-  --output-dir data/datasets/reading-v2
-```
-
-Benchmark the current app baseline on the reviewed reading clips:
-
-```sh
-uv run python benchmark_asr.py data/datasets/reading-v2 --model small \
-  --output-dir runs/reports/reading-v2-small
-```
-
-## Deploy a trained adapter
-
-Merge a reviewed LoRA adapter and convert it for the backend's
-`faster-whisper` runtime:
-
-```sh
-uv run python promote_whisper_lora.py \
-  runs/training/whisper-large-v3-turbo-lora-combined-v2 \
-  --output-dir models/deployed/whisper-large-v3-turbo-combined-v2-int8
-```
-
-Set `ASR_MODEL` to this deployed directory when you start the backend. The
-backend requires this setting. Use
-`mobiuslabsgmbh/faster-whisper-large-v3-turbo` for the unchanged baseline.
-
-Train the current v2 dataset with turbo:
-
-```sh
-uv run python train_whisper_lora.py data/datasets/combined-v2 \
-  --model-name openai/whisper-large-v3-turbo \
-  --output-dir runs/training/whisper-large-v3-turbo-lora-combined-v2
-```
-
-The default settings use 12 epochs, a learning rate of `5e-5`, 10% warmup,
-gradient checkpointing, and the checkpoint with the best evaluation loss.
-Do not use `--skip-trainer-evaluation` for a normal training run.
-
-Compare the unchanged turbo model and the deployed v2 model on the same held-out split:
-
-```sh
-uv run python benchmark_asr.py data/datasets/combined-v2 \
-  --split runs/training/whisper-large-v3-turbo-lora-combined-v2/split.csv \
-  --model turbo=mobiuslabsgmbh/faster-whisper-large-v3-turbo \
-  --model v2=models/deployed/whisper-large-v3-turbo-combined-v2-int8 \
-  --output-dir runs/reports/combined-v2-final-comparison
-```
-
-## Benchmark German Parakeet
-
-Compare the German-focused PrimeLine Parakeet model with the same held-out
-clips. This uses the NeMo runtime and downloads the model during the first run:
-
-```sh
-uv run python benchmark_parakeet.py data/datasets/combined-v2 \
-  --split runs/training/whisper-large-v3-turbo-lora-combined-v2/split.csv \
-  --output-dir runs/reports/combined-v2-parakeet
-```
-
-## Fine-tune German Parakeet on Modal
-
-The Modal job uses the same fixed split. It uploads `combined-v2` to Modal for
-the duration of the run and writes the trained `.nemo` model and `metrics.json`
-to the `dysarthria-asr-training-results` Modal Volume.
-
-```sh
-uv run modal run modal_train_parakeet.py
-```
-
-The job keeps the existing 32-clip test set unchanged. It splits the remaining
-129 clips into 110 training clips and 19 validation clips. It trains only the
-joint network, with a `1e-5` learning rate. It saves the checkpoint with the
-lowest validation WER and stops after three validation epochs with no
-improvement.
-
-### Encoder low-rank adapter test
-
-PrimeLine Parakeet does not expose NeMo's built-in encoder adapter interface.
-This test adds zero-initialized low-rank adapters to the query and value
-projections in the last eight encoder layers. The original model weights stay
-fixed. It writes the adapter weights and metrics to the Modal Volume.
-
-```sh
-uv run modal run modal_train_parakeet_adapter.py
-```
+`benchmark_parakeet.py` evaluates a Parakeet model on the same dataset and split. `modal_train_parakeet.py` and `modal_train_parakeet_adapter.py` run Parakeet training jobs on Modal. Use `--help` on each command before a new experiment.
