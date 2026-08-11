@@ -1,71 +1,56 @@
-# dysarthria-asr
+<p align="center">
+  <img src="app/public/icon.svg" alt="Dysarthria ASR logo" width="96">
+</p>
 
-A German speech-assistance prototype for a person with dysarthria. The Nuxt web app records short utterances, gives text suggestions, and can speak, copy, or share the selected text. It saves app recordings and imported WhatsApp voice messages in one local corpus for review and later ASR training.
+# Dysarthria ASR
 
-## Features
+A German speech-assistance prototype for one person with dysarthria.
 
-- Push-to-talk recording with automatic silence stop
-- German `faster-whisper` (`large-v3-turbo` on CPU) for every recording
-- Saved phrases, editable categories, and generated German phrase candidates
-- Math mode for spoken German arithmetic
-- Spoken German emoji names, for example `weißes Herz emoji` → 🤍
-- Browser text-to-speech, copy, native share, and WhatsApp-link fallback
-- Voice commands for recording, text actions, mode changes, suggestions, and categories
-- A PWA that can be installed on an iPhone
-- SQLite storage for audio clips, ASR drafts, corrected transcripts, and label state
-- Import of individual audio files or WhatsApp chat-export ZIP files
-- Guided reading with short German Tatoeba prompts, one reviewed audio clip per prompt
-- Training-data ZIP export with reviewed audio and labels
+The app records short speech, creates text suggestions, and lets the user speak, copy, or share selected text. It also stores recordings and imported WhatsApp voice messages in a local corpus for review and later ASR training.
 
-## Project layout
+## Screenshots
 
-- `app/`: Nuxt frontend and PWA
-- `backend/`: FastAPI API, ASR integration, SQLite persistence, and legacy static UI
-- `backend/seed/phrases.csv`: default phrase seed used in containers
-- `data/phrases.csv`: local phrase seed, when present
-- `data/audio/`: saved audio clips; not committed
-- `data/app.sqlite`: local SQLite database; not committed
+| Record speech | Select and use a suggestion |
+| --- | --- |
+| <img src="screenshot-before.png" alt="Dysarthria ASR recording screen" width="300"> | <img src="screenshot-after.png" alt="Dysarthria ASR suggested message screen" width="300"> |
 
-## Run locally
+## What it does
 
-Requirements: Python 3.14+, [uv](https://docs.astral.sh/uv/), Node.js 24+, and pnpm 11.
+- Records speech with push-to-talk and automatic stop after silence.
+- Transcribes each recording with a configured `faster-whisper` model.
+- Offers saved phrases, editable categories, and generated German phrase suggestions.
+- Supports German spoken arithmetic and spoken emoji names, such as `weißes Herz emoji` → 🤍.
+- Can speak text in the browser, copy it, or share it with the native share sheet. WhatsApp opens only as a fallback; the app never sends a message itself.
+- Supports voice commands for recording, text actions, modes, suggestions, and categories.
+- Runs as an installable PWA on iPhone.
+- Stores audio, ASR drafts, corrected transcripts, and label state in SQLite.
+- Imports audio files and WhatsApp chat-export ZIP files.
+- Provides guided reading with short German Tatoeba prompts.
+- Exports reviewed recordings and labels as training data.
 
-Start the backend:
+## Requirements
+
+- Python 3.14 or later
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 24 or later
+- pnpm 11
+
+## Quick start
+
+Use two terminals from the project root.
+
+In the first terminal, install backend dependencies and start the API. `ASR_MODEL` is required. This example uses the public base model:
 
 ```sh
 cd backend
 uv sync
-uv run uvicorn src.app:app --reload
-```
-
-The API listens on <http://127.0.0.1:8000>. The first server-side transcription downloads the Whisper model.
-
-## Deploy a tuned ASR model
-
-Set `ASR_MODEL` to the full model reference before you start the backend. It
-is required. Use `@revision` to pin a Hugging Face model version:
-
-```sh
-cd backend
 ASR_MODEL=mobiuslabsgmbh/faster-whisper-large-v3-turbo \
-  uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
+  uv run uvicorn src.app:app --reload
 ```
 
-For Amsel v1, use `ASR_MODEL=dysarthria-asr/amsel@v1`. Set a different model
-reference to switch versions. A promoted local model directory also works.
+The API runs at <http://127.0.0.1:8000>. The first transcription downloads the configured Whisper model.
 
-For a private Hugging Face model repository, set the standard `HF_TOKEN`
-secret in the deployment environment. Do not add this token to a source file,
-image, or repository.
-
-```sh
-cd backend
-ASR_MODEL=dysarthria-asr/amsel@v1 \
-HF_TOKEN=read-only-token \
-uv run uvicorn src.app:app --host 127.0.0.1 --port 8000
-```
-
-In a second terminal, start the frontend:
+In the second terminal, install frontend dependencies and start the web app:
 
 ```sh
 cd app
@@ -73,9 +58,9 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:3000>. The frontend sends `/api/*` requests to `NUXT_API_BASE`, which defaults to `http://127.0.0.1:8000`.
+Open <http://localhost:3000>.
 
-To use another backend URL:
+The frontend sends `/api/*` requests to `NUXT_API_BASE`. Its default is `http://127.0.0.1:8000`. To use a different API URL:
 
 ```sh
 cd app
@@ -84,97 +69,37 @@ NUXT_API_BASE=https://example.com pnpm dev
 
 ## Use the app
 
-1. Start the backend and frontend, then open the Nuxt app.
+1. Start the API and web app.
 2. Select a saved phrase or tap `Aufnehmen` and speak.
-3. Wait for silence stop. Select a suggestion, or use math mode.
-4. Use `Vorlesen`, copy the text, or share it. Native share is tried first; a WhatsApp tab opens only as a fallback. The app never sends a message without user action.
-5. Use `Lesetraining aufnehmen` to read one short displayed text at a time. You can listen back, retry, or save each take.
-6. Open `/labeling` to review saved recordings and prepare training data.
+3. Wait for the silence stop, then select a suggestion if needed.
+4. Use `Vorlesen`, copy the text, or share it.
+5. Use `Lesetraining aufnehmen` to record one displayed reading prompt. You can play it back, retry, or save it.
+6. Open `/labeling` to review recordings and prepare training data.
 
-When the backend starts, it downloads Tatoeba's German sentence export into `data/tatoeba/` only if the local cache does not already exist. Each prompt has a stable ID, source, category, and split. The training page selects only the `train` split. The `validation` and `test` splits stay out of normal training and out of the training-data export, for controlled evaluation later.
+To manage phrases and categories, open `/phrases`.
 
-To manage saved phrases, open `/phrases`. You can add, rename, and delete categories, and add, edit, or delete phrases.
+## Labeling and training data
 
-## Voice commands
+The `/labeling` page lists app recordings, guided-reading clips, and WhatsApp uploads. Filter by source, status, uncertain labels, or missing ASR text. You can correct a transcript, add a note, set a status (`labeled`, `draft`, or `skipped`), or delete a recording.
 
-Start voice control with `Sprachsteuerung starten`.
+On `/whatsapp-import`, upload audio files or a WhatsApp export ZIP. For a ZIP, choose the speaker whose files you want to import. Files with no ASR text are skipped.
 
-- Record: `aufnehmen`, `aufnahme`, `start`, `los`
-- Stop: `stopp`, `stop`, `anhalten`, `fertig`
-- Speak: `vorlesen`, `sagen`, `sprich`, `sprechen`
-- Copy: `kopieren`, `kopie`, `abschreiben`
-- Share: `teilen`, `senden`, `schicken`, `whatsapp`, `verschicken`
-- Modes: `sätze`, `satzmodus`, `sätze modus`, `mathe`, `mathemodus`
-- Suggestions: `weiter`, `nächster`, `nächste`, `nein`, `vorheriger`, `vorherige`
+A recording is ready for training only when it has a corrected transcript, has status `labeled`, and is not marked `unsure`. Download the reviewed set from `/api/labeling/training-data.zip`. The ZIP contains audio files, `training-labels.csv`, and `README.txt`.
 
-On the category page, say a category name, for example `Familie`, or say `Kategorie Familie`.
+At startup, the backend downloads the German Tatoeba sentence export only when no local cache exists. Prompt IDs, source, category, and split are stable. The app uses the `train` split for normal training. It keeps the `validation` and `test` splits out of training and exports so they stay available for controlled evaluation.
 
-Browser speech recognition differs by browser. Each saved label records if the browser or the server produced the ASR text.
+The database survives restarts. Startup creates missing tables and seed data without deleting existing recordings or labels.
 
-## Labeling and export
+## Results
 
-Open `/labeling` to review app recordings, guided-reading clips, and WhatsApp uploads. Filter by source, status, uncertain labels, or missing ASR text. You can correct a transcript, add notes, mark it as `labeled`, `draft`, or `skipped`, and delete one recording. When the missing-ASR filter is active, you can also delete all matching recordings.
+The fine-tuned Amsel v2 model improves recognition for its intended speaker on the fixed held-out v2 test split.
 
-Guided-reading clips are saved with the exact displayed prompt, marked `labeled`, and included in the training ZIP immediately. The included texts are original app content rather than scraped web pages, so every saved pair has a known local source.
+| Model | Word error rate | Character error rate |
+| --- | ---: | ---: |
+| Whisper Large v3 Turbo baseline | 39.5% | 23.2% |
+| Fine-tuned Amsel v2 | **24.4%** | **14.3%** |
 
-On `/whatsapp-import`, upload audio files or a WhatsApp export ZIP. For a ZIP, select the speaker whose audio you want to import. Files with no ASR text are skipped.
-
-A recording is training-ready only when it has a non-empty corrected transcript, its status is `labeled`, and it is not marked `unsure`. Download the reviewed set from `/api/labeling/training-data.zip`. The ZIP contains the audio files, `training-labels.csv`, and a short `README.txt`.
-
-The database is kept between restarts. Startup creates missing tables and adds missing seed data without deleting existing recordings or labels.
-
-## Model benchmark
-
-Use the downloaded training-data ZIP to compare local Whisper models. This tool
-does not change the app or the backend model.
-
-```sh
-cd backend
-uv run python scripts/benchmark_asr.py /path/to/dysarthria-asr-training-data.zip \
-  --model small \
-  --model medium \
-  --model large-v3-turbo \
-  --output-dir reports/asr-baseline
-```
-
-The first use downloads each model. The command writes `summary.csv` with one
-row per model, and `details.csv` with one row per recording and model. Both use
-case- and punctuation-insensitive German word and character error rates. Use a
-local converted CTranslate2 model with `--model label=/path/to/model`.
-
-## API
-
-- `POST /api/transcribe`
-- `GET`, `POST /api/phrases`
-- `PATCH`, `DELETE /api/phrases/{phrase_id}`
-- `GET`, `POST /api/categories`
-- `PATCH`, `DELETE /api/categories/{category_id}`
-- `GET /api/candidates/generated`
-- `GET /api/grammar`
-- `PATCH /api/grammar/patterns/{pattern_id}`
-- `PATCH /api/grammar/values/{value_id}`
-- `POST /api/labeling/import`
-- `POST /api/labeling/import/senders`
-- `GET /api/labeling/items`
-- `PATCH`, `DELETE /api/labeling/items/{audio_id}`
-- `DELETE /api/labeling/items/empty-asr`
-- `GET /api/labeling/audio/{audio_id}`
-- `GET /api/labeling/training-data.zip`
-
-## Model benchmark
-
-Use an exported training-data ZIP, or an extracted copy of it, to compare local Whisper models. This tool does not change the app or its configured ASR model.
-
-```sh
-cd backend
-uv run python scripts/benchmark_asr.py /path/to/dysarthria-asr-training-data.zip \
-  --model small \
-  --model medium \
-  --model large-v3-turbo \
-  --output-dir reports/asr-baseline
-```
-
-The first run downloads named models. The command writes `summary.csv` with one row per model and `details.csv` with one row per recording and model. Metrics ignore case and punctuation. Use `--model label=/path/to/model` for a local CTranslate2 model. Run the command with `--help` to see device, compute type, beam size, language, and voice-activity options.
+This is a 15.1 percentage-point WER reduction on 32 held-out clips. The model is personal to one speaker. The test set is small, so a person must review the result before it is used for important communication.
 
 ## Checks
 
@@ -193,22 +118,19 @@ pnpm typecheck
 pnpm test
 ```
 
-## Docker
+## Privacy
 
-Build and run the backend:
+Audio clips, transcripts, and labels are stored locally in `data/` by default. The backend downloads the configured ASR model from Hugging Face on first use, and downloads German Tatoeba prompts when no local prompt cache exists.
 
-```sh
-cd backend
-docker build -t dysarthria-asr-backend .
-docker run --rm -p 8000:8000 dysarthria-asr-backend
-```
+## License
 
-Build and run the frontend:
+This project is licensed under the [MIT License](LICENSE).
 
-```sh
-cd app
-docker build -t dysarthria-asr-app .
-docker run --rm -p 3000:3000 -e NUXT_API_BASE=http://host.docker.internal:8000 dysarthria-asr-app
-```
+## Project layout
 
-For iPhone installation, serve the frontend through HTTPS. Open it in Safari, select Share, then select **Add to Home Screen**. To regenerate PWA icons after you change `app/public/icon.svg`, run `pnpm generate-pwa-assets` in `app/`.
+- `app/` — Nuxt frontend and PWA
+- `backend/` — FastAPI API, ASR integration, SQLite storage, and legacy static UI
+- `backend/seed/phrases.csv` — default phrase seed for containers
+- `data/phrases.csv` — local phrase seed, when present
+- `data/audio/` — saved audio clips; not committed
+- `data/app.sqlite` — local SQLite database; not committed
