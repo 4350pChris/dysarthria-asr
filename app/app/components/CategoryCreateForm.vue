@@ -4,16 +4,25 @@ import type { Category } from '~/types/speech'
 
 type CategoryFormState = { name: string }
 
+defineProps<{
+  autofocus?: boolean
+}>()
+
 const formState = reactive<CategoryFormState>({ name: '' })
 const { refreshAfterCategoryChange } = usePhrases()
 const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<CategoryFormState>('Kategorie konnte nicht gespeichert werden.')
+const emit = defineEmits<{
+  created: [category: Category]
+}>()
 
 watch(() => formState.name, clearErrors)
 
 async function createCategory(event: FormSubmitEvent<CategoryFormState>) {
-  if (!await submit(event, data => $fetch<Category>('/api/categories', { method: 'POST', body: data }))) return
+  const category = await submit(event, data => $fetch<Category>('/api/categories', { method: 'POST', body: data }))
+  if (!category) return
   formState.name = ''
   await refreshAfterCategoryChange()
+  emit('created', category)
 }
 </script>
 
@@ -29,6 +38,7 @@ async function createCategory(event: FormSubmitEvent<CategoryFormState>) {
     >
       <UInput
         v-model="formState.name"
+        :autofocus="autofocus"
         class="w-full"
         size="xl"
         placeholder="z. B. Familie"

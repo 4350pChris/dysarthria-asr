@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Phrase } from '~/types/speech'
+import type { Category, Phrase } from '~/types/speech'
 
 type SavePhraseFormState = {
   category_id?: number
@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const { categories, refreshPhrases } = usePhrases()
 const formState = reactive<SavePhraseFormState>({ category_id: undefined, text: '' })
+const isCategoryCreateOpen = ref(false)
 const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<SavePhraseFormState>('Satz konnte nicht gespeichert werden.')
 const categoryOptions = computed(() =>
   categories.value.map(category => ({ label: category.name, value: category.id }))
@@ -28,6 +29,11 @@ watch(
   { immediate: true }
 )
 watch(() => [formState.category_id, formState.text], clearErrors)
+
+function selectCreatedCategory(category: Category) {
+  formState.category_id = category.id
+  isCategoryCreateOpen.value = false
+}
 
 async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
   if (!event.data.category_id) {
@@ -88,19 +94,23 @@ async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
       />
     </UFormField>
 
+    <UButton
+      block
+      class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
+      color="neutral"
+      icon="i-lucide-plus"
+      label="Neue Kategorie"
+      size="xl"
+      type="button"
+      variant="subtle"
+      @click="isCategoryCreateOpen = true"
+    />
+
     <p
       v-if="!categories.length"
       class="text-lg font-semibold text-toned"
     >
-      Bitte lege zuerst eine Kategorie an.
-      <UButton
-        block
-        color="primary"
-        icon="i-lucide-plus"
-        label="Kategorie hinzufügen"
-        size="xl"
-        to="/categories"
-      />
+      Lege eine Kategorie an, um den Satz zu speichern.
     </p>
 
     <UButton
@@ -113,5 +123,18 @@ async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
       type="submit"
       :loading="isSaving"
     />
+
+    <UModal
+      v-model:open="isCategoryCreateOpen"
+      description="Die neue Kategorie wird sofort für diesen Satz ausgewählt."
+      title="Neue Kategorie"
+    >
+      <template #body>
+        <CategoryCreateForm
+          autofocus
+          @created="selectCreatedCategory"
+        />
+      </template>
+    </UModal>
   </UForm>
 </template>
