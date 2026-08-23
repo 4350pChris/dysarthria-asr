@@ -11,6 +11,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Response,
     UploadFile,
 )
 from sqlmodel import Session
@@ -48,7 +49,8 @@ def transcribe_training_recording(audio_id: str, audio_path: Path) -> None:
 
 
 @router.get("/prompts")
-def list_prompts(session: Session = Depends(get_session)) -> dict:
+def list_prompts(response: Response, session: Session = Depends(get_session)) -> dict:
+    response.headers["Cache-Control"] = "no-store"
     prompts = read_training_prompts(session)
     if not prompts:
         raise HTTPException(status_code=503, detail={"code": "training_prompts_unavailable"})

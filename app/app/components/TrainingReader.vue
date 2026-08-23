@@ -7,6 +7,7 @@ type TrainingRecordingFormState = { promptId: string }
 
 const toast = useToast()
 const { data: promptResponse, error: promptError } = await useFetch<{ prompts: ReadingPrompt[] }>('/api/training/prompts', {
+  cache: 'no-store',
   default: () => ({ prompts: [] })
 })
 const prompts = computed(() => promptResponse.value.prompts)
