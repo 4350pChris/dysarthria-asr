@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from hashlib import sha256
 from pathlib import Path
-from random import randrange
+from secrets import randbelow
 
 from sqlalchemy import func, insert, literal_column
 from sqlmodel import Session, col, select
@@ -60,7 +60,7 @@ def read_training_prompts(session: Session, limit: int = 200) -> list[dict[str, 
     maximum_rowid = session.exec(select(func.max(rowid)).select_from(TrainingPrompt)).one()
     if maximum_rowid is None:
         return []
-    start_rowid = randrange(1, maximum_rowid + 1)
+    start_rowid = randbelow(maximum_rowid) + 1
     prompts = list(session.exec(
         select(TrainingPrompt)
         .where(col(TrainingPrompt.split) == "train", rowid >= start_rowid)
