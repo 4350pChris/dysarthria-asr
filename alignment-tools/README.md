@@ -74,6 +74,32 @@ uv run python promote_whisper_lora.py runs/training/model-name \
   --output-dir models/deployed/model-name
 ```
 
+### Train Whisper on Modal
+
+The Modal job uses the current `combined-v3` dataset and its existing fixed
+training/evaluation split. It uploads those private files to Modal as part of
+the job image. Do this only if that data handling is acceptable.
+
+```sh
+uv run modal run modal_train_whisper_lora.py \
+  --run-name whisper-large-v3-turbo-lora-combined-v3-experiment-01
+
+mkdir -p runs/training/whisper-large-v3-turbo-lora-combined-v3-experiment-01/adapter
+for name in vocab.json tokenizer_config.json tokenizer.json special_tokens_map.json preprocessor_config.json normalizer.json merges.txt generation_config.json added_tokens.json adapter_model.safetensors adapter_config.json; do
+  uv run modal volume get dysarthria-asr-training-results \
+    /whisper-large-v3-turbo-lora-combined-v3-experiment-01/adapter/$name \
+    runs/training/whisper-large-v3-turbo-lora-combined-v3-experiment-01/adapter/$name
+done
+
+uv run python promote_whisper_lora.py \
+  runs/training/whisper-large-v3-turbo-lora-combined-v3-experiment-01 \
+  --output-dir models/deployed/whisper-large-v3-turbo-lora-combined-v3-experiment-01
+```
+
+The job uses one L4 GPU and has a two-hour limit. Its default values match the
+local Whisper training script. Do not use the same `--run-name` twice unless
+you first remove or rename the old output in the Modal Volume.
+
 Set `ASR_MODEL` to the deployed model directory when you run the backend. Use the unchanged base model as the benchmark control.
 
 ## Other experiments
