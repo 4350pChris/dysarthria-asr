@@ -68,6 +68,27 @@ def test_transcribe_returns_converted_emoji_text(
     assert response.json()["emoji_text"] == "🤍"
 
 
+def test_transcribe_returns_a_spoken_emoji_name(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(transcription, "ROOT", initialized_db)
+    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "weißes Herz")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/transcribe",
+        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["emoji_value"] == "🤍"
+    assert body["emoji_name"] == "weißes Herz"
+
+
 def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> None:
     monkeypatch.setattr(transcription, "ROOT", initialized_db)
     monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")

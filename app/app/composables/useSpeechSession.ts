@@ -1,6 +1,6 @@
 import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
 
-type SpeechMode = 'phrases' | 'math'
+type SpeechMode = 'phrases' | 'math' | 'emoji'
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
   const result = ref<TranscriptionResult>()
@@ -27,13 +27,20 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const hasMathResult = computed(
     () => mode.value === 'math' && Boolean(result.value?.math_text)
   )
+  const hasEmojiResult = computed(
+    () => mode.value === 'emoji' && Boolean(result.value?.emoji_name)
+  )
   const selectedIndex = computed(() =>
     suggestions.value.findIndex(
       suggestion => suggestion.id === selected.value?.id
     )
   )
   const outputText = computed(() =>
-    mode.value === 'math' ? result.value?.math_text : selected.value?.text
+    mode.value === 'math'
+      ? result.value?.math_text
+      : mode.value === 'emoji'
+        ? result.value?.emoji_value
+        : selected.value?.text
   )
 
   watch([isRecording, isBusy], ([recording, busy]) => {
@@ -114,9 +121,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       status.value
         = mode.value === 'math'
           ? 'Mathe erkannt.'
-          : selected.value
-            ? 'Meinst du das?'
-            : 'Kein Vorschlag gefunden.'
+          : mode.value === 'emoji'
+            ? transcription.emoji_name
+              ? 'Emoji erkannt.'
+              : 'Emoji nicht erkannt. Bitte sage den Namen des Emojis.'
+            : selected.value
+              ? 'Meinst du das?'
+              : 'Kein Vorschlag gefunden.'
     } catch (error) {
       status.value
         = error instanceof Error ? error.message : 'Erkennung fehlgeschlagen.'
@@ -244,7 +255,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   async function saveAttempt() {
-    const correctedText = outputText.value
+    const correctedText = mode.value === 'emoji'
+      ? result.value?.emoji_name
+      : outputText.value
     if (!result.value || !correctedText || hasSaved.value || isSaving.value)
       return
     isSaving.value = true
@@ -274,6 +287,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     suggestions,
     hasSelection,
     hasMathResult,
+    hasEmojiResult,
     selectedIndex,
     outputText,
     setSelection,

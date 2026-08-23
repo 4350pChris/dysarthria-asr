@@ -26,6 +26,13 @@ def german_emoji_names() -> dict[tuple[str, ...], str]:
     return names
 
 
+def emoji_from_spoken_name(text: str) -> tuple[str, str] | None:
+    """Return an emoji and its German spoken name for a complete utterance."""
+    words = WORD_PATTERN.findall(text)
+    emoji = german_emoji_names().get(tuple(word.casefold() for word in words))
+    return (emoji, " ".join(words)) if emoji else None
+
+
 def replace_spoken_emojis(text: str) -> str:
     """Replace a German CLDR emoji name followed by the spoken marker "emoji"."""
     names = german_emoji_names()

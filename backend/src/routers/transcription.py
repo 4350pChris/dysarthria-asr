@@ -10,7 +10,7 @@ from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
 from ..corpus import create_audio_clip, update_transcription_label
 from ..database import get_session
-from ..emoji_normalizer import replace_spoken_emojis
+from ..emoji_normalizer import emoji_from_spoken_name, replace_spoken_emojis
 from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..math_normalizer import normalize_german_math
 from ..models import AsrSource, AudioSource
@@ -58,12 +58,15 @@ async def transcribe(
         ), session,
     )
     emoji_text = replace_spoken_emojis(transcript)
+    emoji_match = emoji_from_spoken_name(transcript)
     math = normalize_german_math(transcript)
     return {
         "audio_id": audio_id,
         "audio_path": relative_audio_path,
         "raw_transcript": transcript,
         "emoji_text": emoji_text,
+        "emoji_value": emoji_match[0] if emoji_match else "",
+        "emoji_name": emoji_match[1] if emoji_match else "",
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
         "math_text": math.math_text,

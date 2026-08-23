@@ -8,11 +8,12 @@ definePageMeta({
   }
 })
 
-const mode = ref<'phrases' | 'math'>('phrases')
+const mode = ref<'phrases' | 'math' | 'emoji'>('phrases')
 const modeOptions = [
   { label: 'Sätze', value: 'phrases' },
-  { label: 'Mathe', value: 'math' }
-] as const
+  { label: 'Mathe', value: 'math' },
+  { label: 'Emoji', value: 'emoji' }
+]
 const speech = useSpeechSession(mode)
 const { byId, ready } = usePhrases()
 const speechCommands = useSpeechCommands()
@@ -95,30 +96,29 @@ function submit() {
       @stop="speech.stopRecording"
     />
 
-    <div
-      aria-label="Modus"
-      class="grid w-full grid-cols-2 gap-3"
-      role="radiogroup"
-    >
-      <UButton
-        v-for="option in modeOptions"
-        :key="option.value"
-        block
-        class="min-h-16 justify-center rounded-2xl text-lg font-extrabold"
-        :color="mode === option.value ? 'primary' : 'neutral'"
-        role="radio"
-        size="xl"
-        type="button"
-        :aria-checked="mode === option.value"
-        :tabindex="mode === option.value ? 0 : -1"
-        :variant="mode === option.value ? 'solid' : 'subtle'"
-        @click="mode = option.value"
-      >
-        {{ option.label }}
-      </UButton>
-    </div>
+    <URadioGroup
+      v-model="mode"
+      color="primary"
+      indicator="start"
+      legend="Modus"
+      :items="modeOptions"
+      orientation="horizontal"
+      size="xl"
+      variant="card"
+      :ui="{
+        fieldset: 'grid w-full grid-cols-3 gap-3',
+        item: 'min-h-16 items-center justify-center rounded-2xl px-3',
+        label: 'text-center text-lg font-extrabold',
+        legend: 'sr-only',
+        wrapper: 'ms-2'
+      }"
+    />
 
-    <p class="min-h-7 text-center text-lg font-semibold text-toned">
+    <p
+      aria-live="polite"
+      class="min-h-7 text-center text-lg font-semibold text-toned"
+      role="status"
+    >
       {{ speech.status.value }}
     </p>
 
@@ -148,6 +148,13 @@ function submit() {
       @copy="speech.copySelected"
       @share-instagram="speech.shareToInstagram"
       @share-text="speech.shareText"
+    />
+
+    <LazyEmojiResult
+      v-if="speech.hasEmojiResult.value && speech.result.value"
+      :emoji-name="speech.result.value.emoji_name"
+      :emoji-text="speech.result.value.emoji_value"
+      @copy="speech.copySelected"
     />
 
     <UButton

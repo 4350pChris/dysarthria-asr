@@ -22,6 +22,8 @@ export type TranscriptionResult = {
   audio_path: string
   raw_transcript: string
   emoji_text: string
+  emoji_value: string
+  emoji_name: string
   math_corrected_text: string
   math_number_text: string
   math_text: string
