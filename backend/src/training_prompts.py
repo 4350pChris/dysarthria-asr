@@ -5,7 +5,7 @@ from hashlib import sha256
 from pathlib import Path
 from secrets import randbelow
 
-from sqlalchemy import func, insert, literal_column
+from sqlalchemy import insert, literal_column
 from sqlmodel import Session, col, select
 
 from .database import commit
@@ -57,10 +57,15 @@ def import_prompts(path: Path, session: Session) -> int:
 
 def read_training_prompts(session: Session, limit: int = 200) -> list[dict[str, str]]:
     rowid = literal_column("rowid")
-    maximum_rowid = session.exec(select(func.max(rowid)).select_from(TrainingPrompt)).one()
-    if maximum_rowid is None:
+    maximum_train_rowid = session.exec(
+        select(rowid)
+        .where(col(TrainingPrompt.split) == "train")
+        .order_by(rowid.desc())
+        .limit(1)
+    ).first()
+    if maximum_train_rowid is None:
         return []
-    start_rowid = randbelow(maximum_rowid) + 1
+    start_rowid = randbelow(maximum_train_rowid) + 1
     prompts = list(session.exec(
         select(TrainingPrompt)
         .where(col(TrainingPrompt.split) == "train", rowid >= start_rowid)

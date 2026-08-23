@@ -2,12 +2,13 @@ from pathlib import Path
 
 from conftest import connect_test_db
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
 from src import app as app_module
-from src import database
+from src import database, training_prompts
 from src.routers import training
 from src.tatoeba import ensure_prompts, write_prompts
-from src.training_prompts import prompt_split
+from src.training_prompts import prompt_split, read_training_prompts
 
 
 def write_train_prompt(path: Path, text: str) -> dict[str, str]:
@@ -40,6 +41,32 @@ def test_training_prompts_come_from_cached_tatoeba(initialized_db: Path, monkeyp
     assert response.status_code == 200
     assert prompt in response.json()["prompts"]
     assert all(item["split"] == "train" for item in response.json()["prompts"])
+
+
+def test_training_prompt_selection_ignores_high_non_train_rowid(initialized_db: Path, monkeypatch) -> None:
+    prompts_file = initialized_db / "tatoeba.json"
+    monkeypatch.setattr(app_module, "TATOEBA_PROMPTS_FILE", prompts_file)
+    write_train_prompt(prompts_file, "Das ist ein ausreichend langer deutscher Beispielsatz")
+    with TestClient(app_module.create_app()):
+        pass
+    with connect_test_db(database.DB_FILE) as db:
+        last_train = db.execute(
+            "SELECT rowid, id FROM training_prompts WHERE split = 'train' ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+        db.execute(
+            "INSERT INTO training_prompts (rowid, id, text, split, category, source) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (1_000_000, "high-test-row", "Ein Testsatz ohne Training.", "test", "general", "test"),
+        )
+        db.commit()
+
+    bounds: list[int] = []
+    monkeypatch.setattr(training_prompts, "randbelow", lambda bound: bounds.append(bound) or bound - 1)
+    with Session(database.engine) as session:
+        prompts = read_training_prompts(session, limit=1)
+
+    assert bounds == [last_train["rowid"]]
+    assert prompts[0]["id"] == last_train["id"]
 
 
 def test_guided_recording_saves_known_prompt_as_training_ready(initialized_db: Path, monkeypatch) -> None:
