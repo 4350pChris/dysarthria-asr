@@ -69,12 +69,14 @@ def read_training_prompts(session: Session, limit: int = 200) -> list[dict[str, 
     prompts = list(session.exec(
         select(TrainingPrompt)
         .where(col(TrainingPrompt.split) == "train", rowid >= start_rowid)
+        .order_by(rowid)
         .limit(limit)
     ).all())
     if len(prompts) < limit:
         prompts += session.exec(
             select(TrainingPrompt)
             .where(col(TrainingPrompt.split) == "train", rowid < start_rowid)
+            .order_by(rowid)
             .limit(limit - len(prompts))
         ).all()
     return [prompt_metadata(prompt) for prompt in prompts]
