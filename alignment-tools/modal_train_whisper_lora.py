@@ -113,7 +113,7 @@ def train(
         num_train_epochs=epochs,
         eval_strategy="epoch",
         save_strategy="epoch",
-        load_best_model_at_end=True,
+        load_best_model_at_end=False,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         save_total_limit=2,
