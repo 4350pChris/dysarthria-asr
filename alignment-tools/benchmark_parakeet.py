@@ -12,12 +12,12 @@ from benchmark_asr import DatasetItem, load_dataset, metrics, select_split
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark NVIDIA Parakeet on labeled audio clips.")
     parser.add_argument("dataset", type=Path, help="Directory with training-labels.csv and data/audio files.")
-    parser.add_argument("--model", default="primeline/parakeet-primeline")
+    parser.add_argument("--model", default="primeline/parakeet-primeline", help="Hugging Face model ID or local .nemo file.")
     parser.add_argument("--model-file", default="2_95_WER.nemo", help="Model file in the Hugging Face repository.")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/reports/parakeet-benchmark"))
     parser.add_argument("--device", default="cpu", choices=("cpu", "cuda"))
-    parser.add_argument("--split", type=Path, help="Optional split.csv file. Benchmarks its evaluation clips by default.")
-    parser.add_argument("--split-name", default="evaluation")
+    parser.add_argument("--split", type=Path, help="Optional split.csv file. Benchmarks its test clips by default.")
+    parser.add_argument("--split-name", default="test")
     arguments = parser.parse_args()
 
     import nemo.collections.asr as nemo_asr
@@ -29,9 +29,11 @@ def main() -> int:
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Loading {arguments.model}", file=sys.stderr)
-    from huggingface_hub import hf_hub_download
+    model_path = Path(arguments.model)
+    if not model_path.is_file():
+        from huggingface_hub import hf_hub_download
 
-    model_path = hf_hub_download(arguments.model, arguments.model_file)
+        model_path = Path(hf_hub_download(arguments.model, arguments.model_file))
     model = nemo_asr.models.ASRModel.restore_from(model_path, map_location=arguments.device)
     details: list[dict[str, str | int | float]] = []
     total_word_errors = total_words = total_character_errors = total_characters = 0

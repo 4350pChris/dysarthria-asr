@@ -2,21 +2,31 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import shutil
 import subprocess
 import tempfile
 import unicodedata
+import urllib.request
 import zipfile
 from pathlib import Path
 
 
 LABEL_FIELDS = ["audio_id", "audio_file", "source", "transcript"]
 SPLIT_FIELDS = ["audio_id", "split", "audio_file", "transcript"]
+APP_ZIP_URL = "https://asr.ennen.dev/api/labeling/training-data.zip"
+READING_DATASET = Path("data/datasets/reading-v2")
+OUTPUT_DIR = Path("data/datasets/current")
 
 
 def normalized_transcript(text: str) -> str:
     return " ".join("".join(character if character.isalnum() else " " for character in unicodedata.normalize("NFKC", text).casefold()).split())
+
+
+def split_name(transcript: str) -> str:
+    bucket = int.from_bytes(hashlib.sha256(f"dysarthria-asr-split-v1:{normalized_transcript(transcript)}".encode()).digest()[:8], "big") % 100
+    return "train" if bucket < 80 else "validation" if bucket < 90 else "test"
 
 
 def app_items(archive_path: Path, temporary_dir: Path) -> list[tuple[str, Path, str, str]]:
@@ -33,6 +43,11 @@ def app_items(archive_path: Path, temporary_dir: Path) -> list[tuple[str, Path, 
                 shutil.copyfileobj(source, output)
             items.append((f"app-{row['audio_id']}", target, "app_recording", transcript))
     return items
+
+
+def download_app_zip(destination: Path) -> None:
+    with urllib.request.urlopen(APP_ZIP_URL, timeout=60) as response, destination.open("wb") as output:
+        shutil.copyfileobj(response, output)
 
 
 def reading_items(dataset_dir: Path) -> list[tuple[str, Path, str, str]]:
@@ -52,63 +67,41 @@ def convert_to_wav(source: Path, output: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Combine app training ZIP data with prepared reading clips.")
-    parser.add_argument("app_zip", type=Path)
-    parser.add_argument("reading_dataset", type=Path)
-    parser.add_argument("--output-dir", type=Path, default=Path("data/datasets/combined"))
-    parser.add_argument("--reference-split", type=Path, help="Existing split.csv whose evaluation clips stay held out.")
-    parser.add_argument("--split-output", type=Path, help="Path for the new split.csv. Requires --reference-split.")
-    parser.add_argument("--allow-missing-evaluation", action="store_true", help="Keep the available reference evaluation clips when the updated dataset lacks some clips.")
+    parser = argparse.ArgumentParser(description="Build the current training dataset and its stable three-way split.")
+    parser.add_argument("--replace", action="store_true", help="Replace an existing output dataset.")
     arguments = parser.parse_args()
-    if bool(arguments.reference_split) != bool(arguments.split_output):
-        parser.error("--reference-split and --split-output must be used together.")
-    if arguments.output_dir.exists():
-        raise FileExistsError(f"Output directory already exists: {arguments.output_dir}")
-    audio_dir = arguments.output_dir / "data" / "audio"
-    audio_dir.mkdir(parents=True)
     with tempfile.TemporaryDirectory(prefix="dysarthria-asr-app-data-") as temporary_name:
-        items = app_items(arguments.app_zip, Path(temporary_name)) + reading_items(arguments.reading_dataset)
+        temporary_dir = Path(temporary_name)
+        app_zip = temporary_dir / "training-data.zip"
+        download_app_zip(app_zip)
+        if OUTPUT_DIR.exists():
+            if not arguments.replace:
+                raise FileExistsError(f"Output directory already exists: {OUTPUT_DIR}. Use --replace to rebuild it.")
+            shutil.rmtree(OUTPUT_DIR)
+        audio_dir = OUTPUT_DIR / "data" / "audio"
+        audio_dir.mkdir(parents=True)
+        items = app_items(app_zip, temporary_dir) + reading_items(READING_DATASET)
         labels = []
         for audio_id, source_audio, source, transcript in items:
             if not source_audio.is_file():
                 raise FileNotFoundError(source_audio)
             target = audio_dir / f"{audio_id}.wav"
             convert_to_wav(source_audio, target)
-            labels.append({"audio_id": audio_id, "audio_file": target.relative_to(arguments.output_dir).as_posix(), "source": source, "transcript": transcript})
-    with (arguments.output_dir / "training-labels.csv").open("w", newline="", encoding="utf-8") as output:
+            labels.append({"audio_id": audio_id, "audio_file": target.relative_to(OUTPUT_DIR).as_posix(), "source": source, "transcript": transcript})
+    with (OUTPUT_DIR / "training-labels.csv").open("w", newline="", encoding="utf-8") as output:
         writer = csv.DictWriter(output, fieldnames=LABEL_FIELDS)
         writer.writeheader()
         writer.writerows(labels)
-    if arguments.reference_split:
-        with arguments.reference_split.open(newline="", encoding="utf-8") as input_file:
-            evaluation_rows = [row for row in csv.DictReader(input_file) if row["split"] == "evaluation"]
-        evaluation_ids = {row["audio_id"] for row in evaluation_rows}
-        available_ids = {row["audio_id"] for row in labels}
-        missing_ids = evaluation_ids - available_ids
-        if missing_ids and not arguments.allow_missing_evaluation:
-            raise ValueError(f"Updated dataset is missing {len(missing_ids)} existing evaluation clips.")
-        if missing_ids:
-            print(f"Warning: updated dataset is missing {len(missing_ids)} existing evaluation clips.")
-            evaluation_ids -= missing_ids
-        evaluation_texts = {normalized_transcript(row["transcript"]) for row in evaluation_rows}
-        split_rows = []
-        excluded = 0
-        for row in labels:
-            if row["audio_id"] in evaluation_ids:
-                split = "evaluation"
-            elif normalized_transcript(row["transcript"]) in evaluation_texts:
-                split = "excluded"
-                excluded += 1
-            else:
-                split = "train"
-            split_rows.append({"audio_id": row["audio_id"], "split": split, "audio_file": row["audio_file"], "transcript": row["transcript"]})
-        arguments.split_output.parent.mkdir(parents=True, exist_ok=True)
-        with arguments.split_output.open("w", newline="", encoding="utf-8") as output:
-            writer = csv.DictWriter(output, fieldnames=SPLIT_FIELDS)
-            writer.writeheader()
-            writer.writerows(split_rows)
-        print(f"Wrote {len(split_rows)} split rows ({excluded} excluded to protect the held-out text).")
-    print(f"Wrote {len(labels)} clips to {arguments.output_dir}")
+    split_rows = [{"audio_id": row["audio_id"], "split": split_name(row["transcript"]), "audio_file": row["audio_file"], "transcript": row["transcript"]} for row in labels]
+    split_counts = {name: sum(row["split"] == name for row in split_rows) for name in ("train", "validation", "test")}
+    if not all(split_counts.values()):
+        raise ValueError(f"Dataset needs clips in every split: {split_counts}")
+    with (OUTPUT_DIR / "split.csv").open("w", newline="", encoding="utf-8") as output:
+        writer = csv.DictWriter(output, fieldnames=SPLIT_FIELDS)
+        writer.writeheader()
+        writer.writerows(split_rows)
+    print(f"Wrote split: {split_counts}")
+    print(f"Wrote {len(labels)} clips to {OUTPUT_DIR}")
     return 0
 
 

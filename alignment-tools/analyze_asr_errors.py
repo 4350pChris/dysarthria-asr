@@ -133,7 +133,7 @@ def main() -> int:
         summary.append({"model": model, "source": source, **total, "word_errors": errors, "word_error_rate": errors / total["reference_words"]})
     write_csv(arguments.output_dir / "summary-by-source.csv", summary, ["model", "source", "clips", "reference_words", "substitutions", "deletions", "insertions", "word_errors", "word_error_rate"])
 
-    lines = ["# ASR error analysis", "", "This report is local. Do not use these evaluation clips for training.", "", "## Results by model", ""]
+    lines = ["# ASR error analysis", "", "This report is local. Do not use these test clips for training.", "", "## Results by model", ""]
     for model, total in sorted(model_totals.items()):
         errors = total["substitutions"] + total["deletions"] + total["insertions"]
         lines.append(f"- {model}: {errors}/{total['reference_words']} word errors ({errors / total['reference_words']:.1%}); {total['substitutions']} substitutions, {total['deletions']} deletions, {total['insertions']} insertions.")

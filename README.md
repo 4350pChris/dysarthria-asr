@@ -90,17 +90,6 @@ At startup, the backend downloads the German Tatoeba sentence export only when n
 
 The database survives restarts. Startup creates missing tables and seed data without deleting existing recordings or labels.
 
-## Results
-
-The fine-tuned Amsel v2 model improves recognition for its intended speaker on the fixed held-out v2 test split.
-
-| Model | Word error rate | Character error rate |
-| --- | ---: | ---: |
-| Whisper Large v3 Turbo baseline | 39.5% | 23.2% |
-| Fine-tuned Amsel v2 | **24.4%** | **14.3%** |
-
-This is a 15.1 percentage-point WER reduction on 32 held-out clips. The model is personal to one speaker. The test set is small, so a person must review the result before it is used for important communication.
-
 ## Checks
 
 Backend:

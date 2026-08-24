@@ -50,11 +50,12 @@ Prepare an audio file and its matching text. Split long recordings into matching
 
 ## Evaluate models
 
-Use one fixed held-out split to compare models. For example:
+Use the dataset test split to compare models. Do not use it during training or
+model selection.
 
 ```sh
-uv run python benchmark_asr.py data/datasets/session-01 \
-  --split runs/training/model-name/split.csv \
+uv run python benchmark_asr.py data/datasets/current \
+  --split data/datasets/current/split.csv \
   --model base=mobiuslabsgmbh/faster-whisper-large-v3-turbo \
   --model adapted=models/deployed/model-name \
   --output-dir runs/reports/model-name
@@ -62,46 +63,55 @@ uv run python benchmark_asr.py data/datasets/session-01 \
 
 The report contains WER, character error rate, and one row per audio clip. Do not compare results from different test splits.
 
-## Train and deploy Whisper
+## Train and deploy Whisper on Modal
 
-Train a LoRA adapter, then merge and convert it for the backend's `faster-whisper` runtime:
+Build `data/datasets/current`. The command downloads the reviewed app export
+from `https://asr.ennen.dev/api/labeling/training-data.zip` and combines it
+with the reading clips:
 
 ```sh
-uv run python train_whisper_lora.py data/datasets/session-01 \
-  --output-dir runs/training/model-name
-
-uv run python promote_whisper_lora.py runs/training/model-name \
-  --output-dir models/deployed/model-name
+uv run python prepare_combined_training_data.py \
+  --replace
 ```
 
-### Train Whisper on Modal
+The builder assigns every normalized transcript to a stable 80% training, 10%
+validation, or 10% test group. New recordings of the same text always use the
+same group. The validation group selects the checkpoint; the test group is for
+the final benchmark only.
 
-The Modal job uses the current `combined-v3` dataset and its existing fixed
-training/evaluation split. It uploads those private files to Modal as part of
-the job image. Do this only if that data handling is acceptable.
+Start training with a new run name:
 
-```sh
+```
 uv run modal run modal_train_whisper_lora.py \
-  --run-name whisper-large-v3-turbo-lora-combined-v3-experiment-01
+  --run-name whisper-large-v3-turbo-lora-experiment-01
 
-mkdir -p runs/training/whisper-large-v3-turbo-lora-combined-v3-experiment-01/adapter
+mkdir -p runs/training/whisper-large-v3-turbo-lora-experiment-01/adapter
 for name in vocab.json tokenizer_config.json tokenizer.json special_tokens_map.json preprocessor_config.json normalizer.json merges.txt generation_config.json added_tokens.json adapter_model.safetensors adapter_config.json; do
   uv run modal volume get dysarthria-asr-training-results \
-    /whisper-large-v3-turbo-lora-combined-v3-experiment-01/adapter/$name \
-    runs/training/whisper-large-v3-turbo-lora-combined-v3-experiment-01/adapter/$name
+    /whisper-large-v3-turbo-lora-experiment-01/adapter/$name \
+    runs/training/whisper-large-v3-turbo-lora-experiment-01/adapter/$name
 done
 
 uv run python promote_whisper_lora.py \
-  runs/training/whisper-large-v3-turbo-lora-combined-v3-experiment-01 \
-  --output-dir models/deployed/whisper-large-v3-turbo-lora-combined-v3-experiment-01
+  runs/training/whisper-large-v3-turbo-lora-experiment-01 \
+  --output-dir models/deployed/whisper-large-v3-turbo-lora-experiment-01
 ```
 
-The job uses one L4 GPU and has a two-hour limit. Its default values match the
-local Whisper training script. Do not use the same `--run-name` twice unless
-you first remove or rename the old output in the Modal Volume.
+The job uploads private source data to Modal, uses one L4 GPU, and has a
+two-hour limit. Do not reuse a run name.
 
 Set `ASR_MODEL` to the deployed model directory when you run the backend. Use the unchanged base model as the benchmark control.
 
-## Other experiments
+## Train Parakeet on Modal
 
-`benchmark_parakeet.py` evaluates a Parakeet model on the same dataset and split. `modal_train_parakeet.py` and `modal_train_parakeet_adapter.py` run Parakeet training jobs on Modal. Use `--help` on each command before a new experiment.
+The Parakeet joint-only and encoder-LoRA experiments use the same current
+dataset and train/validation/test split. They use validation to select the
+checkpoint and leave test clips for a later benchmark.
+
+```sh
+uv run modal run modal_train_parakeet.py \
+  --run-name parakeet-joint-experiment-01
+
+uv run modal run modal_train_parakeet_adapter.py \
+  --run-name parakeet-encoder-lora-experiment-01
+```

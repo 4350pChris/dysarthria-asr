@@ -1,61 +1,19 @@
 from __future__ import annotations
 
-import csv
 import json
-import re
 import shutil
 import time
-import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
 import modal
+from modal_training import OUTPUT_VOLUME, REMOTE_DATASET_DIR, output_dir, read_split_rows, save_run, training_image
 
 
-PROJECT_DIR = Path(__file__).parent
-DATASET_DIR = PROJECT_DIR / "data/datasets/combined-v3"
-SPLIT_PATH = PROJECT_DIR / "runs/training/whisper-large-v3-turbo-lora-combined-v3/split.csv"
-REMOTE_DATASET_DIR = Path("/data")
 MODEL_NAME = "openai/whisper-large-v3-turbo"
-OUTPUT_VOLUME_NAME = "dysarthria-asr-training-results"
 
-image = (
-    modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu22.04", add_python="3.10")
-    .entrypoint([])
-    .uv_pip_install(
-        "torch==2.7.1",
-        "transformers==4.57.6",
-        "peft==0.19.1",
-        "accelerate>=1.0",
-        "soundfile",
-        extra_index_url="https://download.pytorch.org/whl/cu128",
-        extra_options="--index-strategy unsafe-best-match",
-    )
-    .add_local_dir(DATASET_DIR, remote_path=str(REMOTE_DATASET_DIR))
-    .add_local_file(SPLIT_PATH, remote_path="/split.csv")
-)
+image = training_image("torch==2.7.1", "transformers==4.57.6", "peft==0.19.1", "accelerate>=1.0", "soundfile")
 app = modal.App("dysarthria-asr-whisper-lora", image=image)
-output_volume = modal.Volume.from_name(OUTPUT_VOLUME_NAME, create_if_missing=True)
-
-
-def normalized_words(text: str) -> list[str]:
-    return re.findall(r"[\w]+", unicodedata.normalize("NFKC", text).casefold())
-
-
-def edit_distance(reference: list[str], prediction: list[str]) -> int:
-    previous = list(range(len(prediction) + 1))
-    for reference_index, reference_word in enumerate(reference, start=1):
-        current = [reference_index]
-        for prediction_index, prediction_word in enumerate(prediction, start=1):
-            current.append(
-                min(
-                    previous[prediction_index - 1] + (reference_word != prediction_word),
-                    current[prediction_index - 1] + 1,
-                    previous[prediction_index] + 1,
-                )
-            )
-        previous = current
-    return previous[-1]
 
 
 @dataclass(frozen=True)
@@ -66,26 +24,25 @@ class Item:
 
 
 def read_split() -> tuple[list[Item], list[Item]]:
-    with Path("/split.csv").open(newline="", encoding="utf-8") as input_file:
-        rows = list(csv.DictReader(input_file))
-    items_by_split: dict[str, list[Item]] = {"train": [], "evaluation": []}
+    rows = read_split_rows()
+    items_by_split: dict[str, list[Item]] = {"train": [], "validation": []}
     for row in rows:
         split = row["split"]
-        if split == "excluded":
+        if split == "test":
             continue
         if split not in items_by_split:
             raise ValueError(f"Unknown split: {split}")
         items_by_split[split].append(
             Item(REMOTE_DATASET_DIR / row["audio_file"], row["transcript"].strip(), row["audio_id"])
         )
-    if not items_by_split["train"] or not items_by_split["evaluation"]:
-        raise ValueError("Split must contain training and evaluation clips.")
-    return items_by_split["train"], items_by_split["evaluation"]
+    if not items_by_split["train"] or not items_by_split["validation"]:
+        raise ValueError("Split must contain training and validation clips.")
+    return items_by_split["train"], items_by_split["validation"]
 
 
-@app.function(gpu="L4", timeout=2 * 60 * 60, retries=0, volumes={"/output": output_volume})
+@app.function(gpu="L4", timeout=2 * 60 * 60, retries=0, volumes={"/output": OUTPUT_VOLUME})
 def train(
-    run_name: str = "whisper-large-v3-turbo-lora-combined-v3",
+    run_name: str = "whisper-large-v3-turbo-lora-experiment",
     epochs: float = 12,
     learning_rate: float = 5e-5,
     batch_size: int = 2,
@@ -97,8 +54,6 @@ def train(
     from torch.utils.data import Dataset
     from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments, WhisperForConditionalGeneration, WhisperProcessor
 
-    if not run_name or "/" in run_name or "\\" in run_name:
-        raise ValueError("run_name must be a single directory name.")
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is not available.")
 
@@ -135,23 +90,7 @@ def train(
             batch["labels"] = labels["input_ids"].masked_fill(labels.attention_mask.ne(1), -100)
             return batch
 
-    def evaluate(model, processor: WhisperProcessor, dataset: WhisperDataset) -> float:
-        errors = total_words = 0
-        model.eval()
-        with torch.inference_mode():
-            for index in range(len(dataset)):
-                feature = dataset[index]
-                input_features = torch.tensor(feature["input_features"]).unsqueeze(0).to(
-                    device="cuda", dtype=next(model.parameters()).dtype
-                )
-                tokens = model.generate(input_features=input_features, max_new_tokens=128)
-                prediction = processor.tokenizer.batch_decode(tokens, skip_special_tokens=True)[0]
-                reference_words = normalized_words(feature["item"].transcript)
-                errors += edit_distance(reference_words, normalized_words(prediction))
-                total_words += len(reference_words)
-        return errors / total_words
-
-    train_items, evaluation_items = read_split()
+    train_items, validation_items = read_split()
     processor = WhisperProcessor.from_pretrained(MODEL_NAME, language="German", task="transcribe")
     model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME, torch_dtype=torch.bfloat16)
     model.generation_config.language = "german"
@@ -161,12 +100,9 @@ def train(
     model.add_adapter(LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, target_modules=["q_proj", "v_proj"]))
     model.enable_input_require_grads()
 
-    output_dir = Path("/output") / run_name
-    if output_dir.exists():
-        raise FileExistsError(f"Output already exists: {output_dir}")
-    output_dir.mkdir(parents=True)
+    run_dir = output_dir(run_name)
     training_arguments = Seq2SeqTrainingArguments(
-        output_dir=str(output_dir / "checkpoints"),
+        output_dir=str(run_dir / "checkpoints"),
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -190,13 +126,13 @@ def train(
         model=model,
         args=training_arguments,
         train_dataset=WhisperDataset(train_items, processor),
-        eval_dataset=WhisperDataset(evaluation_items, processor),
+        eval_dataset=WhisperDataset(validation_items, processor),
         data_collator=Collator(processor),
         processing_class=processor.feature_extractor,
     )
     started = time.perf_counter()
     trainer.train()
-    adapter_dir = output_dir / "adapter"
+    adapter_dir = run_dir / "adapter"
     adapter_dir.mkdir()
     checkpoint_name = trainer.state.best_model_checkpoint
     if checkpoint_name:
@@ -215,19 +151,17 @@ def train(
         "batch_size": batch_size,
         "gradient_accumulation_steps": gradient_accumulation_steps,
         "train_clips": len(train_items),
-        "evaluation_clips": len(evaluation_items),
-        "evaluation_word_error_rate": evaluate(model, processor, WhisperDataset(evaluation_items, processor)),
+        "validation_clips": len(validation_items),
+        "best_validation_loss": trainer.state.best_metric,
         "training_seconds": time.perf_counter() - started,
     }
-    (output_dir / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
-    shutil.copy2("/split.csv", output_dir / "split.csv")
-    output_volume.commit()
+    save_run(run_dir, metrics)
     return metrics
 
 
 @app.local_entrypoint()
 def main(
-    run_name: str = "whisper-large-v3-turbo-lora-combined-v3",
+    run_name: str = "whisper-large-v3-turbo-lora-experiment",
     epochs: float = 12,
     learning_rate: float = 5e-5,
     batch_size: int = 2,

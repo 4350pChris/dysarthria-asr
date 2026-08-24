@@ -80,8 +80,8 @@ def main() -> int:
     parser.add_argument("--beam-size", type=int, default=5)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compute-type", default="int8")
-    parser.add_argument("--split", type=Path, help="Optional split.csv file. Benchmarks its evaluation clips by default.")
-    parser.add_argument("--split-name", default="evaluation")
+    parser.add_argument("--split", type=Path, help="Optional split.csv file. Benchmarks its test clips by default.")
+    parser.add_argument("--split-name", default="test")
     arguments = parser.parse_args()
 
     from faster_whisper import WhisperModel
