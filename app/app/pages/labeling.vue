@@ -68,6 +68,17 @@ const current = computed(() => items.value[currentIndex.value])
 const audioUrl = computed(() =>
   current.value ? `/api/labeling/audio/${current.value.audio_id}` : ''
 )
+const recordedAt = computed(() => {
+  if (!current.value?.created_at) return ''
+
+  const date = new Date(current.value.created_at)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return new Intl.DateTimeFormat('de-DE', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date)
+})
 const navigationLabel = computed(() =>
   statusFilter.value === 'draft'
     ? `Noch ${items.value.length} zu prüfen`
@@ -205,6 +216,7 @@ function moveCurrent(delta: number) {
           current.source
         }}</span>
         <span>{{ current.original_filename || current.audio_file }}</span>
+        <span v-if="recordedAt">· {{ recordedAt }}</span>
       </div>
 
       <audio
