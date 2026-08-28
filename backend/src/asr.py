@@ -5,7 +5,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict
 
-
 TOLERANT_VAD_PARAMETERS = {
     "threshold": 0.35,
     "min_silence_duration_ms": 3_000,
@@ -56,7 +55,7 @@ def transcribe_german(audio_path: Path) -> str:
     segments, _ = _model().transcribe(
         str(audio_path),
         language="de",
-        beam_size=5,
+        beam_size=1,
         vad_filter=True,
         vad_parameters=TOLERANT_VAD_PARAMETERS,
     )
