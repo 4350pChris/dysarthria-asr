@@ -10,6 +10,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+VAD_PARAMETERS = {
+    "tolerant": {
+        "threshold": 0.35,
+        "min_silence_duration_ms": 3_000,
+        "speech_pad_ms": 600,
+    }
+}
+
+
 @dataclass(frozen=True)
 class DatasetItem:
     audio_id: str
@@ -82,6 +91,12 @@ def main() -> int:
     parser.add_argument("--compute-type", default="int8")
     parser.add_argument("--split", type=Path, help="Optional split.csv file. Benchmarks its test clips by default.")
     parser.add_argument("--split-name", default="test")
+    parser.add_argument(
+        "--vad-mode",
+        action="append",
+        choices=("default", "off", "tolerant"),
+        help="VAD mode. Repeat to compare modes. Defaults to default.",
+    )
     arguments = parser.parse_args()
 
     from faster_whisper import WhisperModel
@@ -90,6 +105,7 @@ def main() -> int:
     items = load_dataset(root)
     if arguments.split:
         items = select_split(items, arguments.split, arguments.split_name)
+    vad_modes = arguments.vad_mode or ["default"]
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     details: list[dict[str, str | int | float]] = []
     summaries: list[dict[str, str | int | float]] = []
@@ -97,21 +113,29 @@ def main() -> int:
         model_name, model_path = model_specification.split("=", 1) if "=" in model_specification else (model_specification, model_specification)
         print(f"Loading {model_name}", file=sys.stderr)
         model = WhisperModel(model_path, device=arguments.device, compute_type=arguments.compute_type)
-        total_word_errors = total_words = total_character_errors = total_characters = 0
-        total_seconds = 0.0
-        for item in items:
-            started = time.perf_counter()
-            segments, _ = model.transcribe(str(root / item.audio_file), language=arguments.language, beam_size=arguments.beam_size, vad_filter=True)
-            prediction = " ".join(segment.text.strip() for segment in segments)
-            elapsed = time.perf_counter() - started
-            word_errors, word_count, character_errors, character_count = metrics(item.transcript, prediction)
-            total_word_errors += word_errors
-            total_words += word_count
-            total_character_errors += character_errors
-            total_characters += character_count
-            total_seconds += elapsed
-            details.append({"model": model_name, "audio_id": item.audio_id, "audio_file": item.audio_file, "expected_transcript": item.transcript, "predicted_transcript": prediction, "word_error_rate": word_errors / word_count, "character_error_rate": character_errors / character_count, "transcription_seconds": f"{elapsed:.3f}"})
-        summaries.append({"model": model_name, "clips": len(items), "word_error_rate": total_word_errors / total_words, "character_error_rate": total_character_errors / total_characters, "total_transcription_seconds": f"{total_seconds:.3f}"})
+        for vad_mode in vad_modes:
+            total_word_errors = total_words = total_character_errors = total_characters = 0
+            total_seconds = 0.0
+            for item in items:
+                started = time.perf_counter()
+                transcribe_arguments = {"language": arguments.language, "beam_size": arguments.beam_size}
+                if vad_mode == "off":
+                    transcribe_arguments["vad_filter"] = False
+                else:
+                    transcribe_arguments["vad_filter"] = True
+                    if vad_mode in VAD_PARAMETERS:
+                        transcribe_arguments["vad_parameters"] = VAD_PARAMETERS[vad_mode]
+                segments, _ = model.transcribe(str(root / item.audio_file), **transcribe_arguments)
+                prediction = " ".join(segment.text.strip() for segment in segments)
+                elapsed = time.perf_counter() - started
+                word_errors, word_count, character_errors, character_count = metrics(item.transcript, prediction)
+                total_word_errors += word_errors
+                total_words += word_count
+                total_character_errors += character_errors
+                total_characters += character_count
+                total_seconds += elapsed
+                details.append({"model": model_name, "vad_mode": vad_mode, "audio_id": item.audio_id, "audio_file": item.audio_file, "expected_transcript": item.transcript, "predicted_transcript": prediction, "word_error_rate": word_errors / word_count, "character_error_rate": character_errors / character_count, "transcription_seconds": f"{elapsed:.3f}"})
+            summaries.append({"model": model_name, "vad_mode": vad_mode, "clips": len(items), "word_error_rate": total_word_errors / total_words, "character_error_rate": total_character_errors / total_characters, "total_transcription_seconds": f"{total_seconds:.3f}"})
     for path, rows in ((arguments.output_dir / "details.csv", details), (arguments.output_dir / "summary.csv", summaries)):
         with path.open("w", newline="", encoding="utf-8") as output_file:
             writer = csv.DictWriter(output_file, fieldnames=list(rows[0]))
