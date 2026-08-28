@@ -47,6 +47,13 @@ def train(
     learning_rate: float = 5e-5,
     batch_size: int = 2,
     gradient_accumulation_steps: int = 4,
+    lora_rank: int = 8,
+    lora_alpha: int = 16,
+    lora_dropout: float = 0.05,
+    lora_target_modules: str = "q_proj,v_proj",
+    warmup_ratio: float = 0.1,
+    weight_decay: float = 0.0,
+    seed: int = 42,
 ) -> dict[str, int | float | str]:
     import soundfile as sf
     import torch
@@ -97,7 +104,17 @@ def train(
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
     model.config.use_cache = False
-    model.add_adapter(LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, target_modules=["q_proj", "v_proj"]))
+    target_modules = [name.strip() for name in lora_target_modules.split(",") if name.strip()]
+    if not target_modules:
+        raise ValueError("LoRA target modules must not be empty.")
+    model.add_adapter(
+        LoraConfig(
+            r=lora_rank,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            target_modules=target_modules,
+        )
+    )
     model.enable_input_require_grads()
 
     run_dir = output_dir(run_name)
@@ -109,10 +126,15 @@ def train(
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         learning_rate=learning_rate,
-        warmup_ratio=0.1,
+        warmup_ratio=warmup_ratio,
+        weight_decay=weight_decay,
+        seed=seed,
+        data_seed=seed,
         num_train_epochs=epochs,
         eval_strategy="epoch",
         save_strategy="epoch",
+        # LoRA checkpoints contain adapter weights, not a full PyTorch model.
+        # Keep the best checkpoint path and copy its adapter after training.
         load_best_model_at_end=False,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
@@ -148,11 +170,18 @@ def train(
 
     metrics = {
         "model": MODEL_NAME,
-        "adapter": "lora-q-v-r8",
+        "adapter": f"lora-{','.join(target_modules)}-r{lora_rank}",
+        "lora_rank": lora_rank,
+        "lora_alpha": lora_alpha,
+        "lora_dropout": lora_dropout,
+        "lora_target_modules": target_modules,
         "epochs": epochs,
         "learning_rate": learning_rate,
         "batch_size": batch_size,
         "gradient_accumulation_steps": gradient_accumulation_steps,
+        "warmup_ratio": warmup_ratio,
+        "weight_decay": weight_decay,
+        "seed": seed,
         "train_clips": len(train_items),
         "validation_clips": len(validation_items),
         "best_validation_loss": trainer.state.best_metric,
@@ -169,6 +198,13 @@ def main(
     learning_rate: float = 5e-5,
     batch_size: int = 2,
     gradient_accumulation_steps: int = 4,
+    lora_rank: int = 8,
+    lora_alpha: int = 16,
+    lora_dropout: float = 0.05,
+    lora_target_modules: str = "q_proj,v_proj",
+    warmup_ratio: float = 0.1,
+    weight_decay: float = 0.0,
+    seed: int = 42,
 ) -> None:
     print(
         json.dumps(
@@ -178,6 +214,13 @@ def main(
                 learning_rate=learning_rate,
                 batch_size=batch_size,
                 gradient_accumulation_steps=gradient_accumulation_steps,
+                lora_rank=lora_rank,
+                lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout,
+                lora_target_modules=lora_target_modules,
+                warmup_ratio=warmup_ratio,
+                weight_decay=weight_decay,
+                seed=seed,
             ),
             indent=2,
         )

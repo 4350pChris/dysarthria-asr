@@ -63,6 +63,21 @@ uv run python benchmark_asr.py data/datasets/current \
 
 The report contains WER, character error rate, and one row per audio clip. Do not compare results from different test splits.
 
+For speakers with long pauses, compare VAD modes on the same test split:
+
+```sh
+uv run python benchmark_asr.py data/datasets/current \
+  --split data/datasets/current/split.csv \
+  --model adapted=models/deployed/model-name \
+  --vad-mode default \
+  --vad-mode off \
+  --vad-mode tolerant \
+  --output-dir runs/reports/model-name-vad
+```
+
+`tolerant` keeps longer pauses and more audio around speech. Select a VAD mode
+from this report before changing the backend setting.
+
 ## Train and deploy Whisper on Modal
 
 Build `data/datasets/current`. The command downloads the reviewed app export
