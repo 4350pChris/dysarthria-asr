@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import TypedDict
 
 
+TOLERANT_VAD_PARAMETERS = {
+    "threshold": 0.35,
+    "min_silence_duration_ms": 3_000,
+    "speech_pad_ms": 600,
+}
+
+
 class ModelSettings(TypedDict):
     model_size_or_path: str
     device: str
@@ -51,5 +58,6 @@ def transcribe_german(audio_path: Path) -> str:
         language="de",
         beam_size=5,
         vad_filter=True,
+        vad_parameters=TOLERANT_VAD_PARAMETERS,
     )
     return " ".join(segment.text.strip() for segment in segments).strip()
