@@ -8,7 +8,8 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@nuxt/hints',
     '@nuxt/test-utils',
-    '@nuxt/a11y'
+    '@nuxt/a11y',
+    '@vueuse/nuxt'
   ],
 
   devtools: {
