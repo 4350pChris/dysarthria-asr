@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session
@@ -17,6 +18,21 @@ from ..models import AsrSource, AudioSource
 from ..paths import AUDIO_DIR, ROOT
 
 router = APIRouter(prefix="/api")
+
+
+@router.post("/transcribe/partial")
+async def transcribe_partial(audio: UploadFile = File(...)) -> dict:
+    """Transcribe an in-progress recording without saving audio or text."""
+    contents = await audio.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
+
+    suffix = Path(audio.filename or "").suffix or ".webm"
+    with NamedTemporaryFile(suffix=suffix) as temporary_file:
+        temporary_file.write(contents)
+        temporary_file.flush()
+        transcript = transcribe_german(Path(temporary_file.name)).strip()
+    return {"raw_transcript": transcript}
 
 
 @router.post("/transcribe")

@@ -104,6 +104,28 @@ def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> No
     assert response.json()["detail"] == "Upload a non-empty audio file."
 
 
+def test_partial_transcription_returns_text_without_saving_audio_or_label(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(transcription, "ROOT", initialized_db)
+    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "ich möchte kaffee")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/transcribe/partial",
+        files={"audio": ("recording.webm", b"audio bytes", "audio/webm")},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"raw_transcript": "ich möchte kaffee"}
+    with connect_test_db(database.DB_FILE) as db:
+        assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
+    assert not list((initialized_db / "audio").glob("*"))
+
+
 def test_transcribe_does_not_store_audio_without_asr_text(
     initialized_db: Path,
     monkeypatch,

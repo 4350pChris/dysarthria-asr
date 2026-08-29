@@ -1,5 +1,6 @@
 type AudioRecordingOptions = {
   onComplete: (recording: Blob) => void | Promise<void>
+  onChunk?: (recording: Blob) => void | Promise<void>
   onStopping?: () => void
 }
 
@@ -21,7 +22,15 @@ export function useAudioRecording(options: AudioRecordingOptions) {
     stream.value = activeStream
     recorder.value = activeRecorder
     chunks.value = []
-    activeRecorder.ondataavailable = event => chunks.value.push(event.data)
+    activeRecorder.ondataavailable = (event) => {
+      if (!event.data.size) return
+      chunks.value.push(event.data)
+      if (options.onChunk) {
+        void options.onChunk(new Blob(chunks.value, {
+          type: activeRecorder.mimeType || 'audio/webm'
+        }))
+      }
+    }
     activeRecorder.onstop = async () => {
       silenceDetection.stop()
       activeStream.getTracks().forEach(track => track.stop())
@@ -35,7 +44,7 @@ export function useAudioRecording(options: AudioRecordingOptions) {
         resolveRecording()
       }
     }
-    activeRecorder.start()
+    activeRecorder.start(options.onChunk ? 2_500 : undefined)
     silenceDetection.start(activeStream)
     isRecording.value = true
 
