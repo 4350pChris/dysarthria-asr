@@ -1,4 +1,5 @@
 import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
+import { useDebounceFn } from '@vueuse/core'
 
 type SpeechMode = 'phrases' | 'math' | 'emoji' | 'freetext'
 
@@ -45,6 +46,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
           ? result.value?.emoji_value
           : selected.value?.text
   )
+  const saveFreeText = useDebounceFn(() => {
+    void saveAttempt()
+  }, 500)
 
   watch([isRecording, isBusy], ([recording, busy]) => {
     isSafeToUpdate.value = !recording && !busy
@@ -169,6 +173,8 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
 
   function setFreeText(text: string) {
     freeText.value = text
+    hasSaved.value = false
+    if (mode.value === 'freetext') saveFreeText()
   }
 
   async function shareToInstagram() {
@@ -270,10 +276,11 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   async function saveAttempt() {
-    if (mode.value === 'freetext') return
-    const correctedText = mode.value === 'emoji'
-      ? result.value?.emoji_name
-      : outputText.value
+    const correctedText = mode.value === 'freetext'
+      ? freeText.value
+      : mode.value === 'emoji'
+        ? result.value?.emoji_name
+        : outputText.value
     if (!result.value || !correctedText || hasSaved.value || isSaving.value)
       return
     isSaving.value = true
@@ -281,7 +288,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       await fetch(`/api/labeling/items/${result.value.audio_id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          notes: 'Provisional app selection.',
+          notes: mode.value === 'freetext'
+            ? 'Edited free text.'
+            : 'Provisional app selection.',
           status: 'draft',
           transcript: correctedText,
           unsure: false
