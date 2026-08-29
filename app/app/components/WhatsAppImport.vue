@@ -5,6 +5,7 @@ type ImportFormState = { targetSender: string }
 type ImportResult = { imported: number, skipped: number }
 
 const files = ref<File[] | null>(null)
+const { track } = useUsageAnalytics()
 const formState = reactive<ImportFormState>({ targetSender: '' })
 const availableSenders = ref<string[]>([])
 const isLoadingSenders = ref(false)
@@ -58,6 +59,11 @@ async function importFiles(event: FormSubmitEvent<ImportFormState>) {
     })
   })
   if (!imported) return
+  track('whatsapp_import_completed', {
+    file_type: hasArchive.value ? 'archive' : 'audio',
+    imported_count: imported.imported,
+    skipped_count: imported.skipped
+  })
   importResult.value = imported
   files.value = null
 }

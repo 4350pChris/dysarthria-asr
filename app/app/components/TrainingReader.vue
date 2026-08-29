@@ -6,6 +6,7 @@ import type { ReadingPrompt } from '~/types/speech'
 type TrainingRecordingFormState = { promptId: string }
 
 const toast = useToast()
+const { track } = useUsageAnalytics()
 const { data: promptResponse, error: promptError } = await useFetch<{ prompts: ReadingPrompt[] }>('/api/training/prompts', {
   cache: 'no-store',
   default: () => ({ prompts: [] })
@@ -43,7 +44,9 @@ function startRecording() {
   errorMessage.value = ''
   resumeVoiceCommands.value = speechCommands.isListening.value
   if (resumeVoiceCommands.value) speechCommands.stop()
-  void startAudioRecording().catch(() => {
+  void startAudioRecording().then(() => {
+    track('training_recording_started')
+  }).catch(() => {
     errorMessage.value = 'Das Mikrofon ist nicht verfügbar. Bitte erlaube den Mikrofonzugriff.'
     if (resumeVoiceCommands.value) {
       resumeVoiceCommands.value = false
@@ -98,12 +101,13 @@ useSpeechCommand({
   phrases: ['speichern', 'aufnahme speichern', 'weiter'],
   handler: () => reviewForm.value?.submit()
 })
-function discardRecording() {
+function discardRecording(trackRetry = true) {
   clearErrors()
   recording.value = undefined
   audioQuality.value = undefined
   if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value)
   recordingUrl.value = ''
+  if (trackRetry) track('training_recording_retried')
 }
 
 async function saveRecording(event: FormSubmitEvent<TrainingRecordingFormState>) {
@@ -116,8 +120,9 @@ async function saveRecording(event: FormSubmitEvent<TrainingRecordingFormState>)
     return $fetch('/api/training/recordings', { method: 'POST', body: form })
   })
   if (!saved) return
+  track('training_recording_saved')
   savedCount.value += 1
-  discardRecording()
+  discardRecording(false)
   promptIndex.value = (promptIndex.value + 1) % prompts.value.length
   toast.add({
     title: 'Gespeichert',

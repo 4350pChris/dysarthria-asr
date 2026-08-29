@@ -12,6 +12,7 @@ const props = defineProps<{
 }>()
 
 const { categories, refreshPhrases } = usePhrases()
+const { track } = useUsageAnalytics()
 const formState = reactive<SavePhraseFormState>({ category_id: undefined, text: '' })
 const isCategoryCreateOpen = ref(false)
 const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<SavePhraseFormState>('Satz konnte nicht gespeichert werden.')
@@ -45,6 +46,7 @@ async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
     body: data
   }))
   if (!saved) return
+  track('phrase_created')
   await refreshPhrases()
   formState.text = ''
   await navigateTo('/?phrase=' + encodeURIComponent(saved.id))

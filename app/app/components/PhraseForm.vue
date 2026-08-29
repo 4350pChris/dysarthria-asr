@@ -13,6 +13,7 @@ const formState = reactive<PhraseFormState>({ text: '' })
 const editing = defineModel<Phrase | undefined>('editing', { required: true })
 
 const { refreshPhrases } = usePhrases()
+const { track } = useUsageAnalytics()
 const { clearErrors, formErrors, isSaving, submit }
   = useFormSubmission<PhraseFormState>('Satz konnte nicht gespeichert werden.')
 const formLabel = computed(() =>
@@ -48,6 +49,7 @@ async function savePhrase(event: FormSubmitEvent<PhraseFormState>) {
     : $fetch<Phrase>('/api/phrases', { method: 'POST', body: { ...data, category_id: categoryId } })
   )
   if (!saved) return
+  track(phraseId ? 'phrase_updated' : 'phrase_created')
   await refreshPhrases()
   resetForm()
 }

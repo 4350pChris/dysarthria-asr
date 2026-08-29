@@ -67,6 +67,38 @@ cd app
 NUXT_API_BASE=https://example.com pnpm dev
 ```
 
+### Local usage analytics
+
+Start the local Umami analytics dashboard from the project root:
+
+```sh
+docker compose up -d
+```
+
+Open <http://127.0.0.1:3001> and sign in with `admin` / `umami`. Change the
+default password. Create a website for `http://localhost:3000`, then copy its
+Website ID into `app/.env`:
+
+```sh
+cd app
+cp .env.example .env
+# Set NUXT_UMAMI_ID to the Website ID from Umami.
+```
+
+Restart the Nuxt development server. Page views are now tracked locally.
+Tracking is enabled by default once `NUXT_UMAMI_ID` is set.
+Custom feature events must not include audio, transcripts, phrase text, names,
+or stable user IDs.
+
+The app tracks these custom events: recording start and transcription result;
+suggestion and saved-phrase selection; speak, copy, and share actions; voice
+commands; reading-training recordings; phrase and category creation; and
+WhatsApp import completion. Event metadata is limited to fixed labels such as
+mode, source, share channel, and result state.
+
+To stop the analytics services, run `docker compose down`. The named Docker
+volume keeps analytics data until you remove it explicitly.
+
 ## Use the app
 
 1. Start the API and web app.

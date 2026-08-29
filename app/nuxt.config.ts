@@ -86,5 +86,17 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+
+  umami: {
+    // Tracking is on by default. Umami still needs a Website ID to send data.
+    enabled: true,
+    host: process.env.NUXT_UMAMI_HOST || 'http://127.0.0.1:3001',
+    autoTrack: true,
+    ignoreLocalhost: false,
+    urlOptions: {
+      excludeSearch: true,
+      excludeHash: true
+    }
   }
 })

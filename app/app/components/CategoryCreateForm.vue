@@ -10,6 +10,7 @@ defineProps<{
 
 const formState = reactive<CategoryFormState>({ name: '' })
 const { refreshAfterCategoryChange } = usePhrases()
+const { track } = useUsageAnalytics()
 const { clearErrors, formErrors, isSaving, submit } = useFormSubmission<CategoryFormState>('Kategorie konnte nicht gespeichert werden.')
 const emit = defineEmits<{
   created: [category: Category]
@@ -20,6 +21,7 @@ watch(() => formState.name, clearErrors)
 async function createCategory(event: FormSubmitEvent<CategoryFormState>) {
   const category = await submit(event, data => $fetch<Category>('/api/categories', { method: 'POST', body: data }))
   if (!category) return
+  track('category_created')
   formState.name = ''
   await refreshAfterCategoryChange()
   emit('created', category)

@@ -4,6 +4,7 @@ import { useDebounceFn } from '@vueuse/core'
 type SpeechMode = 'phrases' | 'math' | 'emoji' | 'freetext'
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
+  const { track } = useUsageAnalytics()
   const result = ref<TranscriptionResult>()
   const selected = ref<Suggestion>()
   const freeText = ref('')
@@ -60,13 +61,19 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
 
   function setSelection(suggestion: Suggestion) {
     selected.value = suggestion
+    track('suggestion_selected', { source: suggestion.source })
   }
 
   function selectSuggestionAt(index: number) {
     if (!suggestions.value.length) return
     const nextIndex
       = (index + suggestions.value.length) % suggestions.value.length
-    selected.value = suggestions.value[nextIndex]
+    const suggestion = suggestions.value[nextIndex]
+    if (!suggestion) return
+    selected.value = suggestion
+    track('suggestion_selected', {
+      source: suggestion.source
+    })
     status.value = 'Vorschlag gewechselt.'
   }
 
@@ -80,6 +87,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     }
     hasSaved.value = false
     status.value = 'Direkt ausgewählt.'
+    track('phrase_selected')
   }
 
   async function startRecording() {
@@ -90,6 +98,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     status.value = ''
     status.value = 'Aufnahme läuft...'
     await startAudioRecording()
+    track('recording_started', { mode: mode.value })
   }
 
   function stopRecording() {
@@ -143,9 +152,20 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
               : selected.value
                 ? 'Meinst du das?'
                 : 'Kein Vorschlag gefunden.'
+      track('transcription_completed', {
+        mode: mode.value,
+        outcome: mode.value === 'phrases'
+          ? (selected.value ? 'selection_available' : 'no_selection')
+          : mode.value === 'math'
+            ? (transcription.math_text ? 'result_available' : 'no_result')
+            : mode.value === 'emoji'
+              ? (transcription.emoji_name ? 'result_available' : 'no_result')
+              : (freeText.value ? 'result_available' : 'no_result')
+      })
     } catch (error) {
       status.value
         = error instanceof Error ? error.message : 'Erkennung fehlgeschlagen.'
+      track('transcription_failed', { mode: mode.value })
     } finally {
       isBusy.value = false
     }
@@ -157,6 +177,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     const utterance = new SpeechSynthesisUtterance(outputText.value)
     utterance.lang = 'de-DE'
     speechSynthesis.speak(utterance)
+    track('message_spoken', { mode: mode.value })
     void saveAttempt()
   }
 
@@ -165,6 +186,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     try {
       await navigator.clipboard.writeText(outputText.value)
       status.value = 'Kopiert.'
+      track('message_copied', { mode: mode.value })
       void saveAttempt()
     } catch {
       status.value = 'Kopieren nicht möglich.'
@@ -196,6 +218,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
         files: [image]
       })
       status.value = 'Bild zum Teilen geöffnet.'
+      track('message_shared', { channel: 'instagram', mode: mode.value })
     } catch {
       status.value = 'Instagram-Teilen abgebrochen.'
     }
@@ -208,11 +231,16 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       if (navigator.share) {
         await navigator.share({ text: outputText.value })
         status.value = 'Text geteilt.'
+        track('message_shared', { channel: 'native_share', mode: mode.value })
       } else {
-        openWhatsapp(outputText.value)
+        if (openWhatsapp(outputText.value)) {
+          track('message_shared', { channel: 'whatsapp', mode: mode.value })
+        }
       }
     } catch {
-      openWhatsapp(outputText.value)
+      if (openWhatsapp(outputText.value)) {
+        track('message_shared', { channel: 'whatsapp', mode: mode.value })
+      }
     }
     void saveAttempt()
   }
@@ -223,6 +251,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     status.value = opened
       ? 'WhatsApp geöffnet.'
       : 'WhatsApp konnte nicht geöffnet werden.'
+    return Boolean(opened)
   }
 
   function createShareImage(text: string): File | undefined {

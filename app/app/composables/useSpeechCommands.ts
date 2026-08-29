@@ -56,6 +56,7 @@ function similarity(left: string, right: string) {
 }
 
 export function createSpeechCommands(): SpeechCommands {
+  const { track } = useUsageAnalytics()
   const commands = ref<SpeechCommand[]>([])
   const isSupported = ref(false)
   const isListening = ref(false)
@@ -96,6 +97,7 @@ export function createSpeechCommands(): SpeechCommands {
         return
       }
       status.value = `Erkannt: ${command.label}`
+      track('voice_command_used', { command: command.id })
       void command.handler()
     }
     recognition.value.onerror = (event) => {
