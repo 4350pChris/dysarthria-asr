@@ -181,6 +181,9 @@ jobs:
         with:
           context: ./app
           push: true
+          build-args: |
+            NUXT_UMAMI_HOST=${{ vars.NUXT_UMAMI_HOST }}
+            NUXT_UMAMI_ID=${{ vars.NUXT_UMAMI_ID }}
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
