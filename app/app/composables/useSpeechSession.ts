@@ -1,10 +1,11 @@
 import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
 
-type SpeechMode = 'phrases' | 'math' | 'emoji'
+type SpeechMode = 'phrases' | 'math' | 'emoji' | 'freetext'
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
   const result = ref<TranscriptionResult>()
   const selected = ref<Suggestion>()
+  const freeText = ref('')
   const status = ref('')
   const isBusy = ref(false)
   const isSaving = ref(false)
@@ -36,11 +37,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     )
   )
   const outputText = computed(() =>
-    mode.value === 'math'
-      ? result.value?.math_text
-      : mode.value === 'emoji'
-        ? result.value?.emoji_value
-        : selected.value?.text
+    mode.value === 'freetext'
+      ? freeText.value
+      : mode.value === 'math'
+        ? result.value?.math_text
+        : mode.value === 'emoji'
+          ? result.value?.emoji_value
+          : selected.value?.text
   )
 
   watch([isRecording, isBusy], ([recording, busy]) => {
@@ -78,6 +81,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   async function startRecording() {
     result.value = undefined
     selected.value = undefined
+    if (mode.value === 'freetext') freeText.value = ''
     hasSaved.value = false
     status.value = ''
     status.value = 'Aufnahme läuft...'
@@ -106,6 +110,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       }
       const transcription: TranscriptionResult = await response.json()
       result.value = transcription
+      if (mode.value === 'freetext') {
+        freeText.value = transcription.raw_transcript
+      }
       selected.value
         = mode.value === 'phrases'
           ? transcription.emoji_text !== transcription.raw_transcript
@@ -125,9 +132,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
             ? transcription.emoji_name
               ? 'Emoji erkannt.'
               : 'Emoji nicht erkannt. Bitte sage den Namen des Emojis.'
-            : selected.value
-              ? 'Meinst du das?'
-              : 'Kein Vorschlag gefunden.'
+            : mode.value === 'freetext'
+              ? freeText.value
+                ? 'Text erkannt.'
+                : 'Kein Text erkannt.'
+              : selected.value
+                ? 'Meinst du das?'
+                : 'Kein Vorschlag gefunden.'
     } catch (error) {
       status.value
         = error instanceof Error ? error.message : 'Erkennung fehlgeschlagen.'
@@ -154,6 +165,10 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     } catch {
       status.value = 'Kopieren nicht möglich.'
     }
+  }
+
+  function setFreeText(text: string) {
+    freeText.value = text
   }
 
   async function shareToInstagram() {
@@ -255,6 +270,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   async function saveAttempt() {
+    if (mode.value === 'freetext') return
     const correctedText = mode.value === 'emoji'
       ? result.value?.emoji_name
       : outputText.value
@@ -281,6 +297,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   return {
     result,
     selected,
+    freeText,
     status,
     isRecording,
     isBusy,
@@ -291,6 +308,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     selectedIndex,
     outputText,
     setSelection,
+    setFreeText,
     selectSuggestionAt,
     selectPhrase,
     startRecording,

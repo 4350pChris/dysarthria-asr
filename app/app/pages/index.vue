@@ -8,11 +8,12 @@ definePageMeta({
   }
 })
 
-const mode = ref<'phrases' | 'math' | 'emoji'>('phrases')
+const mode = ref<'phrases' | 'math' | 'emoji' | 'freetext'>('freetext')
 const modeOptions = [
   { label: 'Sätze', value: 'phrases' },
   { label: 'Mathe', value: 'math' },
-  { label: 'Emoji', value: 'emoji' }
+  { label: 'Emoji', value: 'emoji' },
+  { label: 'Freitext', value: 'freetext' }
 ]
 const speech = useSpeechSession(mode)
 const { byId, ready } = usePhrases()
@@ -41,6 +42,15 @@ useSpeechCommand({
   handler: () => {
     mode.value = 'math'
     speech.status.value = 'Mathemodus.'
+  }
+})
+useSpeechCommand({
+  id: 'freetext-mode',
+  label: 'Freitextmodus',
+  phrases: ['freitext', 'freier text', 'freitextmodus'],
+  handler: () => {
+    mode.value = 'freetext'
+    speech.status.value = 'Freitextmodus.'
   }
 })
 useSpeechCommand({ id: 'next', label: 'Nächster Vorschlag', phrases: ['weiter', 'nächster', 'nächste', 'nein'], handler: () => speech.selectSuggestionAt(speech.selectedIndex.value + 1) })
@@ -92,6 +102,8 @@ function submit() {
     <RecordControl
       :is-recording="speech.isRecording.value"
       :is-busy="speech.isBusy.value"
+      :start-label="mode === 'freetext' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
+      :start-guidance="mode === 'freetext' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
       @start="startRecording"
       @stop="speech.stopRecording"
     />
@@ -106,7 +118,7 @@ function submit() {
       size="xl"
       variant="card"
       :ui="{
-        fieldset: 'grid w-full grid-cols-3 gap-3',
+        fieldset: 'grid w-full grid-cols-3 gap-3 [&>label:last-child]:col-span-3',
         item: 'min-h-16 items-center justify-center rounded-2xl px-3',
         label: 'text-center text-lg font-extrabold',
         legend: 'sr-only',
@@ -155,6 +167,15 @@ function submit() {
       :emoji-name="speech.result.value.emoji_name"
       :emoji-text="speech.result.value.emoji_value"
       @copy="speech.copySelected"
+    />
+
+    <LazyFreeTextResult
+      v-if="mode === 'freetext' && !speech.isRecording.value && !speech.isBusy.value && speech.freeText.value"
+      :text="speech.freeText.value"
+      @copy="speech.copySelected"
+      @share-instagram="speech.shareToInstagram"
+      @share-text="speech.shareText"
+      @update-text="speech.setFreeText"
     />
 
     <UButton

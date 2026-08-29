@@ -2,6 +2,8 @@
 const props = defineProps<{
   isRecording: boolean
   isBusy: boolean
+  startLabel?: string
+  startGuidance?: string
 }>()
 
 const emit = defineEmits<{
@@ -19,8 +21,8 @@ const state = computed(() => {
 
 const copy = computed(() => ({
   idle: {
-    title: 'Aufnehmen',
-    guidance: 'Tippe zum Sprechen'
+    title: props.startLabel || 'Aufnehmen',
+    guidance: props.startGuidance || 'Tippe zum Sprechen'
   },
   recording: {
     title: 'Aufnahme läuft',
