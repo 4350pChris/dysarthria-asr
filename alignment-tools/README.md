@@ -78,6 +78,22 @@ uv run python benchmark_asr.py data/datasets/current \
 `tolerant` keeps longer pauses and more audio around speech. Select a VAD mode
 from this report before changing the backend setting.
 
+Compare whether Whisper should use earlier text as context inside long clips:
+
+```sh
+uv run python benchmark_asr.py data/datasets/current \
+  --split data/datasets/current/split.csv \
+  --model adapted=models/deployed/model-name \
+  --vad-mode tolerant \
+  --beam-size 1 \
+  --condition-on-previous-text true \
+  --condition-on-previous-text false \
+  --output-dir runs/reports/model-name-previous-text
+```
+
+Use this comparison before changing `condition_on_previous_text` in the
+backend. Its best value can change with the model and training data.
+
 ## Train and deploy Whisper on Modal
 
 Build `data/datasets/current`. The command downloads the reviewed app export
