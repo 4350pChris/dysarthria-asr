@@ -11,7 +11,7 @@ const emit = defineEmits<{
   stop: []
 }>()
 
-const disabledTimer = ref(false)
+const disabledTimer = refAutoReset(false, 2_000)
 const { isTargetReady } = useStartupLogoTransition()
 const state = computed(() => {
   if (props.isRecording) return 'recording'
@@ -39,9 +39,6 @@ function toggleRecording() {
     return
   }
   disabledTimer.value = true
-  setTimeout(() => {
-    disabledTimer.value = false
-  }, 2000)
   if (!props.isRecording) {
     emit('start')
   } else {

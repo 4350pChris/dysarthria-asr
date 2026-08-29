@@ -3,8 +3,7 @@ const props = defineProps<{
   savedCount: number
 }>()
 
-const celebration = ref<{ title: string, message: string }>()
-let celebrationTimer: ReturnType<typeof setTimeout> | undefined
+const celebration = refAutoReset<{ title: string, message: string } | undefined>(undefined, 2_400)
 
 watch(() => props.savedCount, (count) => {
   const message = count === 10
@@ -13,14 +12,8 @@ watch(() => props.savedCount, (count) => {
       ? { title: 'Zwanzig!', message: 'Wow. Das ist eine richtig starke Runde.' }
       : undefined
   if (!message) return
-  clearTimeout(celebrationTimer)
   celebration.value = message
-  celebrationTimer = setTimeout(() => {
-    celebration.value = undefined
-  }, 2_400)
 })
-
-onBeforeUnmount(() => clearTimeout(celebrationTimer))
 </script>
 
 <template>

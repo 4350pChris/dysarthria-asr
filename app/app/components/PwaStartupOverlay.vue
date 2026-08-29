@@ -5,6 +5,7 @@ const isVisible = ref(true)
 const overlay = useTemplateRef('overlay')
 const logo = useTemplateRef('logo')
 const { isTargetReady } = useStartupLogoTransition()
+const reducedMotion = usePreferredReducedMotion()
 
 let animation: gsap.core.Timeline | undefined
 
@@ -17,8 +18,7 @@ onMounted(async () => {
   await nextTick()
 
   const target = document.querySelector<HTMLElement>('[data-startup-logo-target]')
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (reducedMotion || !overlay.value || !logo.value || !target) {
+  if (reducedMotion.value === 'reduce' || !overlay.value || !logo.value || !target) {
     finish()
     return
   }

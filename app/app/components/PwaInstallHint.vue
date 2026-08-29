@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const isVisible = ref(false)
+const isDismissed = useLocalStorage('pwa-install-hint-dismissed', false)
 
 function isStandalone() {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
@@ -8,7 +9,7 @@ function isStandalone() {
 }
 
 function dismiss() {
-  localStorage.setItem('pwa-install-hint-dismissed', 'true')
+  isDismissed.value = true
   isVisible.value = false
 }
 
@@ -19,7 +20,7 @@ onMounted(() => {
   isVisible.value = isIPhone
     && isSafari
     && !isStandalone()
-    && localStorage.getItem('pwa-install-hint-dismissed') !== 'true'
+    && !isDismissed.value
 })
 </script>
 
