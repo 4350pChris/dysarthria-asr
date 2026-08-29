@@ -8,8 +8,10 @@ definePageMeta({
   }
 })
 
-const mode = ref<'phrases' | 'math' | 'emoji' | 'freetext'>('freetext')
-const modeOptions = [
+type Mode = 'phrases' | 'math' | 'emoji' | 'freetext'
+
+const mode = ref<Mode>('freetext')
+const modeOptions: Array<{ label: string, value: Mode }> = [
   { label: 'Sätze', value: 'phrases' },
   { label: 'Mathe', value: 'math' },
   { label: 'Emoji', value: 'emoji' },
@@ -108,23 +110,27 @@ function submit() {
       @stop="speech.stopRecording"
     />
 
-    <URadioGroup
-      v-model="mode"
-      color="primary"
-      indicator="start"
-      legend="Modus"
-      :items="modeOptions"
-      orientation="horizontal"
-      size="xl"
-      variant="card"
-      :ui="{
-        fieldset: 'grid w-full grid-cols-3 gap-3 [&>label:last-child]:col-span-3',
-        item: 'min-h-16 items-center justify-center rounded-2xl px-3',
-        label: 'text-center text-lg font-extrabold',
-        legend: 'sr-only',
-        wrapper: 'ms-2'
-      }"
-    />
+    <fieldset>
+      <legend class="sr-only">
+        Modus
+      </legend>
+      <div class="grid w-full grid-cols-3 gap-3">
+        <UButton
+          v-for="option in modeOptions"
+          :key="option.value"
+          :aria-pressed="mode === option.value"
+          class="min-h-16 justify-center rounded-2xl px-3 text-center text-lg font-extrabold"
+          :color="mode === option.value ? 'primary' : 'neutral'"
+          size="xl"
+          type="button"
+          :variant="mode === option.value ? 'solid' : 'outline'"
+          :class="{ 'col-span-3': option.value === 'freetext' }"
+          @click="mode = option.value"
+        >
+          {{ option.label }}
+        </UButton>
+      </div>
+    </fieldset>
 
     <p
       aria-live="polite"
