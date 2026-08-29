@@ -9,7 +9,8 @@ export default defineNuxtConfig({
     '@nuxt/hints',
     '@nuxt/test-utils',
     '@nuxt/a11y',
-    '@vueuse/nuxt'
+    '@vueuse/nuxt',
+    'nuxt-umami'
   ],
 
   devtools: {
