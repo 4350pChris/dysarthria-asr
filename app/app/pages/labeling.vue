@@ -140,7 +140,6 @@ function moveCurrent(delta: number) {
   <div class="space-y-5">
     <div class="flex flex-wrap gap-3">
       <UButton
-        class="font-extrabold"
         color="neutral"
         icon="i-lucide-upload"
         size="lg"
@@ -149,7 +148,6 @@ function moveCurrent(delta: number) {
         WhatsApp-Audios importieren
       </UButton>
       <UButton
-        class="font-extrabold"
         color="primary"
         external
         icon="i-lucide-download"
@@ -265,7 +263,6 @@ function moveCurrent(delta: number) {
       <div class="grid gap-3 grid-cols-3">
         <UButton
           block
-          class="font-extrabold"
           color="neutral"
           icon="i-lucide-chevron-left"
           size="lg"
@@ -282,7 +279,6 @@ function moveCurrent(delta: number) {
         </p>
         <UButton
           block
-          class="font-extrabold"
           color="neutral"
           icon="i-lucide-chevron-right"
           size="lg"
@@ -297,7 +293,7 @@ function moveCurrent(delta: number) {
       <div class="grid gap-3 sm:grid-cols-3">
         <UButton
           block
-          class="min-h-14 justify-center font-extrabold"
+          class="min-h-14 justify-center"
           color="neutral"
           icon="i-lucide-skip-forward"
           size="lg"
@@ -309,7 +305,7 @@ function moveCurrent(delta: number) {
         </UButton>
         <UButton
           block
-          class="min-h-14 justify-center font-extrabold"
+          class="min-h-14 justify-center"
           color="neutral"
           icon="i-lucide-save"
           size="lg"
@@ -321,7 +317,7 @@ function moveCurrent(delta: number) {
         </UButton>
         <UButton
           block
-          class="min-h-14 justify-center font-extrabold"
+          class="min-h-14 justify-center"
           color="primary"
           icon="i-lucide-check"
           size="lg"

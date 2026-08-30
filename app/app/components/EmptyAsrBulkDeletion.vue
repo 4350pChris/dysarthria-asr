@@ -43,7 +43,7 @@ async function deleteItems() {
   <UButton
     v-if="count"
     block
-    class="min-h-12 justify-center font-extrabold"
+    class="min-h-12 justify-center"
     color="error"
     icon="i-lucide-trash-2"
     size="lg"

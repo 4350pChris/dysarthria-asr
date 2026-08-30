@@ -20,7 +20,7 @@ const emit = defineEmits<{
     <template #default="{ isBusy: busy, isRecording: recording, toggle }">
       <UButton
         block
-        class="min-h-28 justify-center rounded-3xl text-xl font-extrabold"
+        class="min-h-28 justify-center rounded-3xl text-xl"
         :color="recording ? 'error' : 'primary'"
         :disabled="busy"
         :icon="recording ? 'i-lucide-square' : 'i-lucide-mic'"

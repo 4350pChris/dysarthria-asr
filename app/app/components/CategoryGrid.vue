@@ -11,7 +11,7 @@ defineProps<{
     <UButton
       v-for="category in categories"
       :key="category.id"
-      class="min-h-28 justify-center rounded-3xl text-2xl font-extrabold"
+      class="min-h-28 justify-center rounded-3xl text-2xl"
       block
       color="neutral"
       size="xl"

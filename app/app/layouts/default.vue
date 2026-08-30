@@ -52,7 +52,7 @@ useSpeechCommand({
       <template #left>
         <UButton
           v-if="header.showBack"
-          class="min-h-14 rounded-2xl font-extrabold"
+          class="min-h-14"
           color="neutral"
           icon="i-lucide-arrow-left"
           size="xl"
@@ -85,7 +85,7 @@ useSpeechCommand({
         </div>
         <UButton
           v-if="header.action"
-          class="min-h-12 font-extrabold"
+          class="min-h-12"
           color="primary"
           :icon="header.action.icon"
           size="lg"

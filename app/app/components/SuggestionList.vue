@@ -28,7 +28,7 @@ function sourceLabel(suggestion: Suggestion) {
     <UButton
       v-for="suggestion in suggestions"
       :key="suggestion.id"
-      class="justify-start rounded-2xl py-4 text-left"
+      class="justify-start py-4 text-left"
       block
       color="neutral"
       type="button"

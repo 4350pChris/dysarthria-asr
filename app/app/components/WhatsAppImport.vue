@@ -105,7 +105,7 @@ async function importFiles(event: FormSubmitEvent<ImportFormState>) {
     </UFormField>
     <UButton
       block
-      class="min-h-14 justify-center font-extrabold"
+      class="min-h-14 justify-center"
       color="primary"
       icon="i-lucide-upload"
       size="lg"

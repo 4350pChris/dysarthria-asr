@@ -12,7 +12,7 @@ defineEmits<{
 <template>
   <div class="grid grid-cols-2 gap-3">
     <UButton
-      class="min-h-24 justify-center rounded-2xl text-lg font-extrabold"
+      class="min-h-24 justify-center"
       block
       color="primary"
       icon="i-lucide-volume-2"
@@ -23,7 +23,7 @@ defineEmits<{
       :ui="{ leadingIcon: 'size-7', base: 'flex-col gap-1.5' }"
     />
     <UButton
-      class="min-h-24 justify-center rounded-2xl text-lg font-extrabold"
+      class="min-h-24 justify-center"
       block
       color="secondary"
       icon="i-lucide-instagram"
@@ -35,7 +35,7 @@ defineEmits<{
       @click="$emit('shareInstagram')"
     />
     <UButton
-      class="col-span-2 min-h-20 justify-center rounded-2xl text-lg font-extrabold"
+      class="col-span-2 min-h-20 justify-center"
       block
       color="neutral"
       icon="i-lucide-share-2"

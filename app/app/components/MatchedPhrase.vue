@@ -45,7 +45,7 @@ function sourceLabel(suggestion?: Suggestion) {
 
     <UButton
       block
-      class="min-h-20 justify-center rounded-2xl text-lg font-extrabold"
+      class="min-h-20 justify-center"
       color="primary"
       icon="i-lucide-pencil-line"
       label="Neuen Satz speichern"
