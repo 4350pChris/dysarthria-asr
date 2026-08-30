@@ -1,5 +1,22 @@
 <script setup lang="ts">
-import type JXG from 'jsxgraph'
+import JXG from 'jsxgraph'
+
+type AxisKey = 'x' | 'y'
+
+type AxisThemeAttributes = {
+  strokeColor: string
+  highlightStrokeColor: string
+  ticks: {
+    strokeColor: string
+    highlightStrokeColor: string
+    drawLabels: true
+    labelColor: string
+    label: {
+      strokeColor: string
+      highlightStrokeColor: string
+    }
+  }
+}
 
 const props = defineProps<{
   expression: string
@@ -8,8 +25,74 @@ const props = defineProps<{
 const graph = ref<HTMLElement>()
 const error = ref('')
 const isLocked = ref(true)
+const colorMode = useColorMode()
 let board: JXG.Board | undefined
 let curve: JXG.GeometryElement | undefined
+
+function getGraphTheme() {
+  if (!graph.value) {
+    return {
+      axisColor: '#7a2d57',
+      labelColor: '#9d5a75'
+    }
+  }
+
+  const styles = getComputedStyle(graph.value)
+
+  return {
+    axisColor:
+      styles.getPropertyValue('--ui-border-accented').trim() || '#7a2d57',
+    labelColor: styles.getPropertyValue('--ui-text-muted').trim() || '#9d5a75'
+  }
+}
+
+function getAxisAttributes(): Record<AxisKey, AxisThemeAttributes> {
+  const { axisColor, labelColor } = getGraphTheme()
+
+  const attributes = {
+    strokeColor: axisColor,
+    highlightStrokeColor: axisColor,
+    ticks: {
+      strokeColor: axisColor,
+      highlightStrokeColor: axisColor,
+      drawLabels: true,
+      labelColor,
+      label: {
+        strokeColor: labelColor,
+        highlightStrokeColor: labelColor
+      }
+    }
+  } satisfies AxisThemeAttributes
+
+  return {
+    x: attributes,
+    y: attributes
+  }
+}
+
+function getBoardAxis(axis: AxisKey): JXG.Axis | undefined {
+  return board?.defaultAxes[axis] as unknown as JXG.Axis | undefined
+}
+
+function applyBoardTheme() {
+  if (!board) return
+
+  const axisAttributes = getAxisAttributes()
+
+  for (const axisKey of ['x', 'y'] as const) {
+    const axis = getBoardAxis(axisKey)
+    if (!axis) continue
+
+    const attributes = axisAttributes[axisKey]
+    axis.setAttribute({
+      strokeColor: attributes.strokeColor,
+      highlightStrokeColor: attributes.highlightStrokeColor
+    })
+    axis.defaultTicks.setAttribute(attributes.ticks)
+  }
+
+  board.update()
+}
 
 function zoomIn() {
   board?.zoomIn()
@@ -29,7 +112,7 @@ function toggleLock() {
   board.attr.pan.enabled = !isLocked.value
 }
 
-async function draw() {
+function draw() {
   if (!graph.value) return
   const fn = createGraphFunction(props.expression)
   if (!fn) {
@@ -38,11 +121,11 @@ async function draw() {
   }
 
   try {
-    const { default: JXG } = await import('jsxgraph')
     if (!board) {
       board = JXG.JSXGraph.initBoard(graph.value, {
         axis: true,
         boundingbox: [-10, 10, 10, -10],
+        defaultAxes: getAxisAttributes(),
         keepaspectratio: true,
         pan: { enabled: false },
         showCopyright: false,
@@ -62,13 +145,29 @@ async function draw() {
   }
 }
 
-watch(() => props.expression, () => {
-  void draw()
-})
+watch(
+  () => props.expression,
+  () => {
+    draw()
+  }
+)
+
+watch(
+  () => colorMode.value,
+  () => {
+    applyBoardTheme()
+  }
+)
+
 onMounted(() => {
-  void draw()
+  draw()
 })
-onBeforeUnmount(() => curve && board?.removeObject(curve))
+
+onBeforeUnmount(() => {
+  if (curve && board) {
+    board.removeObject(curve)
+  }
+})
 </script>
 
 <template>
@@ -103,7 +202,7 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
         type="button"
         @click="zoomOut"
       >
-        Kleiner
+        <span class="max-md:sr-only">Kleiner</span>
       </UButton>
       <UButton
         block
@@ -114,17 +213,16 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
         variant="soft"
         @click="resetView"
       >
-        Zurücksetzen
+        <span class="max-md:sr-only">Zurücksetzen</span>
       </UButton>
       <UButton
         block
-        class="min-h-20"
         icon="i-lucide-zoom-in"
         size="xl"
         type="button"
         @click="zoomIn"
       >
-        Größer
+        <span class="max-md:sr-only">Größer</span>
       </UButton>
       <UButton
         block
@@ -136,7 +234,7 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
         variant="soft"
         @click="toggleLock"
       >
-        {{ isLocked ? 'Graph entsperren' : 'Graph sperren' }}
+        {{ isLocked ? "Graph entsperren" : "Graph sperren" }}
       </UButton>
     </div>
   </section>

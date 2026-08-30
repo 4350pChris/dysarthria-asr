@@ -118,11 +118,9 @@ async function share() {
       </div>
     </UCard>
 
-    <ClientOnly>
-      <MathGraph
-        v-if="hasGraph"
-        :expression="expression"
-      />
-    </ClientOnly>
+    <LazyMathGraph
+      v-if="hasGraph"
+      :expression="expression"
+    />
   </div>
 </template>
