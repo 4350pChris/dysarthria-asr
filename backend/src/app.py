@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncGenerator
@@ -12,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from . import database
+from .asr import warm_model
 from .paths import STATIC_DIR, TATOEBA_PROMPTS_FILE
 from .routers import labeling, phrases, training, transcription
 from .tatoeba import ensure_prompts
@@ -36,6 +38,9 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         logging.getLogger("src").warning(
             "Tatoeba prompt setup failed; continuing without it.", exc_info=True)
+    if os.getenv("ASR_MODEL"):
+        logging.getLogger("src").info("Loading ASR model.")
+        await asyncio.to_thread(warm_model)
     yield
 
 

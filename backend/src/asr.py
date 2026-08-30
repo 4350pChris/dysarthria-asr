@@ -3,13 +3,24 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 from typing import TypedDict
+
+import numpy as np
 
 TOLERANT_VAD_PARAMETERS = {
     "threshold": 0.35,
     "min_silence_duration_ms": 3_000,
     "speech_pad_ms": 600,
 }
+
+LIVE_VAD_PARAMETERS = {
+    "threshold": 0.35,
+    "min_silence_duration_ms": 500,
+    "speech_pad_ms": 200,
+}
+
+INFERENCE_LOCK = Lock()
 
 
 class ModelSettings(TypedDict):
@@ -52,11 +63,30 @@ def _model():
 
 
 def transcribe_german(audio_path: Path) -> str:
-    segments, _ = _model().transcribe(
-        str(audio_path),
-        language="de",
-        beam_size=1,
-        vad_filter=True,
-        vad_parameters=TOLERANT_VAD_PARAMETERS,
-    )
-    return " ".join(segment.text.strip() for segment in segments).strip()
+    return " ".join(text for _, _, text in transcribe_german_segments(audio_path)).strip()
+
+
+def warm_model() -> None:
+    _model()
+
+
+def transcribe_german_segments(
+    audio: Path | np.ndarray,
+    *,
+    vad_parameters: dict = TOLERANT_VAD_PARAMETERS,
+    chunk_length: int | None = None,
+) -> list[tuple[float, float, str]]:
+    with INFERENCE_LOCK:
+        segments, _ = _model().transcribe(
+            str(audio) if isinstance(audio, Path) else audio,
+            language="de",
+            beam_size=1,
+            vad_filter=True,
+            vad_parameters=vad_parameters,
+            chunk_length=chunk_length,
+        )
+        return [
+            (segment.start, segment.end, segment.text.strip())
+            for segment in segments
+            if segment.text.strip()
+        ]

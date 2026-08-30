@@ -17,7 +17,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const isBusy = ref(false)
   const isSaving = ref(false)
   const hasSaved = ref(false)
-  let partialRequest: AbortController | undefined
+  const { start: startLiveTranscription, stop: stopLiveTranscription } = useLiveTranscription({
+    onText(text) {
+      if (mode.value !== 'text' || !text) return
+      freeText.value = text
+      status.value = 'Text wird erkannt...'
+    }
+  })
   const { isSafeToUpdate } = usePwaUpdateSafety()
   const {
     isRecording,
@@ -25,8 +31,11 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     stop: stopAudioRecording
   } = useAudioRecording({
     onComplete: transcribe,
-    onChunk: transcribePartial,
+    onStream: (stream) => {
+      if (mode.value === 'text') void startLiveTranscription(stream)
+    },
     onStopping: () => {
+      stopLiveTranscription()
       isBusy.value = true
       status.value = 'Ich höre zu...'
     }
@@ -119,7 +128,6 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   async function transcribe(blob: Blob) {
-    partialRequest?.abort()
     const form = new FormData()
     form.append('audio', blob, 'recording.webm')
 
@@ -186,41 +194,6 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       track('transcription_failed', { mode: mode.value })
     } finally {
       isBusy.value = false
-    }
-  }
-
-  async function transcribePartial(blob: Blob) {
-    if (mode.value !== 'text' || partialRequest) return
-
-    const controller = new AbortController()
-    partialRequest = controller
-    const form = new FormData()
-    form.append('audio', blob, 'recording.webm')
-
-    try {
-      const response = await fetch('/api/transcribe/partial', {
-        method: 'POST',
-        body: form,
-        signal: controller.signal
-      })
-      if (!response.ok) return
-      const body: unknown = await response.json()
-      if (
-        body
-        && typeof body === 'object'
-        && 'raw_transcript' in body
-        && typeof body.raw_transcript === 'string'
-        && body.raw_transcript
-      ) {
-        freeText.value = body.raw_transcript
-        status.value = 'Text wird erkannt...'
-      }
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        // The final transcription reports errors to the user.
-      }
-    } finally {
-      if (partialRequest === controller) partialRequest = undefined
     }
   }
 

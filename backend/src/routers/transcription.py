@@ -1,13 +1,25 @@
 from __future__ import annotations
 
+import asyncio
+import re
 import uuid
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+import numpy as np
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from sqlmodel import Session, col, select
+from starlette.concurrency import run_in_threadpool
 
-from ..asr import transcribe_german
+from ..asr import LIVE_VAD_PARAMETERS, transcribe_german, transcribe_german_segments
 from ..candidates import candidate_suggestions
 from ..corpus import create_audio_clip, update_transcription_label
 from ..database import get_session
@@ -18,6 +30,12 @@ from ..models import AsrSource, AudioClip, AudioSource, TranscriptionLabel
 from ..paths import AUDIO_DIR, ROOT
 
 router = APIRouter(prefix="/api")
+
+LIVE_WINDOW_SECONDS = 5
+LIVE_STABLE_SECONDS = 1
+LIVE_UPDATE_SECONDS = 1
+LIVE_CHUNK_SECONDS = 3
+# ponytail: the last second can change and three-second chunks can split a sentence; the final pass is authoritative.
 
 
 @router.get("/emojis/recent")
@@ -41,21 +59,88 @@ def recent_emojis(session: Session = Depends(get_session)) -> list[dict[str, str
     return emojis
 
 
-@router.post("/transcribe/partial")
-async def transcribe_partial(audio: UploadFile = File(...)) -> dict:
-    """Transcribe an in-progress recording without saving audio or text."""
-    contents = await audio.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
+def transcribe_pcm_segments(audio: bytes, sample_rate: int) -> list[tuple[float, float, str]]:
+    samples = np.frombuffer(audio, dtype="<i2").astype(np.float32) / 32_768
+    if sample_rate != 16_000:
+        target_size = round(len(samples) * 16_000 / sample_rate)
+        samples = np.interp(
+            np.linspace(0, len(samples) - 1, target_size),
+            np.arange(len(samples)),
+            samples,
+        ).astype(np.float32)
+    return transcribe_german_segments(
+        samples,
+        vad_parameters=LIVE_VAD_PARAMETERS,
+        chunk_length=LIVE_CHUNK_SECONDS,
+    )
 
-    suffix = Path(audio.filename or "").suffix or ".webm"
-    with NamedTemporaryFile(suffix=suffix) as temporary_file:
-        temporary_file.write(contents)
-        temporary_file.flush()
-        transcript = transcribe_german(Path(temporary_file.name)).strip()
-    return {"raw_transcript": transcript}
 
+@router.websocket("/transcribe/stream")
+async def stream_transcription(
+    websocket: WebSocket,
+    sample_rate: int = Query(16_000, ge=8_000, le=48_000),
+) -> None:
+    await websocket.accept()
+    audio = bytearray()
+    window_start = 0.0
+    committed_until = 0.0
+    committed: list[str] = []
+    bytes_per_second = sample_rate * 2
 
+    async def receive_audio() -> None:
+        nonlocal window_start
+        while True:
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                return
+            if message.get("text"):
+                return
+            chunk = message.get("bytes")
+            if not chunk:
+                continue
+            audio.extend(chunk)
+            while len(audio) > LIVE_WINDOW_SECONDS * bytes_per_second:
+                del audio[:bytes_per_second]
+                window_start += 1
+
+    async def send_updates() -> None:
+        nonlocal committed_until
+        while True:
+            await asyncio.sleep(LIVE_UPDATE_SECONDS)
+            if not audio:
+                continue
+            snapshot = bytes(audio)
+            snapshot_start = window_start
+            received_until = snapshot_start + len(snapshot) / bytes_per_second
+            segments = await run_in_threadpool(transcribe_pcm_segments, snapshot, sample_rate)
+            stable_until = received_until - LIVE_STABLE_SECONDS
+            partial: list[str] = []
+            for start, end, text in segments:
+                absolute_end = snapshot_start + end
+                if absolute_end <= stable_until and absolute_end > committed_until:
+                    committed.append(text)
+                    committed_until = absolute_end
+                elif absolute_end > committed_until:
+                    partial.append(text)
+            try:
+                await websocket.send_json({
+                    "type": "partial",
+                    "committed": " ".join(committed),
+                    "partial": " ".join(partial),
+                })
+            except RuntimeError as error:
+                if "websocket.close" in str(error):
+                    return
+                raise
+
+    try:
+        async with asyncio.TaskGroup() as tasks:
+            receive_task = tasks.create_task(receive_audio())
+            send_task = tasks.create_task(send_updates())
+            await receive_task
+            send_task.cancel()
+    except WebSocketDisconnect:
+        return
 @router.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),
@@ -107,5 +192,11 @@ async def transcribe(
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
         "math_text": math.math_text,
-        "suggestions": candidate_suggestions(transcript, session),
+        "suggestions": (
+            [] if has_multiple_sentences(transcript) else candidate_suggestions(transcript, session)
+        ),
     }
+
+
+def has_multiple_sentences(transcript: str) -> bool:
+    return len(re.split(r"(?<=[.!?])\s+", transcript.strip())) > 1

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from conftest import connect_test_db, change_label, make_audio_clip
+from conftest import change_label, connect_test_db, make_audio_clip
 from fastapi.testclient import TestClient
 
 from src import database
@@ -68,6 +68,30 @@ def test_transcribe_returns_converted_emoji_text(
     assert response.json()["emoji_text"] == "🤍"
 
 
+def test_transcribe_skips_suggestions_for_multiple_sentences(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(transcription, "ROOT", initialized_db)
+    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
+    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "Hallo. Wie geht es?")
+    monkeypatch.setattr(
+        transcription,
+        "candidate_suggestions",
+        lambda text, session: (_ for _ in ()).throw(AssertionError("must not search candidates")),
+    )
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).post(
+        "/api/transcribe",
+        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["suggestions"] == []
+
+
 def test_transcribe_returns_a_spoken_emoji_name(
     initialized_db: Path,
     monkeypatch,
@@ -104,28 +128,6 @@ def test_transcribe_rejects_empty_audio(initialized_db: Path, monkeypatch) -> No
     assert response.json()["detail"] == "Upload a non-empty audio file."
 
 
-def test_partial_transcription_returns_text_without_saving_audio_or_label(
-    initialized_db: Path,
-    monkeypatch,
-) -> None:
-    monkeypatch.setattr(transcription, "ROOT", initialized_db)
-    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
-    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "ich möchte kaffee")
-
-    from src.app import create_app
-
-    response = TestClient(create_app()).post(
-        "/api/transcribe/partial",
-        files={"audio": ("recording.webm", b"audio bytes", "audio/webm")},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"raw_transcript": "ich möchte kaffee"}
-    with connect_test_db(database.DB_FILE) as db:
-        assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
-    assert not list((initialized_db / "audio").glob("*"))
-
-
 def test_recent_emojis_returns_saved_recognized_emojis(
     initialized_db: Path,
     session,
@@ -144,6 +146,40 @@ def test_recent_emojis_returns_saved_recognized_emojis(
         {"value": "👍", "name": "Daumen hoch"},
         {"value": "🤍", "name": "weißes Herz"},
     ]
+
+
+def test_stream_transcription_returns_stable_and_partial_text(
+    initialized_db: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        transcription,
+        "transcribe_pcm_segments",
+        lambda audio, sample_rate: [(0.0, 1.0, "hallo"), (1.0, 3.0, "welt")],
+    )
+
+    from src.app import create_app
+
+    with TestClient(create_app()).websocket_connect("/api/transcribe/stream?sample_rate=16000") as websocket:
+        websocket.send_bytes(b"\x00" * 96_000)
+        assert websocket.receive_json() == {
+            "type": "partial",
+            "committed": "hallo",
+            "partial": "welt",
+        }
+
+
+def test_stream_pcm_uses_short_live_chunks(monkeypatch) -> None:
+    captured = {}
+    monkeypatch.setattr(
+        transcription,
+        "transcribe_german_segments",
+        lambda audio, **options: captured.update(options) or [],
+    )
+
+    transcription.transcribe_pcm_segments(b"\x00" * 32_000, 16_000)
+
+    assert captured["chunk_length"] == transcription.LIVE_CHUNK_SECONDS
 
 
 def test_transcribe_does_not_store_audio_without_asr_text(
