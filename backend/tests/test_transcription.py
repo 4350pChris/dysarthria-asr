@@ -169,19 +169,6 @@ def test_stream_transcription_returns_stable_and_partial_text(
         }
 
 
-def test_stream_pcm_uses_short_live_chunks(monkeypatch) -> None:
-    captured = {}
-    monkeypatch.setattr(
-        transcription,
-        "transcribe_german_segments",
-        lambda audio, **options: captured.update(options) or [],
-    )
-
-    transcription.transcribe_pcm_segments(b"\x00" * 32_000, 16_000)
-
-    assert captured["chunk_length"] == transcription.LIVE_CHUNK_SECONDS
-
-
 def test_transcribe_does_not_store_audio_without_asr_text(
     initialized_db: Path,
     monkeypatch,

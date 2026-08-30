@@ -34,8 +34,7 @@ router = APIRouter(prefix="/api")
 LIVE_WINDOW_SECONDS = 5
 LIVE_STABLE_SECONDS = 1
 LIVE_UPDATE_SECONDS = 1
-LIVE_CHUNK_SECONDS = 3
-# ponytail: the last second can change and three-second chunks can split a sentence; the final pass is authoritative.
+# ponytail: the last second can change; the final pass is authoritative.
 
 
 @router.get("/emojis/recent")
@@ -71,7 +70,6 @@ def transcribe_pcm_segments(audio: bytes, sample_rate: int) -> list[tuple[float,
     return transcribe_german_segments(
         samples,
         vad_parameters=LIVE_VAD_PARAMETERS,
-        chunk_length=LIVE_CHUNK_SECONDS,
     )
 
 

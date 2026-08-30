@@ -87,6 +87,11 @@ function startRecording() {
       @stop="speech.stopRecording"
     />
 
+    <AudioLevelMeter
+      v-if="speech.isRecording.value"
+      :level="speech.audioLevel.value"
+    />
+
     <fieldset>
       <legend class="sr-only">
         Modus

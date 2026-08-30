@@ -26,11 +26,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   })
   const { isSafeToUpdate } = usePwaUpdateSafety()
   const {
+    audioLevel,
     isRecording,
     start: startAudioRecording,
     stop: stopAudioRecording
   } = useAudioRecording({
     onComplete: transcribe,
+    withAudioLevel: true,
     onStream: (stream) => {
       if (mode.value === 'text') void startLiveTranscription(stream)
     },
@@ -372,6 +374,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
 
   return {
     result,
+    audioLevel,
     selected,
     freeText,
     status,
