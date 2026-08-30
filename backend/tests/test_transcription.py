@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from conftest import connect_test_db
-from conftest import change_label, make_audio_clip
+from conftest import connect_test_db, change_label, make_audio_clip
 from fastapi.testclient import TestClient
 
 from src import database
