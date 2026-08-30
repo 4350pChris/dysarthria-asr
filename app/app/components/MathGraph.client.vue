@@ -21,6 +21,9 @@ type AxisThemeAttributes = {
 const props = defineProps<{
   expression: string
 }>()
+const emit = defineEmits<{
+  'range-change': [range: [number, number]]
+}>()
 
 const graph = ref<HTMLElement>()
 const error = ref('')
@@ -96,14 +99,22 @@ function applyBoardTheme() {
 
 function zoomIn() {
   board?.zoomIn()
+  emitRange()
 }
 
 function zoomOut() {
   board?.zoomOut()
+  emitRange()
 }
 
 function resetView() {
   board?.setBoundingBox([-10, 10, 10, -10], true)
+  emitRange()
+}
+
+function emitRange() {
+  const bounds = board?.getBoundingBox().map(value => Math.round(value * 100) / 100)
+  if (bounds) emit('range-change', [bounds[0]!, bounds[2]!])
 }
 
 function toggleLock() {
@@ -132,6 +143,7 @@ function draw() {
         showNavigation: false,
         zoom: false
       })
+      board.on('move', emitRange)
     } else if (curve) {
       board.removeObject(curve)
     }
@@ -140,6 +152,7 @@ function draw() {
       strokeWidth: 3
     })
     error.value = ''
+    emitRange()
   } catch {
     error.value = 'Diese Funktion kann nicht gezeichnet werden.'
   }

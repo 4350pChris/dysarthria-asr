@@ -13,6 +13,8 @@ const result = computed(() => {
   }
 })
 const hasGraph = computed(() => isGraphExpression(expression.value))
+const hasEquation = computed(() => isEquationExpression(expression.value))
+const graphRange = ref<[number, number]>([-10, 10])
 
 watch(() => speech.result.value?.math_text, (value) => {
   if (value) expression.value = value
@@ -54,7 +56,7 @@ async function share() {
           class="w-full"
           name="math-expression"
           label="Ausdruck"
-          :error="!result && expression && !hasGraph && 'Der Ausdruck kann nicht berechnet werden.'"
+          :error="!result && expression && !hasGraph && !hasEquation && 'Der Ausdruck kann nicht berechnet werden.'"
         >
           <UInput
             v-model="expression"
@@ -119,11 +121,17 @@ async function share() {
     </UCard>
 
     <LazyMathGraph
-      v-if="hasGraph"
+      v-if="hasGraph && !hasEquation"
       :expression="expression"
+      @range-change="graphRange = $event"
     />
     <LazyMathFunctionStudy
-      v-if="hasGraph"
+      v-if="hasGraph && !hasEquation"
+      :expression="expression"
+      :range="graphRange"
+    />
+    <LazyMathEquationSolver
+      v-if="hasEquation"
       :expression="expression"
     />
   </div>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 const props = defineProps<{
   expression: string
+  range: [number, number]
 }>()
 
-const study = computed(() => studyFunction(props.expression))
+const study = computed(() => studyFunction(props.expression, props.range[0], props.range[1]))
 </script>
 
 <template>
@@ -16,7 +17,7 @@ const study = computed(() => studyFunction(props.expression))
         Funktion untersuchen
       </h2>
       <p class="text-sm text-muted">
-        Ergebnisse im Bereich von −10 bis 10.
+        Ergebnisse im Bereich von {{ formatMathNumber(range[0]) }} bis {{ formatMathNumber(range[1]) }}.
       </p>
     </div>
 
