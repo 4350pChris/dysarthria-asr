@@ -78,7 +78,7 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
   >
     <h2
       id="graph-title"
-      class="text-xl font-bold"
+      class="sr-only"
     >
       Graph
     </h2>
