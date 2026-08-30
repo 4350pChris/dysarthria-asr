@@ -8,13 +8,12 @@ definePageMeta({
   }
 })
 
-type Mode = 'phrases' | 'math' | 'emoji' | 'freetext'
+type Mode = 'text' | 'emoji'
 
-const mode = ref<Mode>('freetext')
+const mode = ref<Mode>('text')
 const modeOptions: Array<{ label: string, value: Mode }> = [
-  { label: 'Sätze', value: 'phrases' },
-  { label: 'Emoji', value: 'emoji' },
-  { label: 'Freitext', value: 'freetext' }
+  { label: 'Text', value: 'text' },
+  { label: 'Emoji', value: 'emoji' }
 ]
 const speech = useSpeechSession(mode)
 const { byId, ready } = usePhrases()
@@ -28,12 +27,12 @@ useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie',
 useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], handler: speech.shareText })
 useSpeechCommand({ id: 'share-instagram', label: 'Instagram', phrases: ['instagram', 'insta', 'bild teilen'], handler: speech.shareToInstagram })
 useSpeechCommand({
-  id: 'phrases-mode',
-  label: 'Satzmodus',
-  phrases: ['sätze', 'satzmodus', 'sätze modus'],
+  id: 'text-mode',
+  label: 'Textmodus',
+  phrases: ['text', 'sätze', 'satzmodus', 'freitext', 'freier text', 'freitextmodus'],
   handler: () => {
-    mode.value = 'phrases'
-    speech.status.value = 'Satzmodus.'
+    mode.value = 'text'
+    speech.status.value = 'Textmodus.'
   }
 })
 useSpeechCommand({
@@ -42,15 +41,6 @@ useSpeechCommand({
   phrases: ['mathe', 'mathemodus'],
   handler: () => {
     void navigateTo('/math')
-  }
-})
-useSpeechCommand({
-  id: 'freetext-mode',
-  label: 'Freitextmodus',
-  phrases: ['freitext', 'freier text', 'freitextmodus'],
-  handler: () => {
-    mode.value = 'freetext'
-    speech.status.value = 'Freitextmodus.'
   }
 })
 useSpeechCommand({ id: 'next', label: 'Nächster Vorschlag', phrases: ['weiter', 'nächster', 'nächste', 'nein'], handler: () => speech.selectSuggestionAt(speech.selectedIndex.value + 1) })
@@ -102,8 +92,8 @@ function submit() {
     <RecordControl
       :is-recording="speech.isRecording.value"
       :is-busy="speech.isBusy.value"
-      :start-label="mode === 'freetext' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
-      :start-guidance="mode === 'freetext' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
+      :start-label="mode === 'text' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
+      :start-guidance="mode === 'text' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
       @start="startRecording"
       @stop="speech.stopRecording"
     />
@@ -112,7 +102,7 @@ function submit() {
       <legend class="sr-only">
         Modus
       </legend>
-      <div class="grid w-full grid-cols-3 gap-3">
+      <div class="grid w-full grid-cols-2 gap-3">
         <UButton
           v-for="option in modeOptions"
           :key="option.value"
@@ -150,7 +140,7 @@ function submit() {
     </p>
 
     <section
-      v-if="speech.hasSelection.value && mode === 'phrases'"
+      v-if="speech.hasSelection.value && mode === 'text' && !speech.showsFreeText.value"
       class="space-y-4"
     >
       <LazyMatchedPhrase
@@ -185,7 +175,7 @@ function submit() {
     />
 
     <LazyFreeTextResult
-      v-if="mode === 'freetext' && speech.freeText.value"
+      v-if="speech.showsFreeText.value && speech.freeText.value"
       :disabled="speech.isRecording.value || speech.isBusy.value"
       :text="speech.freeText.value"
       @copy="speech.copySelected"
