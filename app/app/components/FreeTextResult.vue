@@ -1,5 +1,6 @@
 <script setup lang="ts">
 defineProps<{
+  disabled?: boolean
   text: string
 }>()
 
@@ -18,6 +19,7 @@ defineEmits<{
       aria-label="Erkannter Freitext"
       autoresize
       class="w-full"
+      :readonly="disabled"
       :rows="7"
       size="xl"
       :ui="{ base: 'min-h-56 rounded-2xl p-5 text-xl font-semibold leading-relaxed' }"
@@ -32,12 +34,12 @@ defineEmits<{
       label="Kopieren"
       size="xl"
       type="button"
-      :disabled="!text"
+      :disabled="disabled || !text"
       @click="$emit('copy')"
     />
 
     <ResultActions
-      :disabled="!text"
+      :disabled="disabled || !text"
       @share-instagram="$emit('shareInstagram')"
       @share-text="$emit('shareText')"
     />

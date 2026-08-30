@@ -141,14 +141,6 @@ function submit() {
     </p>
 
     <section
-      v-if="mode === 'freetext' && speech.isRecording.value && speech.freeText.value"
-      aria-label="Erkannter Freitext"
-      class="rounded-2xl border border-default bg-elevated p-5 text-xl font-semibold leading-relaxed"
-    >
-      {{ speech.freeText.value }}
-    </section>
-
-    <section
       v-if="speech.hasSelection.value && mode === 'phrases'"
       class="space-y-4"
     >
@@ -184,7 +176,8 @@ function submit() {
     />
 
     <LazyFreeTextResult
-      v-if="mode === 'freetext' && !speech.isRecording.value && !speech.isBusy.value && speech.freeText.value"
+      v-if="mode === 'freetext' && speech.freeText.value"
+      :disabled="speech.isRecording.value || speech.isBusy.value"
       :text="speech.freeText.value"
       @copy="speech.copySelected"
       @share-instagram="speech.shareToInstagram"
