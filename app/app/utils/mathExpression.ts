@@ -151,9 +151,75 @@ export function formatMathNumber(value: number) {
 
 export type EquationSolution = {
   kind: 'solutions' | 'none' | 'identity'
+  degree: 0 | 1 | 2
   solutions: number[]
   left: string
   right: string
+  intermediate?: string
+  standardForm?: string
+  factorNumbers?: {
+    product: number
+    sum: number
+  }
+}
+
+function formatLinearTerm(value: number) {
+  if (value === 1) return 'x'
+  if (value === -1) return '-x'
+  return `${formatMathNumber(value)}x`
+}
+
+function formatPolynomialTerm(value: number, variable: string, first: boolean) {
+  const magnitude = Math.abs(value)
+  const coefficient = variable && magnitude === 1 ? '' : formatMathNumber(magnitude)
+  const term = `${coefficient}${variable}`
+  if (first) return value < 0 ? `-${term}` : term
+  return value < 0 ? ` - ${term}` : ` + ${term}`
+}
+
+function formatStandardForm(quadratic: number, linear: number, constant: number) {
+  const terms: Array<[number, string]> = [
+    [quadratic, 'x²'],
+    [linear, 'x'],
+    [constant, '']
+  ]
+
+  return `${terms
+    .filter(([value]) => Math.abs(value) > 0.000001)
+    .map(([value, variable], index) => formatPolynomialTerm(value, variable, index === 0))
+    .join('')} = 0`
+}
+
+export function equationHints(value: string) {
+  const solution = solveEquation(value)
+  if (!solution) return undefined
+
+  if (solution.degree === 2) {
+    const standardForm = solution.standardForm ?? 'ax² + bx + c = 0'
+    if (solution.factorNumbers) {
+      return [
+        'Bringe alle Terme auf eine Seite.',
+        `Zwischenschritt: ${standardForm}`,
+        `Suche zwei Zahlen: Produkt ${formatMathNumber(solution.factorNumbers.product)}, Summe ${formatMathNumber(solution.factorNumbers.sum)}.`
+      ]
+    }
+
+    return [
+      'Bringe alle Terme auf eine Seite.',
+      `Zwischenschritt: ${standardForm}`,
+      'Nutze jetzt die pq-Formel oder die Mitternachtsformel.'
+    ]
+  }
+
+  if (solution.degree === 1 && solution.intermediate) {
+    return [
+      'Du musst x freistellen.',
+      'Bringe alle Terme mit x auf eine Seite und alle Zahlen auf die andere Seite.',
+      `Zwischenschritt: ${solution.intermediate}`
+    ]
+  }
+
+  return ['Vereinfache beide Seiten der Gleichung.']
 }
 
 export function solveEquation(value: string): EquationSolution | undefined {
@@ -171,6 +237,10 @@ export function solveEquation(value: string): EquationSolution | undefined {
     const linear = (difference(1) - difference(-1)) / 2
     const polynomial = (x: number) => quadratic * x ** 2 + linear * x + constant
     const tolerance = 0.000001
+    const discriminant = linear ** 2 - 4 * quadratic * constant
+    const standardForm = Math.abs(quadratic) < tolerance
+      ? undefined
+      : formatStandardForm(quadratic, linear, constant)
 
     if ([constant, quadratic, linear].some(value => !Number.isFinite(value))) return undefined
     if ([-3, -2, 2, 3].some(x => Math.abs(difference(x) - polynomial(x)) > tolerance)) {
@@ -182,16 +252,24 @@ export function solveEquation(value: string): EquationSolution | undefined {
       if (Math.abs(linear) < tolerance) {
         return {
           kind: Math.abs(constant) < tolerance ? 'identity' : 'none',
+          degree: 0,
           solutions: [],
           left,
           right
         }
       }
       solutions = [-constant / linear]
+      return {
+        kind: 'solutions',
+        degree: 1,
+        solutions,
+        left,
+        right,
+        intermediate: `${formatLinearTerm(linear)} = ${formatMathNumber(-constant)}`
+      }
     } else {
-      const discriminant = linear ** 2 - 4 * quadratic * constant
       if (discriminant < -tolerance) {
-        return { kind: 'none', solutions: [], left, right }
+        return { kind: 'none', degree: 2, solutions: [], left, right, standardForm }
       }
       if (Math.abs(discriminant) < tolerance) solutions = [-linear / (2 * quadratic)]
       else {
@@ -202,9 +280,17 @@ export function solveEquation(value: string): EquationSolution | undefined {
 
     return {
       kind: 'solutions',
+      degree: 2,
       solutions: solutions.sort((first, second) => first - second),
       left,
-      right
+      right,
+      standardForm,
+      factorNumbers: Math.abs(quadratic - 1) < tolerance
+        && Number.isInteger(linear)
+        && Number.isInteger(constant)
+        && Number.isInteger(Math.sqrt(discriminant))
+        ? { product: constant, sum: linear }
+        : undefined
     }
   } catch {
     return undefined

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateMathExpression,
   createGraphFunction,
+  equationHints,
   isEquationExpression,
   isGraphExpression,
   solveEquation,
@@ -51,5 +52,15 @@ describe('math expressions', () => {
       kind: 'solutions',
       solutions: [1, 3]
     })
+    expect(equationHints('2x + 3 = 11')).toEqual([
+      'Du musst x freistellen.',
+      'Bringe alle Terme mit x auf eine Seite und alle Zahlen auf die andere Seite.',
+      'Zwischenschritt: 2x = 8'
+    ])
+    expect(equationHints('x² = 4x − 3')).toEqual([
+      'Bringe alle Terme auf eine Seite.',
+      'Zwischenschritt: x² - 4x + 3 = 0',
+      'Suche zwei Zahlen: Produkt 3, Summe -4.'
+    ])
   })
 })
