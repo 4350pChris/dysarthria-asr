@@ -1,6 +1,9 @@
 <script setup lang="ts">
-const mode = ref<'math'>('math')
-const speech = useSpeechSession(mode)
+const props = defineProps<{
+  speech: ReturnType<typeof useSpeechSession>
+}>()
+
+const speech = props.speech
 const expression = ref('')
 const result = computed(() => {
   try {
@@ -14,12 +17,6 @@ const hasGraph = computed(() => isGraphExpression(expression.value))
 watch(() => speech.result.value?.math_text, (value) => {
   if (value) expression.value = value
 })
-
-function startRecording() {
-  if (!speech.isRecording.value && !speech.isBusy.value) {
-    void speech.startRecording()
-  }
-}
 
 function speak() {
   if (!expression.value) return
@@ -50,22 +47,7 @@ async function share() {
 </script>
 
 <template>
-  <div class="flex flex-1 flex-col gap-5">
-    <RecordControl
-      :is-recording="speech.isRecording.value"
-      :is-busy="speech.isBusy.value"
-      @start="startRecording"
-      @stop="speech.stopRecording"
-    />
-
-    <p
-      aria-live="polite"
-      class="min-h-7 text-center text-lg font-semibold text-toned"
-      role="status"
-    >
-      {{ speech.status.value }}
-    </p>
-
+  <div class="space-y-5">
     <UCard :ui="{ body: 'space-y-4' }">
       <div class="flex gap-3">
         <UFormField
@@ -99,7 +81,7 @@ async function share() {
 
       <div
         v-if="expression"
-        class="grid grid-cols-3 gap-3"
+        class="flex flex-col md:grid grid-cols-3 gap-3"
       >
         <UButton
           block
