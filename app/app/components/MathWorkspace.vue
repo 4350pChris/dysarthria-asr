@@ -122,5 +122,9 @@ async function share() {
       v-if="hasGraph"
       :expression="expression"
     />
+    <LazyMathFunctionStudy
+      v-if="hasGraph"
+      :expression="expression"
+    />
   </div>
 </template>
