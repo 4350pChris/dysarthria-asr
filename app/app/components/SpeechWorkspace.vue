@@ -12,8 +12,18 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
 const speech = useSpeechSession(mode)
 const { byId, ready } = usePhrases()
 const speechCommands = useSpeechCommands()
+const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
+const recentEmojis = computed(() =>
+  [...speech.emojiHistory.value, ...recognizedEmojis.value]
+    .filter((emoji, index, emojis) => emojis.findIndex(item => item.value === emoji.value) === index)
+    .slice(0, 8)
+)
 
 await selectRoutePhrase()
+watch(mode, async (value) => {
+  if (value !== 'emoji' || recognizedEmojis.value.length) return
+  recognizedEmojis.value = await $fetch<Array<{ name: string, value: string }>>('/api/emojis/recent').catch(() => [])
+}, { immediate: true })
 useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los'], handler: startRecording })
 useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], handler: speech.stopRecording })
 useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], handler: speech.speakSelected })
@@ -140,10 +150,16 @@ function startRecording() {
       :speech="speech"
     />
 
+    <EmojiQuickAccess
+      v-if="mode === 'emoji'"
+      :emojis="recentEmojis"
+      @select="speech.selectEmoji"
+    />
+
     <LazyEmojiResult
-      v-if="speech.hasEmojiResult.value && speech.result.value"
-      :emoji-name="speech.result.value.emoji_name"
-      :emoji-text="speech.result.value.emoji_value"
+      v-if="speech.hasEmojiResult.value"
+      :emoji-name="speech.emojiName.value"
+      :emoji-text="speech.emojiText.value"
       @copy="speech.copySelected"
     />
 

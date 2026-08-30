@@ -3,11 +3,14 @@ import { useDebounceFn } from '@vueuse/core'
 
 type SpeechMode = 'text' | 'math' | 'emoji'
 type TextResultKind = 'sentence' | 'freetext'
+type SelectedEmoji = { name: string, value: string }
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
   const { track } = useUsageAnalytics()
   const result = ref<TranscriptionResult>()
   const selected = ref<Suggestion>()
+  const selectedEmoji = ref<SelectedEmoji>()
+  const emojiHistory = useLocalStorage<SelectedEmoji[]>('emoji-history', [])
   const freeText = ref('')
   const textResultKind = ref<TextResultKind>('sentence')
   const status = ref('')
@@ -34,9 +37,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const hasMathResult = computed(
     () => mode.value === 'math' && Boolean(result.value?.math_text)
   )
-  const hasEmojiResult = computed(
-    () => mode.value === 'emoji' && Boolean(result.value?.emoji_name)
-  )
+  const emojiText = computed(() => selectedEmoji.value?.value || result.value?.emoji_value || '')
+  const emojiName = computed(() => selectedEmoji.value?.name || result.value?.emoji_name || '')
+  const hasEmojiResult = computed(() => mode.value === 'emoji' && Boolean(emojiText.value))
   const showsFreeText = computed(() =>
     mode.value === 'text'
     && (textResultKind.value === 'freetext' || !selected.value)
@@ -52,7 +55,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       : mode.value === 'math'
         ? result.value?.math_text
         : mode.value === 'emoji'
-          ? result.value?.emoji_value
+          ? emojiText.value
           : selected.value?.text
   )
   const saveFreeText = useDebounceFn(() => {
@@ -101,6 +104,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   async function startRecording() {
     result.value = undefined
     selected.value = undefined
+    selectedEmoji.value = undefined
     freeText.value = ''
     textResultKind.value = 'sentence'
     hasSaved.value = false
@@ -133,6 +137,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       }
       const transcription: TranscriptionResult = await response.json()
       result.value = transcription
+      if (mode.value === 'emoji' && transcription.emoji_value && transcription.emoji_name) {
+        rememberEmoji({ name: transcription.emoji_name, value: transcription.emoji_value })
+      }
       if (mode.value === 'text') {
         freeText.value = transcription.raw_transcript
         textResultKind.value = hasMultipleSentences(transcription.raw_transcript)
@@ -245,6 +252,18 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     if (showsFreeText.value) saveFreeText()
   }
 
+  function selectEmoji(emoji: SelectedEmoji) {
+    result.value = undefined
+    selectedEmoji.value = emoji
+    rememberEmoji(emoji)
+    hasSaved.value = false
+    status.value = 'Emoji ausgewählt.'
+  }
+
+  function rememberEmoji(emoji: SelectedEmoji) {
+    emojiHistory.value = [emoji, ...emojiHistory.value.filter(item => item.value !== emoji.value)].slice(0, 8)
+  }
+
   async function shareToInstagram() {
     if (!outputText.value) return
     const image = createShareImage(outputText.value)
@@ -354,7 +373,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     const correctedText = showsFreeText.value
       ? freeText.value
       : mode.value === 'emoji'
-        ? result.value?.emoji_name
+        ? emojiName.value
         : outputText.value
     if (!result.value || !correctedText || hasSaved.value || isSaving.value)
       return
@@ -389,11 +408,15 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     hasSelection,
     hasMathResult,
     hasEmojiResult,
+    emojiName,
+    emojiText,
+    emojiHistory,
     showsFreeText,
     selectedIndex,
     outputText,
     setSelection,
     setFreeText,
+    selectEmoji,
     selectSuggestionAt,
     selectPhrase,
     startRecording,

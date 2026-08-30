@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from ..asr import transcribe_german
 from ..candidates import candidate_suggestions
@@ -14,10 +14,31 @@ from ..database import get_session
 from ..emoji_normalizer import emoji_from_spoken_name, replace_spoken_emojis
 from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..math_normalizer import normalize_german_math
-from ..models import AsrSource, AudioSource
+from ..models import AsrSource, AudioClip, AudioSource, TranscriptionLabel
 from ..paths import AUDIO_DIR, ROOT
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/emojis/recent")
+def recent_emojis(session: Session = Depends(get_session)) -> list[dict[str, str]]:
+    rows = session.exec(
+        select(TranscriptionLabel.transcript, TranscriptionLabel.asr_text)
+        .join(AudioClip)
+        .order_by(col(AudioClip.created_at).desc())
+        .limit(1_000)
+    ).all()
+    emojis: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for transcript, asr_text in rows:
+        match = emoji_from_spoken_name(transcript.strip()) or emoji_from_spoken_name(asr_text.strip())
+        if not match or match[0] in seen:
+            continue
+        seen.add(match[0])
+        emojis.append({"value": match[0], "name": match[1]})
+        if len(emojis) == 8:
+            break
+    return emojis
 
 
 @router.post("/transcribe/partial")

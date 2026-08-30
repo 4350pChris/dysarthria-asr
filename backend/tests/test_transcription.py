@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import connect_test_db
+from conftest import change_label, make_audio_clip
 from fastapi.testclient import TestClient
 
 from src import database
@@ -124,6 +125,26 @@ def test_partial_transcription_returns_text_without_saving_audio_or_label(
     with connect_test_db(database.DB_FILE) as db:
         assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
     assert not list((initialized_db / "audio").glob("*"))
+
+
+def test_recent_emojis_returns_saved_recognized_emojis(
+    initialized_db: Path,
+    session,
+) -> None:
+    make_audio_clip(session, "older", "data/audio/older.webm", source="app_recording")
+    change_label(session, "older", asr_text="weißes Herz", transcript="kein Emoji")
+    make_audio_clip(session, "newer", "data/audio/newer.webm", source="app_recording")
+    change_label(session, "newer", transcript="Daumen hoch")
+
+    from src.app import create_app
+
+    response = TestClient(create_app()).get("/api/emojis/recent")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"value": "👍", "name": "Daumen hoch"},
+        {"value": "🤍", "name": "weißes Herz"},
+    ]
 
 
 def test_transcribe_does_not_store_audio_without_asr_text(
