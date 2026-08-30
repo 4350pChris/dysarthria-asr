@@ -13,7 +13,6 @@ type Mode = 'phrases' | 'math' | 'emoji' | 'freetext'
 const mode = ref<Mode>('freetext')
 const modeOptions: Array<{ label: string, value: Mode }> = [
   { label: 'Sätze', value: 'phrases' },
-  { label: 'Mathe', value: 'math' },
   { label: 'Emoji', value: 'emoji' },
   { label: 'Freitext', value: 'freetext' }
 ]
@@ -42,8 +41,7 @@ useSpeechCommand({
   label: 'Mathemodus',
   phrases: ['mathe', 'mathemodus'],
   handler: () => {
-    mode.value = 'math'
-    speech.status.value = 'Mathemodus.'
+    void navigateTo('/math')
   }
 })
 useSpeechCommand({
@@ -131,6 +129,18 @@ function submit() {
         </UButton>
       </div>
     </fieldset>
+
+    <UButton
+      class="min-h-20 justify-center rounded-2xl text-xl font-extrabold"
+      block
+      color="primary"
+      icon="i-lucide-chart-no-axes-combined"
+      size="xl"
+      to="/math"
+      variant="soft"
+    >
+      Mathe öffnen
+    </UButton>
 
     <p
       aria-live="polite"
