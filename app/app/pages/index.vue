@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { SpeechMode } from '~/components/SpeechWorkspace.vue'
 
-definePageMeta({ pageHeader: { eyebrow: 'Sprachhilfe', title: 'Was möchtest du sagen?' } })
+definePageMeta({
+  pageHeader: {
+    eyebrow: 'Sprachhilfe',
+    title: 'Was möchtest du sagen?'
+  }
+})
 
 const route = useRoute()
 const router = useRouter()

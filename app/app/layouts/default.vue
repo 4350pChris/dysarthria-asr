@@ -12,7 +12,6 @@ type PageHeader = {
   backTo?: string
   backLabel?: string
   showBack?: boolean
-  wide?: boolean
   action?: HeaderAction
 }
 
@@ -21,7 +20,9 @@ const speechCommands = useSpeechCommands()
 const header = computed(() => route.meta.pageHeader as PageHeader)
 const title = computed(() => {
   if (header.value.titleParam) {
-    return decodeURIComponent(String(route.params[header.value.titleParam] || ''))
+    return decodeURIComponent(
+      String(route.params[header.value.titleParam] || '')
+    )
   }
   return header.value.title || ''
 })
@@ -46,7 +47,7 @@ useSpeechCommand({
       title="Dysarthria ASR"
       :toggle="false"
       :ui="{
-        container: header.wide ? 'max-w-3xl px-4' : 'max-w-md px-4'
+        container: 'max-w-3xl px-4'
       }"
     >
       <template #left>
@@ -59,7 +60,7 @@ useSpeechCommand({
           :to="header.backTo || '/'"
           variant="ghost"
         >
-          {{ header.backLabel || 'Zurück' }}
+          {{ header.backLabel || "Zurück" }}
         </UButton>
         <LogoLockup :mark-size="40" />
       </template>
@@ -69,12 +70,7 @@ useSpeechCommand({
     </UHeader>
 
     <section class="px-4 pt-4">
-      <UContainer
-        :class="[
-          header.wide ? 'max-w-3xl' : 'max-w-md',
-          'space-y-4 pb-5'
-        ]"
-      >
+      <UContainer class="max-w-3xl space-y-4 pb-5">
         <div>
           <p class="text-sm font-semibold text-muted">
             {{ header.eyebrow }}
@@ -98,10 +94,7 @@ useSpeechCommand({
 
     <UMain class="min-h-dvh px-4 pb-5 text-highlighted">
       <UContainer
-        :class="[
-          header.wide ? 'max-w-3xl' : 'max-w-md',
-          'flex min-h-[calc(100dvh-2.5rem)] flex-col space-y-5'
-        ]"
+        class="max-w-3xl flex min-h-[calc(100dvh-2.5rem)] flex-col space-y-5"
       >
         <PwaInstallHint />
         <PwaUpdatePrompt />

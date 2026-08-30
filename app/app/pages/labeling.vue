@@ -5,8 +5,7 @@ definePageMeta({
   pageHeader: {
     eyebrow: 'Audio-Labels',
     showBack: true,
-    title: 'Aufnahmen prüfen',
-    wide: true
+    title: 'Aufnahmen prüfen'
   }
 })
 
