@@ -102,7 +102,8 @@ async function share() {
         class="grid grid-cols-3 gap-3"
       >
         <UButton
-          class="min-h-20 justify-center"
+          block
+          class="min-h-20"
           icon="i-lucide-volume-2"
           size="xl"
           type="button"
@@ -111,7 +112,8 @@ async function share() {
           Vorlesen
         </UButton>
         <UButton
-          class="min-h-20 justify-center"
+          block
+          class="min-h-20"
           icon="i-lucide-copy"
           size="xl"
           type="button"
@@ -121,7 +123,8 @@ async function share() {
           Kopieren
         </UButton>
         <UButton
-          class="min-h-20 justify-center"
+          block
+          class="min-h-20"
           icon="i-lucide-share-2"
           size="xl"
           type="button"

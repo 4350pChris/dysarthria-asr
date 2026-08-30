@@ -86,7 +86,6 @@ async function confirmDelete() {
         <div class="grid w-full gap-3">
           <UButton
             block
-            class="justify-center"
             color="error"
             icon="i-lucide-trash-2"
             label="Ja, löschen"
@@ -97,7 +96,6 @@ async function confirmDelete() {
           />
           <UButton
             block
-            class="justify-center"
             color="neutral"
             icon="i-lucide-x"
             label="Abbrechen"

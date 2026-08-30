@@ -22,7 +22,8 @@ defineEmits<{
       </p>
       <div class="mt-4 grid grid-cols-3 gap-2">
         <UButton
-          class="min-h-14 justify-center"
+          block
+          class="min-h-14"
           color="primary"
           icon="i-lucide-volume-2"
           :to="{ path: '/', query: { phrase: phrase.id } }"
@@ -30,7 +31,8 @@ defineEmits<{
           Sagen
         </UButton>
         <UButton
-          class="min-h-14 justify-center"
+          block
+          class="min-h-14"
           color="neutral"
           icon="i-lucide-pencil"
           type="button"
@@ -40,7 +42,8 @@ defineEmits<{
           Ändern
         </UButton>
         <UButton
-          class="min-h-14 justify-center"
+          block
+          class="min-h-14"
           color="error"
           icon="i-lucide-trash-2"
           type="button"

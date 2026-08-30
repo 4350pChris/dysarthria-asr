@@ -98,7 +98,6 @@ async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
 
     <UButton
       block
-      class="justify-center"
       color="neutral"
       icon="i-lucide-plus"
       label="Neue Kategorie"
@@ -117,7 +116,7 @@ async function savePhrase(event: FormSubmitEvent<SavePhraseFormState>) {
 
     <UButton
       block
-      class="min-h-24 justify-center text-xl"
+      class="min-h-24 text-xl"
       color="primary"
       icon="i-lucide-bookmark-plus"
       label="Satz speichern"

@@ -293,7 +293,7 @@ function moveCurrent(delta: number) {
       <div class="grid gap-3 sm:grid-cols-3">
         <UButton
           block
-          class="min-h-14 justify-center"
+          class="min-h-14"
           color="neutral"
           icon="i-lucide-skip-forward"
           size="lg"
@@ -305,7 +305,7 @@ function moveCurrent(delta: number) {
         </UButton>
         <UButton
           block
-          class="min-h-14 justify-center"
+          class="min-h-14"
           color="neutral"
           icon="i-lucide-save"
           size="lg"
@@ -317,7 +317,7 @@ function moveCurrent(delta: number) {
         </UButton>
         <UButton
           block
-          class="min-h-14 justify-center"
+          class="min-h-14"
           color="primary"
           icon="i-lucide-check"
           size="lg"

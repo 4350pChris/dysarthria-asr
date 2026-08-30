@@ -35,7 +35,7 @@ async function deleteRecording() {
 <template>
   <UButton
     block
-    class="min-h-12 justify-center"
+    class="min-h-12"
     color="error"
     icon="i-lucide-trash-2"
     size="lg"
@@ -63,7 +63,6 @@ async function deleteRecording() {
       <div class="grid w-full gap-3">
         <UButton
           block
-          class="justify-center"
           color="error"
           icon="i-lucide-trash-2"
           label="Ja, dauerhaft löschen"
@@ -74,7 +73,6 @@ async function deleteRecording() {
         />
         <UButton
           block
-          class="justify-center"
           color="neutral"
           icon="i-lucide-x"
           label="Abbrechen"

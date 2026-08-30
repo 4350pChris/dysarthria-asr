@@ -66,7 +66,6 @@ function cancel() {
     <div class="grid gap-3">
       <UButton
         block
-        class="justify-center"
         color="primary"
         icon="i-lucide-save"
         label="Kategorie speichern"
@@ -76,7 +75,6 @@ function cancel() {
       />
       <UButton
         block
-        class="justify-center"
         color="neutral"
         icon="i-lucide-x"
         label="Abbrechen"
@@ -94,7 +92,6 @@ function cancel() {
   >
     <UButton
       block
-      class="justify-center"
       color="neutral"
       icon="i-lucide-pencil"
       label="Kategorie ändern"
@@ -106,7 +103,6 @@ function cancel() {
     />
     <UButton
       block
-      class="justify-center"
       color="error"
       icon="i-lucide-trash-2"
       label="Kategorie löschen"

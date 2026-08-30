@@ -75,7 +75,6 @@ async function savePhrase(event: FormSubmitEvent<PhraseFormState>) {
     </UFormField>
     <div class="grid gap-3">
       <UButton
-        class="justify-center"
         block
         :disabled="!formState.text.trim()"
         color="primary"
@@ -86,7 +85,6 @@ async function savePhrase(event: FormSubmitEvent<PhraseFormState>) {
         :loading="isSaving"
       />
       <UButton
-        class="justify-center"
         block
         color="neutral"
         :disabled="!formState.text.trim()"

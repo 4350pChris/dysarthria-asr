@@ -30,7 +30,6 @@ const open = defineModel<boolean>('open', { required: true })
       <div class="grid w-full gap-3">
         <UButton
           block
-          class="justify-center"
           color="error"
           icon="i-lucide-trash-2"
           label="Kategorie und Sätze löschen"
@@ -41,7 +40,6 @@ const open = defineModel<boolean>('open', { required: true })
         />
         <UButton
           block
-          class="justify-center"
           color="neutral"
           icon="i-lucide-x"
           label="Abbrechen"

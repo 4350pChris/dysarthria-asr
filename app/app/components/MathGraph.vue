@@ -96,7 +96,8 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
     />
     <div class="grid grid-cols-3 gap-3">
       <UButton
-        class="min-h-20 justify-center"
+        block
+        class="min-h-20"
         icon="i-lucide-zoom-out"
         size="xl"
         type="button"
@@ -105,7 +106,8 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
         Kleiner
       </UButton>
       <UButton
-        class="min-h-20 justify-center"
+        block
+        class="min-h-20"
         icon="i-lucide-rotate-ccw"
         size="xl"
         type="button"
@@ -115,7 +117,8 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
         Zurücksetzen
       </UButton>
       <UButton
-        class="min-h-20 justify-center"
+        block
+        class="min-h-20"
         icon="i-lucide-zoom-in"
         size="xl"
         type="button"
@@ -124,7 +127,8 @@ onBeforeUnmount(() => curve && board?.removeObject(curve))
         Größer
       </UButton>
       <UButton
-        class="col-span-3 min-h-20 justify-center"
+        block
+        class="col-span-3 min-h-20"
         :icon="isLocked ? 'i-lucide-lock' : 'i-lucide-lock-open'"
         :aria-pressed="isLocked"
         size="xl"

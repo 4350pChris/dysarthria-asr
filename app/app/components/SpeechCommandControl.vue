@@ -16,7 +16,7 @@ defineEmits<{
     <UButton
       v-if="!isListening"
       block
-      class="min-h-20 justify-center"
+      class="min-h-20"
       color="neutral"
       icon="i-lucide-audio-lines"
       label="Sprachsteuerung starten"
@@ -30,7 +30,7 @@ defineEmits<{
     <UButton
       v-else
       block
-      class="min-h-20 justify-center"
+      class="min-h-20"
       color="warning"
       icon="i-lucide-audio-lines"
       label="Sprachsteuerung stoppen"

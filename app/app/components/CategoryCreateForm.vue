@@ -47,7 +47,6 @@ async function createCategory(event: FormSubmitEvent<CategoryFormState>) {
       />
     </UFormField>
     <UButton
-      class="justify-center"
       block
       color="primary"
       icon="i-lucide-plus"

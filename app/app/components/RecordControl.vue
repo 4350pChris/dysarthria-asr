@@ -54,8 +54,8 @@ function toggleRecording() {
     :toggle="toggleRecording"
   >
     <UButton
-      class="min-h-60 justify-center rounded-3xl text-center shadow-sm"
       block
+      class="min-h-60 rounded-3xl text-center shadow-sm"
       color="neutral"
       size="xl"
       type="button"

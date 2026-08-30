@@ -117,12 +117,11 @@ function submit() {
           v-for="option in modeOptions"
           :key="option.value"
           :aria-pressed="mode === option.value"
-          class="justify-center px-3 text-center"
+          block
           :color="mode === option.value ? 'primary' : 'neutral'"
           size="xl"
           type="button"
           :variant="mode === option.value ? 'solid' : 'outline'"
-          :class="{ 'col-span-3': option.value === 'freetext' }"
           @click="mode = option.value"
         >
           {{ option.label }}
@@ -131,7 +130,7 @@ function submit() {
     </fieldset>
 
     <UButton
-      class="min-h-20 justify-center text-xl"
+      class="min-h-20 text-xl"
       block
       color="primary"
       icon="i-lucide-chart-no-axes-combined"
@@ -196,7 +195,7 @@ function submit() {
     />
 
     <UButton
-      class="min-h-24 justify-center text-xl"
+      class="min-h-24 text-xl"
       block
       color="neutral"
       icon="i-lucide-layout-grid"
@@ -209,7 +208,6 @@ function submit() {
     </UButton>
 
     <UButton
-      class="justify-center"
       block
       color="primary"
       icon="i-lucide-book-open-check"
@@ -221,7 +219,6 @@ function submit() {
     </UButton>
 
     <UButton
-      class="justify-center"
       block
       color="neutral"
       icon="i-lucide-list-checks"
