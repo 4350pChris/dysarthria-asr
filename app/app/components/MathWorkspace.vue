@@ -66,46 +66,43 @@ async function share() {
       {{ speech.status.value }}
     </p>
 
-    <UCard class="space-y-4">
-      <div>
-        <label
-          class="text-sm font-semibold text-muted"
-          for="math-expression"
-        >Ausdruck</label>
-        <UInput
-          id="math-expression"
-          v-model="expression"
-          class="mt-2"
-          placeholder="Zum Beispiel: y = 2x + 3"
-          size="xl"
-        />
+    <UCard :ui="{ body: 'space-y-4' }">
+      <div class="flex gap-3">
+        <UFormField
+          class="w-full"
+          name="math-expression"
+          label="Ausdruck"
+          :error="!result && expression && !hasGraph && 'Der Ausdruck kann nicht berechnet werden.'"
+        >
+          <UInput
+            v-model="expression"
+            class="mt-2 w-full"
+            placeholder="Zum Beispiel: y = 2x + 3"
+            size="xl"
+          >
+            <template
+              v-if="result"
+              #trailing
+            >
+              <p class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-muted">
+                  =
+                </span>
+                <span class="text-xl font-bold">
+                  {{ result }}
+                </span>
+              </p>
+            </template>
+          </UInput>
+        </UFormField>
       </div>
-
-      <div
-        v-if="result"
-        aria-live="polite"
-      >
-        <p class="text-sm font-semibold text-muted">
-          Ergebnis
-        </p>
-        <p class="mt-1 text-4xl font-bold">
-          {{ result }}
-        </p>
-      </div>
-
-      <p
-        v-else-if="expression && !hasGraph"
-        class="font-semibold text-muted"
-      >
-        Der Ausdruck kann nicht berechnet werden.
-      </p>
 
       <div
         v-if="expression"
         class="grid grid-cols-3 gap-3"
       >
         <UButton
-          class="min-h-20 justify-center font-extrabold"
+          class="min-h-20 justify-center"
           icon="i-lucide-volume-2"
           size="xl"
           type="button"
@@ -114,7 +111,7 @@ async function share() {
           Vorlesen
         </UButton>
         <UButton
-          class="min-h-20 justify-center font-extrabold"
+          class="min-h-20 justify-center"
           icon="i-lucide-copy"
           size="xl"
           type="button"
@@ -124,7 +121,7 @@ async function share() {
           Kopieren
         </UButton>
         <UButton
-          class="min-h-20 justify-center font-extrabold"
+          class="min-h-20 justify-center"
           icon="i-lucide-share-2"
           size="xl"
           type="button"
