@@ -80,7 +80,7 @@ def transcribe_german_segments(
         segments, _ = _model().transcribe(
             str(audio) if isinstance(audio, Path) else audio,
             language="de",
-            beam_size=1,
+            beam_size=3,
             vad_filter=True,
             vad_parameters=vad_parameters,
             chunk_length=chunk_length,
