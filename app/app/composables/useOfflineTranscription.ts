@@ -10,7 +10,8 @@ let nextRequestId = 1
 const pending = new Map<number, PendingTranscription>()
 
 export function useOfflineTranscription() {
-  const modelUrl = useRuntimeConfig().public.offlineWhisperModelUrl
+  const modelVersion = useRuntimeConfig().public.offlineWhisperModelVersion
+  const modelUrl = modelVersion ? `/offline-whisper-model/${modelVersion}` : ''
   const state = useState<OfflineState>('offline-transcription-state', () => 'idle')
   const progress = useState('offline-transcription-progress', () => 0)
   const error = useState('offline-transcription-error', () => '')
