@@ -1,7 +1,7 @@
 import { ModelManager, WhisperWasmService } from '@timur00kh/whisper.wasm'
 
 type WorkerMessage
-  = | { type: 'prepare' }
+  = | { type: 'prepare', modelUrl: string }
     | { type: 'transcribe', id: number, audio: ArrayBuffer }
 
 type WhisperRuntime = {
@@ -17,24 +17,23 @@ type WhisperRuntime = {
   } | null
 }
 
-const modelId = 'base-q5_1'
 let whisper: WhisperWasmService | undefined
 
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
-  if (event.data.type === 'prepare') void prepare()
+  if (event.data.type === 'prepare') void prepare(event.data.modelUrl)
   if (event.data.type === 'transcribe') void transcribe(event.data)
 }
 
-async function prepare() {
+async function prepare(modelUrl: string) {
   try {
     postMessage({ type: 'status', status: 'loading' })
     const models = new ModelManager({ logLevel: 3 })
-    const model = await models.loadModel(modelId, true, (progress) => {
+    const model = await models.loadModelByUrl(modelUrl, (progress) => {
       postMessage({ type: 'progress', progress })
     })
     whisper = new WhisperWasmService({ logLevel: 3 })
     await whisper.initModel(model)
-    postMessage({ type: 'ready', modelId })
+    postMessage({ type: 'ready' })
   } catch (error) {
     postMessage({ type: 'error', message: messageFor(error) })
   }

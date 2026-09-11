@@ -4,7 +4,7 @@ const offline = useOfflineTranscription()
 const label = computed(() => {
   if (offline.state.value === 'loading') return `Offline-Modell lädt: ${offline.progress.value}%`
   if (offline.isReady.value) return 'Offline-Erkennung ist bereit'
-  return 'Offline-Erkennung laden (ca. 57 MB)'
+  return 'Offline-Erkennung laden'
 })
 </script>
 
@@ -15,7 +15,7 @@ const label = computed(() => {
     </p>
     <UButton
       class="mt-3"
-      :disabled="!offline.isSupported.value || offline.state.value === 'loading' || offline.isReady.value"
+      :disabled="!offline.isConfigured.value || !offline.isSupported.value || offline.state.value === 'loading' || offline.isReady.value"
       icon="i-lucide-download"
       :loading="offline.state.value === 'loading'"
       type="button"
@@ -29,6 +29,12 @@ const label = computed(() => {
       class="mt-2 text-sm text-error"
     >
       {{ offline.error.value }}
+    </p>
+    <p
+      v-else-if="!offline.isConfigured.value"
+      class="mt-2 text-sm text-toned"
+    >
+      Das angepasste Modell wird nach dem Vergleich hier eingetragen.
     </p>
   </section>
 </template>

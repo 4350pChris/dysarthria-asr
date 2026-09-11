@@ -133,6 +133,26 @@ two-hour limit. Do not reuse a run name.
 
 Set `ASR_MODEL` to the deployed model directory when you run the backend. Use the unchanged base model as the benchmark control.
 
+## Prepare a browser model
+
+After a Whisper LoRA run passes its held-out benchmark, merge it and produce a
+quantized GGML model for `whisper.cpp` WASM. Build local checkouts of
+`ggml-org/whisper.cpp` and `openai/whisper` first. The browser build uses GGML
+model files, not GGUF.
+
+```sh
+uv run python prepare_whisper_cpp_model.py \
+  runs/training/whisper-small-lora-current-v1 \
+  --output-dir models/browser/whisper-small-lora-current-v1-q5_1 \
+  --whisper-cpp-dir /path/to/whisper.cpp \
+  --whisper-source-dir /path/to/whisper \
+  --quantization q5_1
+```
+
+The command writes one quantized `.bin` model and a manifest with its SHA-256,
+size, source revisions, and adapter origin. Benchmark this exact model on the
+target iPhone before publishing it.
+
 ## Train Parakeet on Modal
 
 The Parakeet joint-only and encoder-LoRA experiments use the same current

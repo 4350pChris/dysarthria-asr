@@ -10,14 +10,21 @@ let nextRequestId = 1
 const pending = new Map<number, PendingTranscription>()
 
 export function useOfflineTranscription() {
+  const modelUrl = useRuntimeConfig().public.offlineWhisperModelUrl
   const state = useState<OfflineState>('offline-transcription-state', () => 'idle')
   const progress = useState('offline-transcription-progress', () => 0)
   const error = useState('offline-transcription-error', () => '')
+  const isConfigured = computed(() => Boolean(modelUrl))
   const isReady = computed(() => state.value === 'ready')
   const isSupported = computed(() => typeof Worker !== 'undefined' && typeof AudioContext !== 'undefined')
 
   async function prepare() {
     if (state.value === 'loading' || state.value === 'ready') return
+    if (!isConfigured.value) {
+      error.value = 'Für die Offline-Erkennung ist noch kein angepasstes Modell veröffentlicht.'
+      state.value = 'failed'
+      return
+    }
     if (!isSupported.value) {
       error.value = 'Dieses Gerät unterstützt die Offline-Erkennung nicht.'
       state.value = 'failed'
@@ -26,7 +33,7 @@ export function useOfflineTranscription() {
     state.value = 'loading'
     progress.value = 0
     error.value = ''
-    getWorker(state, progress, error).postMessage({ type: 'prepare' })
+    getWorker(state, progress, error).postMessage({ type: 'prepare', modelUrl })
   }
 
   async function transcribe(recording: Blob) {
@@ -48,7 +55,7 @@ export function useOfflineTranscription() {
     return response
   }
 
-  return { error, isReady, isSupported, prepare, progress, state, transcribe }
+  return { error, isConfigured, isReady, isSupported, prepare, progress, state, transcribe }
 }
 
 function getWorker(
