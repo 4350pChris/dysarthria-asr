@@ -10,7 +10,7 @@ import modal
 from modal_training import OUTPUT_VOLUME, REMOTE_DATASET_DIR, output_dir, read_split_rows, save_run, training_image
 
 
-MODEL_NAME = "openai/whisper-large-v3-turbo"
+DEFAULT_MODEL_NAME = "openai/whisper-large-v3-turbo"
 
 image = training_image("torch==2.7.1", "transformers==4.57.6", "peft==0.19.1", "accelerate>=1.0", "soundfile")
 app = modal.App("dysarthria-asr-whisper-lora", image=image)
@@ -43,6 +43,7 @@ def read_split() -> tuple[list[Item], list[Item]]:
 @app.function(gpu="L4", timeout=2 * 60 * 60, retries=0, volumes={"/output": OUTPUT_VOLUME})
 def train(
     run_name: str = "whisper-large-v3-turbo-lora-experiment",
+    model_name: str = DEFAULT_MODEL_NAME,
     epochs: float = 12,
     learning_rate: float = 5e-5,
     batch_size: int = 2,
@@ -98,8 +99,8 @@ def train(
             return batch
 
     train_items, validation_items = read_split()
-    processor = WhisperProcessor.from_pretrained(MODEL_NAME, language="German", task="transcribe")
-    model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME, torch_dtype=torch.bfloat16)
+    processor = WhisperProcessor.from_pretrained(model_name, language="German", task="transcribe")
+    model = WhisperForConditionalGeneration.from_pretrained(model_name, torch_dtype=torch.bfloat16)
     model.generation_config.language = "german"
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
@@ -169,7 +170,7 @@ def train(
     processor.save_pretrained(adapter_dir)
 
     metrics = {
-        "model": MODEL_NAME,
+        "model": model_name,
         "adapter": f"lora-{','.join(target_modules)}-r{lora_rank}",
         "lora_rank": lora_rank,
         "lora_alpha": lora_alpha,
@@ -194,6 +195,7 @@ def train(
 @app.local_entrypoint()
 def main(
     run_name: str = "whisper-large-v3-turbo-lora-experiment",
+    model_name: str = DEFAULT_MODEL_NAME,
     epochs: float = 12,
     learning_rate: float = 5e-5,
     batch_size: int = 2,
@@ -210,6 +212,7 @@ def main(
         json.dumps(
             train.remote(
                 run_name=run_name,
+                model_name=model_name,
                 epochs=epochs,
                 learning_rate=learning_rate,
                 batch_size=batch_size,

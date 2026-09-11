@@ -19,6 +19,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  vite: {
+    worker: {
+      format: 'es'
+    }
+  },
+
   ...(!isVitest
     ? { pwa: {
         registerType: 'prompt',
