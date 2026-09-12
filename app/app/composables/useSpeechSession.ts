@@ -53,7 +53,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
         ? result.value?.math_text
         : mode.value === 'emoji'
           ? emojiText.value
-        : undefined
+          : undefined
   )
   const saveFreeText = useDebounceFn(() => {
     void saveAttempt()
