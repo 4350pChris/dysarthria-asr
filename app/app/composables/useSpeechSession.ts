@@ -6,6 +6,7 @@ type SelectedEmoji = { name: string, value: string }
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
   const { track } = useUsageAnalytics()
+  const isOnline = useOnline()
   const offline = useOfflineTranscription()
   const result = ref<TranscriptionResult>()
   const selectedEmoji = ref<SelectedEmoji>()
@@ -85,7 +86,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
 
   async function transcribe(blob: Blob) {
     try {
-      const transcription = mode.value === 'text' && offline.isReady.value
+      const transcription = mode.value === 'text' && !isOnline.value && offline.isReady.value
         ? offlineResult(await offline.transcribe(blob))
         : await transcribeOnline(blob)
       result.value = transcription
