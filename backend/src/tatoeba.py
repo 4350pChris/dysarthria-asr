@@ -4,6 +4,7 @@ import bz2
 import csv
 import io
 import json
+import re
 import tempfile
 from pathlib import Path
 from urllib.request import urlopen
@@ -12,6 +13,14 @@ TATOEBA_EXPORT_URL = "https://downloads.tatoeba.org/exports/per_language/deu/deu
 MIN_CHARACTERS = 25
 MAX_CHARACTERS = 180
 MAX_WORDS = 28
+UNSAFE_PROMPT_PATTERN = re.compile(
+    r"\b(?:anal(?:sex|verkehr)\w*|arsch(?:loch|geweih|kriecher)?|blasen|blowjob|cock|dick|ejakulat\w*|escort\w*|\w*fick\w*|fotze\w*|geschlechtsverkehr|hure\w*|kondom\w*|masturb\w*|muschi\w*|nackt\w*|nutte\w*|orgasmus\w*|penis\w*|porn\w*|prostitut\w*|pussy|rape\w*|schei[ßs]\w*|schlampe\w*|\w*sex\w*|sperma\w*|strip(?:club|per|pen)?\w*|vergewalt\w*|vagina\w*|vulva\w*|wichs\w*)\b",
+    re.IGNORECASE,
+)
+
+
+def is_safe_prompt(text: str) -> bool:
+    return UNSAFE_PROMPT_PATTERN.search(text) is None
 
 
 def is_readable_prompt(text: str) -> bool:
@@ -22,6 +31,7 @@ def is_readable_prompt(text: str) -> bool:
         and any(character.isalpha() for character in text)
         and "http" not in text.casefold()
         and "\n" not in text
+        and is_safe_prompt(text)
     )
 
 
@@ -55,6 +65,10 @@ def write_prompts(path: Path, prompts: list[dict[str, str]]) -> None:
 
 def ensure_prompts(path: Path) -> None:
     if path.exists():
+        prompts = json.loads(path.read_text(encoding="utf-8"))
+        safe_prompts = [prompt for prompt in prompts if is_safe_prompt(prompt["text"])]
+        if len(safe_prompts) != len(prompts):
+            write_prompts(path, safe_prompts)
         return
     prompts = download_prompts()
     write_prompts(path, prompts)

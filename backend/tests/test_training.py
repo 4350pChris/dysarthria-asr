@@ -7,8 +7,8 @@ from sqlmodel import Session
 from src import app as app_module
 from src import database, training_prompts
 from src.routers import training
-from src.tatoeba import ensure_prompts, write_prompts
-from src.training_prompts import prompt_split, read_training_prompts
+from src.tatoeba import ensure_prompts, is_safe_prompt, write_prompts
+from src.training_prompts import find_prompt, prompt_split, read_training_prompts
 
 
 def write_train_prompt(path: Path, text: str) -> dict[str, str]:
@@ -29,6 +29,32 @@ def write_train_prompt(path: Path, text: str) -> dict[str, str]:
 
 def test_prompt_split_groups_duplicate_text() -> None:
     assert prompt_split("Das ist ein Beispielsatz.") == prompt_split("  DAS ist   ein Beispielsatz.  ")
+
+
+def test_tatoeba_filters_unsafe_prompts(tmp_path: Path) -> None:
+    prompts_file = tmp_path / "tatoeba.json"
+    prompts = [
+        {"id": "safe", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."},
+        {"id": "unsafe", "text": "Wir hatten Versöhnungssex und waren danach müde."},
+    ]
+    write_prompts(prompts_file, prompts)
+
+    ensure_prompts(prompts_file)
+
+    assert is_safe_prompt(prompts[0]["text"])
+    assert not is_safe_prompt(prompts[1]["text"])
+    assert prompts_file.read_text(encoding="utf-8") == '[{"id": "safe", "text": "Das ist ein ausreichend langer deutscher Beispielsatz."}]'
+
+
+def test_unsafe_database_prompt_is_not_returned_or_accepted(session: Session) -> None:
+    unsafe = training_prompts.TrainingPrompt(
+        id="unsafe", text="Wir hatten Versöhnungssex und waren danach müde.", split="train"
+    )
+    session.add(unsafe)
+    session.commit()
+
+    assert read_training_prompts(session, limit=1) == []
+    assert find_prompt(session, unsafe.id) is None
 
 
 def test_training_prompts_come_from_cached_tatoeba(initialized_db: Path, monkeypatch) -> None:
