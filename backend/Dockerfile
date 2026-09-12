@@ -19,7 +19,6 @@ RUN apt-get update \
 
 COPY --from=builder /app/backend/.venv ./.venv
 
-COPY seed/phrases.csv /app/seed/phrases.csv
 COPY src ./src
 COPY migrations ./migrations
 COPY alembic.ini ./
