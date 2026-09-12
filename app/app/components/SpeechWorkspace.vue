@@ -1,7 +1,6 @@
 <script setup lang="ts">
 export type SpeechMode = 'text' | 'math' | 'emoji'
 
-const route = useRoute()
 const mode = defineModel<SpeechMode>('mode', { required: true })
 
 const modeOptions: Array<{ label: string, value: SpeechMode }> = [
@@ -10,7 +9,6 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
   { label: 'Emoji', value: 'emoji' }
 ]
 const speech = useSpeechSession(mode)
-const { byId, ready } = usePhrases()
 const speechCommands = useSpeechCommands()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
 const recentEmojis = computed(() =>
@@ -19,7 +17,6 @@ const recentEmojis = computed(() =>
     .slice(0, 8)
 )
 
-await selectRoutePhrase()
 watch(mode, async (value) => {
   if (value !== 'emoji' || recognizedEmojis.value.length) return
   recognizedEmojis.value = await $fetch<Array<{ name: string, value: string }>>('/api/emojis/recent').catch(() => [])
@@ -33,20 +30,6 @@ useSpeechCommand({ id: 'share-instagram', label: 'Instagram', phrases: ['instagr
 useSpeechCommand({ id: 'text-mode', label: 'Textmodus', phrases: ['text', 'sätze', 'satzmodus', 'freitext', 'freier text', 'freitextmodus'], handler: () => setMode('text') })
 useSpeechCommand({ id: 'math-mode', label: 'Mathemodus', phrases: ['mathe', 'mathemodus'], handler: () => setMode('math') })
 useSpeechCommand({ id: 'emoji-mode', label: 'Emojimodus', phrases: ['emoji', 'emojimodus'], handler: () => setMode('emoji') })
-useSpeechCommand({ id: 'next', label: 'Nächster Vorschlag', phrases: ['weiter', 'nächster', 'nächste', 'nein'], handler: () => speech.selectSuggestionAt(speech.selectedIndex.value + 1) })
-useSpeechCommand({ id: 'previous', label: 'Vorheriger Vorschlag', phrases: ['vorheriger', 'vorherige'], handler: () => speech.selectSuggestionAt(speech.selectedIndex.value - 1) })
-
-async function selectRoutePhrase() {
-  const phraseId = Number(route.query.phrase || 0)
-  if (!phraseId) return
-  try {
-    await ready
-    const phrase = byId(phraseId)
-    if (phrase) speech.selectPhrase(phrase)
-  } catch {
-    speech.status.value = 'Phrase konnte nicht geladen werden.'
-  }
-}
 
 function setMode(nextMode: SpeechMode) {
   mode.value = nextMode
@@ -122,26 +105,8 @@ function startRecording() {
       {{ speech.status.value }}
     </p>
 
-    <section
-      v-if="speech.hasSelection.value && mode === 'text' && !speech.showsFreeText.value"
-      class="space-y-4"
-    >
-      <LazyMatchedPhrase
-        :raw-transcript="speech.result.value?.raw_transcript"
-        :selected="speech.selected.value"
-        @copy="speech.copySelected"
-        @share-instagram="speech.shareToInstagram"
-        @share-text="speech.shareText"
-      />
-      <LazySuggestionList
-        :suggestions="speech.suggestions.value"
-        :selected="speech.selected.value"
-        @select="speech.setSelection"
-      />
-    </section>
-
     <LazyFreeTextResult
-      v-if="speech.showsFreeText.value && speech.freeText.value"
+      v-if="mode === 'text' && speech.freeText.value"
       :disabled="speech.isRecording.value || speech.isBusy.value"
       :text="speech.freeText.value"
       @copy="speech.copySelected"
@@ -167,19 +132,6 @@ function startRecording() {
       :emoji-text="speech.emojiText.value"
       @copy="speech.copySelected"
     />
-
-    <UButton
-      class="min-h-24 text-xl"
-      block
-      color="neutral"
-      icon="i-lucide-layout-grid"
-      size="xl"
-      to="/phrases"
-      variant="subtle"
-      :ui="{ leadingIcon: 'size-8', base: 'flex-col gap-2' }"
-    >
-      Satz auswählen
-    </UButton>
 
     <UButton
       block

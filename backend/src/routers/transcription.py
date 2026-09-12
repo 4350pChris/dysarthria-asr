@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import uuid
 from pathlib import Path
 
@@ -20,7 +19,6 @@ from sqlmodel import Session, col, select
 from starlette.concurrency import run_in_threadpool
 
 from ..asr import LIVE_VAD_PARAMETERS, transcribe_german, transcribe_german_segments
-from ..candidates import candidate_suggestions
 from ..corpus import create_audio_clip, update_transcription_label
 from ..database import get_session
 from ..emoji_normalizer import emoji_from_spoken_name, replace_spoken_emojis
@@ -190,11 +188,4 @@ async def transcribe(
         "math_corrected_text": math.corrected_text,
         "math_number_text": math.number_text,
         "math_text": math.math_text,
-        "suggestions": (
-            [] if has_multiple_sentences(transcript) else candidate_suggestions(transcript, session)
-        ),
     }
-
-
-def has_multiple_sentences(transcript: str) -> bool:
-    return len(re.split(r"(?<=[.!?])\s+", transcript.strip())) > 1

@@ -6,11 +6,11 @@
 
 A German speech-assistance prototype for one person with dysarthria.
 
-The app records short speech, creates text suggestions, and lets the user speak, copy, or share selected text. It also stores recordings and imported WhatsApp voice messages in a local corpus for review and later ASR training.
+The app records short speech and lets the user speak, copy, or share recognized text. It also stores recordings and imported WhatsApp voice messages in a local corpus for review and later ASR training.
 
 ## Screenshots
 
-| Record speech | Select and use a suggestion |
+| Record speech | Use recognized text |
 | --- | --- |
 | <img src="screenshot-before.png" alt="Dysarthria ASR recording screen" width="300"> | <img src="screenshot-after.png" alt="Dysarthria ASR suggested message screen" width="300"> |
 
@@ -18,10 +18,9 @@ The app records short speech, creates text suggestions, and lets the user speak,
 
 - Records speech with push-to-talk and automatic stop after silence.
 - Transcribes each recording with a configured `faster-whisper` model.
-- Offers saved phrases, editable categories, and generated German phrase suggestions.
 - Supports German spoken arithmetic and spoken emoji names, such as `weißes Herz emoji` → 🤍.
 - Can speak text in the browser, copy it, or share it with the native share sheet. WhatsApp opens only as a fallback; the app never sends a message itself.
-- Supports voice commands for recording, text actions, modes, suggestions, and categories.
+- Supports voice commands for recording, text actions, and modes.
 - Runs as an installable PWA on iPhone.
 - Stores audio, ASR drafts, corrected transcripts, and label state in SQLite.
 - Imports audio files and WhatsApp chat-export ZIP files.
@@ -91,10 +90,9 @@ Custom feature events must not include audio, transcripts, phrase text, names,
 or stable user IDs.
 
 The app tracks these custom events: recording start and transcription result;
-suggestion and saved-phrase selection; speak, copy, and share actions; voice
-commands; reading-training recordings; phrase and category creation; and
-WhatsApp import completion. Event metadata is limited to fixed labels such as
-mode, source, share channel, and result state.
+speak, copy, and share actions; voice commands; reading-training recordings;
+and WhatsApp import completion. Event metadata is limited to fixed labels such
+as mode, share channel, and result state.
 
 To stop the analytics services, run `docker compose down`. The named Docker
 volume keeps analytics data until you remove it explicitly.
@@ -102,13 +100,11 @@ volume keeps analytics data until you remove it explicitly.
 ## Use the app
 
 1. Start the API and web app.
-2. Select a saved phrase or tap `Aufnehmen` and speak.
-3. Wait for the silence stop, then select a suggestion if needed.
+2. Tap `Aufnehmen` and speak.
+3. Wait for the silence stop, then use the recognized text.
 4. Use `Vorlesen`, copy the text, or share it.
 5. Use `Lesetraining aufnehmen` to record one displayed reading prompt. You can play it back, retry, or save it.
 6. Open `/labeling` to review recordings and prepare training data.
-
-To manage phrases and categories, open `/phrases`.
 
 ## Labeling and training data
 
@@ -151,7 +147,5 @@ This project is licensed under the [MIT License](LICENSE).
 
 - `app/` — Nuxt frontend and PWA
 - `backend/` — FastAPI API, ASR integration, SQLite storage, and legacy static UI
-- `backend/seed/phrases.csv` — default phrase seed for containers
-- `data/phrases.csv` — local phrase seed, when present
 - `data/audio/` — saved audio clips; not committed
 - `data/app.sqlite` — local SQLite database; not committed

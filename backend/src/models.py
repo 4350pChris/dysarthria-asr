@@ -22,26 +22,6 @@ class LabelStatus(StrEnum):
     SKIPPED = "skipped"
 
 
-class Category(SQLModel, table=True):
-    __tablename__ = "categories"  # pyright: ignore[reportAssignmentType]
-
-    id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(index=True, unique=True)
-    phrases: list["Phrase"] = Relationship(
-        back_populates="category",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
-    )
-
-
-class Phrase(SQLModel, table=True):
-    __tablename__ = "phrases"  # pyright: ignore[reportAssignmentType]
-
-    id: int | None = Field(default=None, primary_key=True)
-    category_id: int = Field(foreign_key="categories.id", ondelete="CASCADE")
-    text: str
-    category: Category | None = Relationship(back_populates="phrases")
-
-
 class AudioClip(SQLModel, table=True):
     __tablename__ = "audio_clips"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (CheckConstraint("source IN ('app_recording', 'whatsapp_upload', 'training_reading')", name="audio_source"),)
@@ -87,30 +67,3 @@ class TrainingPrompt(SQLModel, table=True):
     split: str
     category: str = "general"
     source: str = "tatoeba"
-
-
-class GrammarSlot(SQLModel, table=True):
-    __tablename__ = "grammar_slots"  # pyright: ignore[reportAssignmentType]
-
-    id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(unique=True)
-    patterns: list["GrammarPattern"] = Relationship(back_populates="slot")
-    values: list["GrammarSlotValue"] = Relationship(back_populates="slot")
-
-
-class GrammarPattern(SQLModel, table=True):
-    __tablename__ = "grammar_patterns"  # pyright: ignore[reportAssignmentType]
-
-    id: int | None = Field(default=None, primary_key=True)
-    slot_id: int = Field(foreign_key="grammar_slots.id", ondelete="CASCADE")
-    template: str
-    slot: GrammarSlot | None = Relationship(back_populates="patterns")
-
-
-class GrammarSlotValue(SQLModel, table=True):
-    __tablename__ = "grammar_slot_values"  # pyright: ignore[reportAssignmentType]
-
-    id: int | None = Field(default=None, primary_key=True)
-    slot_id: int = Field(foreign_key="grammar_slots.id", ondelete="CASCADE")
-    value: str
-    slot: GrammarSlot | None = Relationship(back_populates="values")

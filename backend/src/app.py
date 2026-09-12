@@ -15,7 +15,7 @@ from sqlmodel import Session
 from . import database
 from .asr import warm_model
 from .paths import STATIC_DIR, TATOEBA_PROMPTS_FILE
-from .routers import labeling, phrases, training, transcription
+from .routers import labeling, training, transcription
 from .tatoeba import ensure_prompts
 from .training_prompts import import_prompts
 
@@ -58,7 +58,6 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(transcription.router)
     app.include_router(labeling.router)
-    app.include_router(phrases.router)
     app.include_router(training.router)
 
     @app.get("/")

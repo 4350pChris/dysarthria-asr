@@ -1,18 +1,15 @@
-import type { Phrase, Suggestion, TranscriptionResult } from '~/types/speech'
+import type { TranscriptionResult } from '~/types/speech'
 import { useDebounceFn } from '@vueuse/core'
 
 type SpeechMode = 'text' | 'math' | 'emoji'
-type TextResultKind = 'sentence' | 'freetext'
 type SelectedEmoji = { name: string, value: string }
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
   const { track } = useUsageAnalytics()
   const result = ref<TranscriptionResult>()
-  const selected = ref<Suggestion>()
   const selectedEmoji = ref<SelectedEmoji>()
   const emojiHistory = useLocalStorage<SelectedEmoji[]>('emoji-history', [])
   const freeText = ref('')
-  const textResultKind = ref<TextResultKind>('sentence')
   const status = ref('')
   const isBusy = ref(false)
   const isSaving = ref(false)
@@ -43,31 +40,20 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     }
   })
 
-  const suggestions = computed(() => result.value?.suggestions ?? [])
-  const hasSelection = computed(() => Boolean(selected.value))
   const hasMathResult = computed(
     () => mode.value === 'math' && Boolean(result.value?.math_text)
   )
   const emojiText = computed(() => selectedEmoji.value?.value || result.value?.emoji_value || '')
   const emojiName = computed(() => selectedEmoji.value?.name || result.value?.emoji_name || '')
   const hasEmojiResult = computed(() => mode.value === 'emoji' && Boolean(emojiText.value))
-  const showsFreeText = computed(() =>
-    mode.value === 'text'
-    && (textResultKind.value === 'freetext' || !selected.value)
-  )
-  const selectedIndex = computed(() =>
-    suggestions.value.findIndex(
-      suggestion => suggestion.id === selected.value?.id
-    )
-  )
   const outputText = computed(() =>
-    showsFreeText.value
+    mode.value === 'text'
       ? freeText.value
       : mode.value === 'math'
         ? result.value?.math_text
         : mode.value === 'emoji'
           ? emojiText.value
-          : selected.value?.text
+        : undefined
   )
   const saveFreeText = useDebounceFn(() => {
     void saveAttempt()
@@ -81,43 +67,10 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     isSafeToUpdate.value = true
   })
 
-  function setSelection(suggestion: Suggestion) {
-    selected.value = suggestion
-    track('suggestion_selected', { source: suggestion.source })
-  }
-
-  function selectSuggestionAt(index: number) {
-    if (!suggestions.value.length) return
-    const nextIndex
-      = (index + suggestions.value.length) % suggestions.value.length
-    const suggestion = suggestions.value[nextIndex]
-    if (!suggestion) return
-    selected.value = suggestion
-    track('suggestion_selected', {
-      source: suggestion.source
-    })
-    status.value = 'Vorschlag gewechselt.'
-  }
-
-  function selectPhrase(phrase: Phrase) {
-    result.value = undefined
-    selected.value = {
-      id: `phrase:${phrase.id}`,
-      source: 'phrase',
-      text: phrase.text,
-      score: 1
-    }
-    hasSaved.value = false
-    status.value = 'Direkt ausgewählt.'
-    track('phrase_selected')
-  }
-
   async function startRecording() {
     result.value = undefined
-    selected.value = undefined
     selectedEmoji.value = undefined
     freeText.value = ''
-    textResultKind.value = 'sentence'
     hasSaved.value = false
     status.value = ''
     status.value = 'Aufnahme läuft...'
@@ -151,22 +104,8 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
         rememberEmoji({ name: transcription.emoji_name, value: transcription.emoji_value })
       }
       if (mode.value === 'text') {
-        freeText.value = transcription.raw_transcript
-        textResultKind.value = hasMultipleSentences(transcription.raw_transcript)
-          ? 'freetext'
-          : 'sentence'
+        freeText.value = transcription.emoji_text
       }
-      selected.value
-        = mode.value === 'text' && textResultKind.value === 'sentence'
-          ? transcription.emoji_text !== transcription.raw_transcript
-            ? {
-                id: 'emoji:recognized',
-                source: 'emoji',
-                text: transcription.emoji_text,
-                score: 1
-              }
-            : transcription.suggestions[0]
-          : undefined
       hasSaved.value = false
       status.value
         = mode.value === 'math'
@@ -175,15 +114,11 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
             ? transcription.emoji_name
               ? 'Emoji erkannt.'
               : 'Emoji nicht erkannt. Bitte sage den Namen des Emojis.'
-            : textResultKind.value === 'freetext'
-              ? 'Text erkannt.'
-              : selected.value
-                ? 'Meinst du das?'
-                : 'Kein Vorschlag gefunden.'
+            : 'Text erkannt.'
       track('transcription_completed', {
         mode: mode.value,
         outcome: mode.value === 'text'
-          ? (selected.value ? 'selection_available' : 'no_selection')
+          ? 'text_recognized'
           : mode.value === 'math'
             ? (transcription.math_text ? 'result_available' : 'no_result')
             : mode.value === 'emoji'
@@ -224,7 +159,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   function setFreeText(text: string) {
     freeText.value = text
     hasSaved.value = false
-    if (showsFreeText.value) saveFreeText()
+    saveFreeText()
   }
 
   function selectEmoji(emoji: SelectedEmoji) {
@@ -345,7 +280,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   }
 
   async function saveAttempt() {
-    const correctedText = showsFreeText.value
+    const correctedText = mode.value === 'text'
       ? freeText.value
       : mode.value === 'emoji'
         ? emojiName.value
@@ -357,9 +292,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
       await fetch(`/api/labeling/items/${result.value.audio_id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          notes: showsFreeText.value
-            ? 'Edited free text.'
-            : 'Provisional app selection.',
+          notes: mode.value === 'text' ? 'Edited free text.' : 'Provisional app selection.',
           status: 'draft',
           transcript: correctedText,
           unsure: false
@@ -375,26 +308,18 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   return {
     result,
     audioLevel,
-    selected,
     freeText,
     status,
     isRecording,
     isBusy,
-    suggestions,
-    hasSelection,
     hasMathResult,
     hasEmojiResult,
     emojiName,
     emojiText,
     emojiHistory,
-    showsFreeText,
-    selectedIndex,
     outputText,
-    setSelection,
     setFreeText,
     selectEmoji,
-    selectSuggestionAt,
-    selectPhrase,
     startRecording,
     stopRecording,
     speakSelected,
@@ -402,8 +327,4 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     shareToInstagram,
     shareText
   }
-}
-
-function hasMultipleSentences(transcript: string) {
-  return transcript.trim().split(/(?<=[.!?])\s+/u).filter(Boolean).length > 1
 }

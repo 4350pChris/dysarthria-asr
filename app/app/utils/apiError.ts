@@ -8,13 +8,6 @@ const messages: Record<string, string> = {
   phrase_exists: 'Dieser Satz ist bereits in dieser Kategorie.',
   phrase_not_found: 'Dieser Satz gibt es nicht mehr.',
   phrase_text_required: 'Gib einen Satz ein.',
-  grammar_pattern_exists: 'Diese Vorlage gibt es bereits.',
-  grammar_pattern_not_found: 'Diese Vorlage gibt es nicht mehr.',
-  grammar_placeholder_invalid: 'Die Vorlage muss den Platzhalter genau einmal enthalten.',
-  grammar_template_required: 'Gib eine Vorlage ein.',
-  grammar_value_exists: 'Dieser Wert gibt es bereits.',
-  grammar_value_not_found: 'Dieser Wert gibt es nicht mehr.',
-  grammar_value_required: 'Gib einen Wert ein.',
   training_prompt_not_found: 'Dieser Lesetext gibt es nicht mehr.',
   training_prompts_unavailable: 'Die Lesetexte konnten nicht geladen werden.'
 }

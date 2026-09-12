@@ -53,23 +53,6 @@ export default defineNuxtConfig({
             }
           ]
         },
-        workbox: {
-          runtimeCaching: [
-            {
-              urlPattern: /\/api\/(categories|phrases)$/,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'phrases',
-                networkTimeoutSeconds: 3,
-                expiration: {
-                  maxEntries: 2,
-                  maxAgeSeconds: 60 * 60 * 24 * 30
-                },
-                cacheableResponse: { statuses: [200] }
-              }
-            }
-          ]
-        }
       } }
     : {}),
 

@@ -49,13 +49,8 @@ def run_migrations(db_file: Path = DB_FILE) -> None:
 
 
 def init_db() -> None:
-    """Upgrade the local database, then add missing built-in seed data."""
+    """Upgrade the local database."""
     global engine
     run_migrations(DB_FILE)
     engine.dispose()
     engine = create_database_engine(DB_FILE)
-    from .seed import seed_database
-
-    with Session(engine) as session:
-        seed_database(session)
-        session.commit()

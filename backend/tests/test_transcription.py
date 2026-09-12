@@ -9,7 +9,7 @@ from src import database
 from src.routers import transcription
 
 
-def test_transcribe_saves_audio_and_returns_candidate_suggestions(
+def test_transcribe_saves_audio_and_returns_recognized_text(
     initialized_db: Path,
     monkeypatch,
 ) -> None:
@@ -29,7 +29,6 @@ def test_transcribe_saves_audio_and_returns_candidate_suggestions(
     assert body["raw_transcript"] == "ich möchte kaffee"
     assert body["emoji_text"] == "ich möchte kaffee"
     assert body["audio_path"].startswith("audio/")
-    assert body["suggestions"][0]["text"] == "Ich möchte Kaffee."
 
     with connect_test_db(database.DB_FILE) as db:
         audio = db.execute("SELECT file_path, content_type, source FROM audio_clips").fetchone()
@@ -66,30 +65,6 @@ def test_transcribe_returns_converted_emoji_text(
 
     assert response.status_code == 200
     assert response.json()["emoji_text"] == "🤍"
-
-
-def test_transcribe_skips_suggestions_for_multiple_sentences(
-    initialized_db: Path,
-    monkeypatch,
-) -> None:
-    monkeypatch.setattr(transcription, "ROOT", initialized_db)
-    monkeypatch.setattr(transcription, "AUDIO_DIR", initialized_db / "audio")
-    monkeypatch.setattr(transcription, "transcribe_german", lambda audio_path: "Hallo. Wie geht es?")
-    monkeypatch.setattr(
-        transcription,
-        "candidate_suggestions",
-        lambda text, session: (_ for _ in ()).throw(AssertionError("must not search candidates")),
-    )
-
-    from src.app import create_app
-
-    response = TestClient(create_app()).post(
-        "/api/transcribe",
-        files={"audio": ("sample.webm", b"audio bytes", "audio/webm")},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["suggestions"] == []
 
 
 def test_transcribe_returns_a_spoken_emoji_name(
