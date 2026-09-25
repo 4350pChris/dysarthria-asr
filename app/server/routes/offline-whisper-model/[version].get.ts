@@ -8,8 +8,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const response = await fetch(config.offlineWhisperModelUrl, {
-    headers: config.offlineWhisperModelToken
-      ? { Authorization: `Bearer ${config.offlineWhisperModelToken}` }
+    headers: config.hfToken
+      ? { Authorization: `Bearer ${config.hfToken}` }
       : undefined
   })
   if (!response.ok || !response.body) {

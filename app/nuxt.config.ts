@@ -63,12 +63,11 @@ export default defineNuxtConfig({
     : {}),
 
   runtimeConfig: {
-    apiBase: process.env.NUXT_API_BASE || 'http://127.0.0.1:8000',
-    offlineWhisperModelToken: process.env.HF_TOKEN || '',
-    offlineWhisperModelUrl: process.env.OFFLINE_WHISPER_MODEL_URL || '',
+    hfToken: '',
+    offlineWhisperModelUrl: '',
     public: {
-      apiBase: process.env.NUXT_API_BASE || 'http://127.0.0.1:8000',
-      offlineWhisperModelVersion: process.env.NUXT_PUBLIC_OFFLINE_WHISPER_MODEL_VERSION || ''
+      apiBase: 'http://127.0.0.1:8000',
+      offlineWhisperModelVersion: ''
     }
   },
 
@@ -86,7 +85,7 @@ export default defineNuxtConfig({
   umami: {
     // Tracking is on by default. Umami still needs a Website ID to send data.
     enabled: true,
-    host: process.env.NUXT_UMAMI_HOST || 'http://127.0.0.1:3001',
+    host: 'http://127.0.0.1:3001',
     autoTrack: true,
     ignoreLocalhost: false,
     urlOptions: {

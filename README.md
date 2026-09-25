@@ -59,11 +59,11 @@ pnpm dev
 
 Open <http://localhost:3000>.
 
-The frontend sends `/api/*` requests to `NUXT_API_BASE`. Its default is `http://127.0.0.1:8000`. To use a different API URL:
+The frontend sends `/api/*` and live audio requests to `NUXT_PUBLIC_API_BASE`. Its default is `http://127.0.0.1:8000`. To use a different API URL:
 
 ```sh
 cd app
-NUXT_API_BASE=https://example.com pnpm dev
+NUXT_PUBLIC_API_BASE=https://example.com pnpm dev
 ```
 
 ### Local usage analytics
