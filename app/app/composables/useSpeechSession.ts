@@ -1,5 +1,6 @@
 import type { TranscriptionResult } from '~/types/speech'
 import { useDebounceFn } from '@vueuse/core'
+import { enqueueRecording } from '~/utils/recordingUploadQueue'
 
 type SpeechMode = 'text' | 'math' | 'emoji'
 type SelectedEmoji = { name: string, value: string }
@@ -86,6 +87,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
 
   async function transcribe(blob: Blob) {
     try {
+      if (!isOnline.value) await enqueueRecording(blob)
       const transcription = mode.value === 'text' && !isOnline.value && offline.isReady.value
         ? offlineResult(await offline.transcribe(blob))
         : await transcribeOnline(blob)

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { uploadPendingRecordings } from '~/utils/recordingUploadQueue'
+
 type HeaderAction = {
   to: string
   label: string
@@ -38,6 +40,15 @@ useSpeechCommand({
     }
     await navigateTo(header.value.backTo || '/')
   }
+})
+
+onMounted(() => {
+  window.addEventListener('online', uploadPendingRecordings)
+  void uploadPendingRecordings()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('online', uploadPendingRecordings)
 })
 </script>
 
