@@ -1,3 +1,5 @@
+import { convertFromFile } from '@timur00kh/whisper.wasm'
+
 type OfflineState = 'idle' | 'loading' | 'ready' | 'failed'
 
 type PendingTranscription = {
@@ -43,7 +45,6 @@ export function useOfflineTranscription() {
 
   async function transcribe(recording: Blob) {
     if (!isReady.value) throw new Error('Offline-Erkennung ist nicht bereit.')
-    const { convertFromFile } = await import('@timur00kh/whisper.wasm')
     const file = new File([recording], 'recording.webm', { type: recording.type || 'audio/webm' })
     const { audioData } = await convertFromFile(file, {
       normalize: true,
