@@ -15,9 +15,13 @@ export function useOfflineTranscription() {
   const state = useState<OfflineState>('offline-transcription-state', () => 'idle')
   const progress = useState('offline-transcription-progress', () => 0)
   const error = useState('offline-transcription-error', () => '')
+  const isSupported = ref(false)
   const isConfigured = computed(() => Boolean(modelUrl))
   const isReady = computed(() => state.value === 'ready')
-  const isSupported = computed(() => typeof Worker !== 'undefined' && typeof AudioContext !== 'undefined')
+
+  onMounted(() => {
+    isSupported.value = typeof Worker !== 'undefined' && typeof AudioContext !== 'undefined'
+  })
 
   async function prepare() {
     if (state.value === 'loading' || state.value === 'ready') return

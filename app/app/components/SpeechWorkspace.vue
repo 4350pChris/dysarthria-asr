@@ -70,8 +70,6 @@ function startRecording() {
       @stop="speech.stopRecording"
     />
 
-    <OfflineTranscriptionSetup v-if="mode === 'text'" />
-
     <AudioLevelMeter
       v-if="speech.isRecording.value"
       :level="speech.audioLevel.value"

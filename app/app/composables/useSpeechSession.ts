@@ -9,6 +9,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
   const { track } = useUsageAnalytics()
   const isOnline = useOnline()
   const offline = useOfflineTranscription()
+  onMounted(() => {
+    void offline.prepare()
+  })
   const result = ref<TranscriptionResult>()
   const selectedEmoji = ref<SelectedEmoji>()
   const emojiHistory = useLocalStorage<SelectedEmoji[]>('emoji-history', [])
