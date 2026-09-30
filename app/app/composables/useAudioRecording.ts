@@ -1,5 +1,6 @@
 type AudioRecordingOptions = {
   onComplete: (recording: Blob) => void | Promise<void>
+  autoStopOnSilence?: Ref<boolean>
   withAudioLevel?: boolean
   onStream?: (stream: MediaStream) => void
   onStopping?: () => void
@@ -11,7 +12,7 @@ export function useAudioRecording(options: AudioRecordingOptions) {
   const chunks = ref<Blob[]>([])
   const isRecording = ref(false)
   const audioLevel = ref(0)
-  const silenceDetection = useSilenceDetection(stop)
+  const silenceDetection = useSilenceDetection(stop, () => options.autoStopOnSilence?.value ?? true)
   let levelContext: AudioContext | undefined
   let levelSource: MediaStreamAudioSourceNode | undefined
   let levelFrame = 0

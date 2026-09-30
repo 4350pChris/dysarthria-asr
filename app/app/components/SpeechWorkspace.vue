@@ -8,7 +8,8 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
   { label: 'Mathe', value: 'math' },
   { label: 'Emoji', value: 'emoji' }
 ]
-const speech = useSpeechSession(mode)
+const autoStopOnSilence = useLocalStorage('auto-stop-on-silence', true)
+const speech = useSpeechSession(mode, autoStopOnSilence)
 const speechCommands = useSpeechCommands()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
 const recentEmojis = computed(() =>
@@ -69,6 +70,8 @@ function startRecording() {
       @start="startRecording"
       @stop="speech.stopRecording"
     />
+
+    <SilenceStopSetting v-model="autoStopOnSilence" />
 
     <AudioLevelMeter
       v-if="speech.isRecording.value"

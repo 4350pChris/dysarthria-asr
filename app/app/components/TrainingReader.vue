@@ -19,6 +19,7 @@ const reviewForm = useTemplateRef('reviewForm')
 const recordingUrl = ref('')
 const recording = shallowRef<Blob>()
 const audioQuality = ref<AudioQualityReport>()
+const autoStopOnSilence = useLocalStorage('auto-stop-on-silence', true)
 const resumeVoiceCommands = ref(false)
 const { checkAudio } = useAudioQualityCheck()
 const speechCommands = useSpeechCommands()
@@ -28,7 +29,7 @@ const {
   isRecording,
   start: startAudioRecording,
   stop: stopAudioRecording
-} = useAudioRecording({ onComplete: processRecording })
+} = useAudioRecording({ onComplete: processRecording, autoStopOnSilence })
 
 const currentPrompt = computed(() => prompts.value[promptIndex.value])
 const savedCount = ref(0)
@@ -152,6 +153,11 @@ onBeforeUnmount(() => {
         :saved-count="savedCount"
         :text="currentPrompt.text"
         :total="prompts.length"
+      />
+
+      <SilenceStopSetting
+        v-if="!recording"
+        v-model="autoStopOnSilence"
       />
 
       <TrainingRecordControl

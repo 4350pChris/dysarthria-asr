@@ -3,7 +3,7 @@ const SILENCE_MS = 2000
 const MAX_DURATION_MS = 60000
 const SILENCE_THRESHOLD = 0.025
 
-export function useSilenceDetection(onStop: () => void) {
+export function useSilenceDetection(onStop: () => void, isSilenceStopEnabled: () => boolean = () => true) {
   const frame = ref<number>()
   const audioContext = shallowRef<AudioContext>()
   const startedAt = ref(0)
@@ -54,7 +54,7 @@ export function useSilenceDetection(onStop: () => void) {
         return
       }
 
-      if (elapsed >= MIN_DURATION_MS && rms < SILENCE_THRESHOLD) {
+      if (isSilenceStopEnabled() && elapsed >= MIN_DURATION_MS && rms < SILENCE_THRESHOLD) {
         silentSince.value ??= now
         if (now - silentSince.value >= SILENCE_MS) {
           stop()

@@ -4,7 +4,7 @@ import { useDebounceFn } from '@vueuse/core'
 type SpeechMode = 'text' | 'math' | 'emoji'
 type SelectedEmoji = { name: string, value: string }
 
-export function useSpeechSession(mode: Ref<SpeechMode>) {
+export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>) {
   const { track } = useUsageAnalytics()
   const result = ref<TranscriptionResult>()
   const selectedEmoji = ref<SelectedEmoji>()
@@ -29,6 +29,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     stop: stopAudioRecording
   } = useAudioRecording({
     onComplete: transcribe,
+    autoStopOnSilence,
     withAudioLevel: true,
     onStream: (stream) => {
       if (mode.value === 'text') void startLiveTranscription(stream)
