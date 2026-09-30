@@ -351,3 +351,38 @@ def test_delete_empty_asr_items_uses_active_filters(
     with connect_test_db(database.DB_FILE) as db:
         remaining = db.execute("SELECT id FROM audio_clips ORDER BY id").fetchall()
     assert [row["id"] for row in remaining] == ["empty-skipped", "text-draft"]
+
+
+def test_clip_browser_search_notes_pages_and_filtered_delete(initialized_db, monkeypatch, session):
+    from src.app import create_app
+
+    monkeypatch.setattr(labeling, "ROOT", initialized_db)
+    for audio_id, filename, text in [
+        ("first", "old.ogg", "coffee"),
+        ("second", "latest_100%.ogg", ""),
+        ("third", "latest-other.ogg", ""),
+    ]:
+        make_audio_clip(session, audio_id, f"audio/{filename}", filename)
+        change_label(session, audio_id, asr_text=text)
+    client = TestClient(create_app())
+    response = client.patch("/api/labeling/items/second", json={"notes": "Noisy recording, quiet speech"})
+    assert response.json()["item"]["notes"] == "Noisy recording, quiet speech"
+    client.patch("/api/labeling/items/third", json={"notes": "Clean recording"})
+    page = client.get("/api/labeling/items", params={"order": "newest", "limit": 1, "offset": 1}).json()
+    assert page["filtered_count"] == 3
+    assert [item["audio_id"] for item in page["items"]] == ["second"]
+    assert client.get("/api/labeling/items?order=newest&limit=1").json()["items"][0]["audio_id"] == "third"
+    assert client.get("/api/labeling/items?offset=3").json()["items"] == []
+    matches = client.get("/api/labeling/items", params={"search": "LATEST", "notes": " NOISY ", "missing_asr": True}).json()
+    assert matches["filtered_count"] == 1
+    assert [item["audio_id"] for item in matches["items"]] == ["second"]
+    for search in ("100%", "_"):
+        assert client.get("/api/labeling/items", params={"search": search}).json()["filtered_count"] == 1
+    assert client.get("/api/labeling/items?search=COFFEE").json()["items"][0]["audio_id"] == "first"
+    assert client.get("/api/labeling/items?notes=noisy&status=labeled").json()["filtered_count"] == 0
+    for query in ("offset=-1", "order=invalid", "limit=501"):
+        assert client.get(f"/api/labeling/items?{query}").status_code == 422
+    deleted = client.delete("/api/labeling/items/empty-asr?notes=noisy&search=latest").json()
+    assert deleted["deleted"] == 1
+    assert deleted["counts"]["total"] == 2
+    assert client.get("/api/labeling/items?notes=noisy").json()["filtered_count"] == 0

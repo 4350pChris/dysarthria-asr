@@ -3,6 +3,8 @@ import type { AudioSource, LabelStatus } from '~/types/speech'
 
 const props = defineProps<{
   count: number
+  search?: string
+  notes?: string
   source: AudioSource | 'all'
   status: LabelStatus | 'all'
   unsureOnly: boolean
@@ -14,6 +16,8 @@ const isDeleting = ref(false)
 const isModalOpen = ref(false)
 
 const query = computed(() => ({
+  search: props.search,
+  notes: props.notes,
   ...(props.source !== 'all' ? { source: props.source } : {}),
   ...(props.status !== 'all' ? { status: props.status } : {}),
   ...(props.unsureOnly ? { unsure: true } : {})
@@ -62,7 +66,7 @@ async function deleteItems() {
   >
     <template #body>
       <p class="text-base text-muted">
-        Die aktuellen Filter für Quelle, Status und Unsicherheit gelten auch hier.
+        Die aktuellen Filter für Suche, Notizen, Quelle, Status und Unsicherheit gelten auch hier.
       </p>
     </template>
 

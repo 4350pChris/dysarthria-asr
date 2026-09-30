@@ -7,6 +7,7 @@ import tempfile
 import uuid
 import zipfile
 from pathlib import Path
+from typing import Literal
 
 from fastapi import (
     APIRouter,
@@ -216,6 +217,10 @@ def list_items(
     unsure: bool | None = None,
     missing_asr: bool | None = None,
     limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    search: str = Query("", max_length=200),
+    notes: str = Query("", max_length=200),
+    order: Literal["oldest", "newest"] = "oldest",
     session: Session = Depends(get_session),
 ) -> dict:
     return {
@@ -224,13 +229,14 @@ def list_items(
             status=status,
             unsure=unsure,
             missing_asr=missing_asr,
-            limit=limit, session=session,
+            limit=limit, offset=offset, search=search, notes=notes,
+            newest_first=order == "newest", session=session,
         ),
         "filtered_count": count_label_items(
             source=source,
             status=status,
             unsure=unsure,
-            missing_asr=missing_asr, session=session,
+            missing_asr=missing_asr, search=search, notes=notes, session=session,
         ),
         "counts": label_counts(session),
     }
@@ -238,6 +244,8 @@ def list_items(
 
 @router.delete("/items/empty-asr")
 def delete_empty_asr_items(
+    search: str = Query("", max_length=200),
+    notes: str = Query("", max_length=200),
     source: str | None = None,
     status: str | None = None,
     unsure: bool | None = None,
@@ -247,7 +255,7 @@ def delete_empty_asr_items(
         ROOT,
         source=source,
         status=status,
-        unsure=unsure, session=session,
+        unsure=unsure, search=search, notes=notes, session=session,
     )
     return {"deleted": deleted, "counts": label_counts(session)}
 
