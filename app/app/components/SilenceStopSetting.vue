@@ -7,7 +7,8 @@ const enabled = defineModel<boolean>({ required: true })
     <UCheckbox
       v-model="enabled"
       label="Bei Stille automatisch stoppen"
-      size="lg"
+      size="xl"
+      variant="card"
     />
   </div>
 </template>

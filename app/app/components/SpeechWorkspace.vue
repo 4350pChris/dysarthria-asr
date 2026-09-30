@@ -62,6 +62,8 @@ function startRecording() {
       />
     </ClientOnly>
 
+    <SilenceStopSetting v-model="autoStopOnSilence" />
+
     <RecordControl
       :is-recording="speech.isRecording.value"
       :is-busy="speech.isBusy.value"
@@ -70,8 +72,6 @@ function startRecording() {
       @start="startRecording"
       @stop="speech.stopRecording"
     />
-
-    <SilenceStopSetting v-model="autoStopOnSilence" />
 
     <AudioLevelMeter
       v-if="speech.isRecording.value"
