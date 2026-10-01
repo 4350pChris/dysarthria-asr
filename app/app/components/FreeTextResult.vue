@@ -11,9 +11,7 @@ defineEmits<{
   shareText: []
   updateText: [text: string]
   reviewActive: [active: boolean]
-  reviewBusy: [busy: boolean]
 }>()
-const correctionBusy = ref(false)
 </script>
 
 <template>
@@ -24,7 +22,6 @@ const correctionBusy = ref(false)
       :disabled="disabled"
       @update-text="$emit('updateText', $event)"
       @active="$emit('reviewActive', $event)"
-      @busy="correctionBusy = $event; $emit('reviewBusy', $event)"
     />
 
     <UButton
@@ -35,12 +32,12 @@ const correctionBusy = ref(false)
       label="Kopieren"
       size="xl"
       type="button"
-      :disabled="disabled || correctionBusy || !text"
+      :disabled="disabled || !text"
       @click="$emit('copy')"
     />
 
     <ResultActions
-      :disabled="disabled || correctionBusy || !text"
+      :disabled="disabled || !text"
       @share-instagram="$emit('shareInstagram')"
       @share-text="$emit('shareText')"
     />

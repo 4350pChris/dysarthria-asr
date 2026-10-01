@@ -5,10 +5,9 @@ from io import BytesIO
 from pathlib import Path
 from urllib.error import URLError
 
-from conftest import connect_test_db
 from fastapi.testclient import TestClient
 
-from src import database, transcript_review
+from src import transcript_review
 from src.routers import transcription
 
 
@@ -48,25 +47,3 @@ def test_review_errors_do_not_claim_that_the_text_is_correct(initialized_db: Pat
     assert client.post("/api/transcript/review", json={"text": "Hallo"}).status_code == 502
     for text in ("", " ", "a" * 6_001):
         assert client.post("/api/transcript/review", json={"text": text}).status_code == 422
-
-
-def test_replacement_audio_is_temporary_and_does_not_create_labels(initialized_db: Path, monkeypatch) -> None:
-    from src.app import create_app
-
-    paths: list[Path] = []
-    def recognize(path):
-        paths.append(path)
-        assert path.read_bytes() == b"replacement audio"
-        return "Probewohnen"
-
-    monkeypatch.setattr(transcription, "transcribe_german", recognize)
-    client = TestClient(create_app())
-    response = client.post("/api/transcribe/replacement", files={"audio": ("part.webm", b"replacement audio", "audio/webm")})
-    assert response.json() == {"text": "Probewohnen"}
-    assert not paths[0].exists()
-    with connect_test_db(database.DB_FILE) as db:
-        assert db.execute("SELECT COUNT(*) FROM audio_clips").fetchone()[0] == 0
-    monkeypatch.setattr(transcription, "transcribe_german", lambda path: " ")
-    assert client.post("/api/transcribe/replacement", files={"audio": ("part.webm", b"audio")}).status_code == 422
-    assert client.post("/api/transcribe/replacement", files={"audio": ("part.webm", b"")}).status_code == 400
-    assert client.post("/api/transcribe/replacement", files={"audio": ("part.webm", b"x" * (10 * 1024 * 1024 + 1))}).status_code == 413

@@ -10,8 +10,7 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
 ]
 const autoStopOnSilence = useLocalStorage('auto-stop-on-silence', true)
 const reviewActive = ref(false)
-const reviewBusy = ref(false)
-const speech = useSpeechSession(mode, autoStopOnSilence, reviewBusy)
+const speech = useSpeechSession(mode, autoStopOnSilence)
 const speechCommands = useSpeechCommands()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
 const recentEmojis = computed(() =>
@@ -123,7 +122,6 @@ function startRecording() {
       @share-text="speech.shareText"
       @update-text="speech.setFreeText"
       @review-active="reviewActive = $event"
-      @review-busy="reviewBusy = $event"
     />
 
     <MathWorkspace

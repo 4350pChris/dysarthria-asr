@@ -30,8 +30,8 @@ Audio and transcripts can be sensitive data. Keep `data/` local unless you have 
 ## Local text review
 
 The recording result can mark possible recognition errors. The user must approve each change.
-If the checker is unavailable, the user can select a sentence and speak a replacement.
-Replacement audio is temporary. The original recording and ASR text stay unchanged.
+If the checker is unavailable, the user can edit the text directly.
+The original recording and ASR text stay unchanged.
 Edited text stays a draft until the full recording is checked for training.
 
 Start the model service from the project root. Compose runs Ollama and downloads

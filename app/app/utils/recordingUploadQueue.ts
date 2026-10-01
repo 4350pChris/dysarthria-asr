@@ -34,8 +34,9 @@ export async function uploadPendingRecordings() {
           method: 'POST',
           body: form
         })
-        if (!response.ok) break
-        await withStore('readwrite', store => store.delete(id))
+        if (response.ok || (response.status >= 400 && response.status < 500)) {
+          await withStore('readwrite', store => store.delete(id))
+        }
       } catch {
         break
       }

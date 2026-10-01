@@ -5,7 +5,7 @@ import { enqueueRecording } from '~/utils/recordingUploadQueue'
 type SpeechMode = 'text' | 'math' | 'emoji'
 type SelectedEmoji = { name: string, value: string }
 
-export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>, correctionBusy = ref(false)) {
+export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>) {
   const speechCommands = useSpeechCommands()
   const { track } = useUsageAnalytics()
   const backendAvailable = useBackendAvailability()
@@ -68,8 +68,8 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     void saveAttempt()
   }, 500)
 
-  watch([isRecording, isBusy, correctionBusy], ([recording, busy, correcting]) => {
-    isSafeToUpdate.value = !recording && !busy && !correcting
+  watch([isRecording, isBusy], ([recording, busy]) => {
+    isSafeToUpdate.value = !recording && !busy
   }, { immediate: true })
 
   onScopeDispose(() => {
@@ -138,7 +138,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
   }
 
   function speakSelected() {
-    if (!outputText.value || correctionBusy.value) return
+    if (!outputText.value) return
     speechCommands.speak(outputText.value)
     track('message_spoken', { mode: mode.value })
     void saveAttempt()
