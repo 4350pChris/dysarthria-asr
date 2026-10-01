@@ -17,6 +17,7 @@ type PageHeader = {
 
 const route = useRoute()
 const speechCommands = useSpeechCommands()
+useBackendAvailability()
 const header = computed(() => route.meta.pageHeader as PageHeader)
 const title = computed(() => {
   if (header.value.titleParam) {

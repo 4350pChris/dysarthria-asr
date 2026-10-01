@@ -110,28 +110,50 @@ validation, or 10% test group. New recordings of the same text always use the
 same group. The validation group selects the checkpoint; the test group is for
 the final benchmark only.
 
-Start training with a new run name:
+The default model is `openai/whisper-base`. Use `--model-name` to train another
+Whisper model. Start the remote function in detached mode with a new run name:
 
 ```
-uv run modal run modal_train_whisper_lora.py \
-  --run-name whisper-large-v3-turbo-lora-experiment-01
+uv run modal run --detach modal_train_whisper_lora.py::train \
+  --run-name whisper-base-lora-experiment-01
 
-mkdir -p runs/training/whisper-large-v3-turbo-lora-experiment-01/adapter
+# After training finishes, check the app logs in Modal before downloading.
+mkdir -p runs/training/whisper-base-lora-experiment-01/adapter
 for name in vocab.json tokenizer_config.json tokenizer.json special_tokens_map.json preprocessor_config.json normalizer.json merges.txt generation_config.json added_tokens.json adapter_model.safetensors adapter_config.json; do
   uv run modal volume get dysarthria-asr-training-results \
-    /whisper-large-v3-turbo-lora-experiment-01/adapter/$name \
-    runs/training/whisper-large-v3-turbo-lora-experiment-01/adapter/$name
+    /whisper-base-lora-experiment-01/adapter/$name \
+    runs/training/whisper-base-lora-experiment-01/adapter/$name
 done
 
 uv run python promote_whisper_lora.py \
-  runs/training/whisper-large-v3-turbo-lora-experiment-01 \
-  --output-dir models/deployed/whisper-large-v3-turbo-lora-experiment-01
+  runs/training/whisper-base-lora-experiment-01 \
+  --output-dir models/deployed/whisper-base-lora-experiment-01
 ```
 
 The job uploads private source data to Modal, uses one L4 GPU, and has a
 two-hour limit. Do not reuse a run name.
 
 Set `ASR_MODEL` to the deployed model directory when you run the backend. Use the unchanged base model as the benchmark control.
+
+## Prepare a browser model
+
+After a Whisper LoRA run passes its held-out benchmark, merge it and produce a
+quantized GGML model for `whisper.cpp` WASM. Build local checkouts of
+`ggml-org/whisper.cpp` and `openai/whisper` first. The browser build uses GGML
+model files, not GGUF.
+
+```sh
+uv run python prepare_whisper_cpp_model.py \
+  runs/training/whisper-base-lora-current-v1 \
+  --output-dir models/browser/whisper-base-lora-current-v1-q5_1 \
+  --whisper-cpp-dir /path/to/whisper.cpp \
+  --whisper-source-dir /path/to/whisper \
+  --quantization q5_1
+```
+
+The command writes one quantized `.bin` model and a manifest with its SHA-256,
+size, source revisions, and adapter origin. Benchmark this exact model on the
+target iPhone before publishing it.
 
 ## Train Parakeet on Modal
 

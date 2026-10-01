@@ -60,6 +60,10 @@ def create_app() -> FastAPI:
     app.include_router(labeling.router)
     app.include_router(training.router)
 
+    @app.get("/api/health")
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")

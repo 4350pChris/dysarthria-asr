@@ -1,11 +1,17 @@
 import type { TranscriptionResult } from '~/types/speech'
 import { useDebounceFn } from '@vueuse/core'
+import { enqueueRecording } from '~/utils/recordingUploadQueue'
 
 type SpeechMode = 'text' | 'math' | 'emoji'
 type SelectedEmoji = { name: string, value: string }
 
 export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>) {
   const { track } = useUsageAnalytics()
+  const backendAvailable = useBackendAvailability()
+  const offline = useOfflineTranscription()
+  onMounted(() => {
+    void offline.prepare()
+  })
   const result = ref<TranscriptionResult>()
   const selectedEmoji = ref<SelectedEmoji>()
   const emojiHistory = useLocalStorage<SelectedEmoji[]>('emoji-history', [])
@@ -32,7 +38,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     autoStopOnSilence,
     withAudioLevel: true,
     onStream: (stream) => {
-      if (mode.value === 'text') void startLiveTranscription(stream)
+      if (mode.value === 'text' && backendAvailable.value) void startLiveTranscription(stream)
     },
     onStopping: () => {
       stopLiveTranscription()
@@ -73,7 +79,6 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     selectedEmoji.value = undefined
     freeText.value = ''
     hasSaved.value = false
-    status.value = ''
     status.value = 'Aufnahme läuft...'
     await startAudioRecording()
     track('recording_started', { mode: mode.value })
@@ -84,22 +89,17 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
   }
 
   async function transcribe(blob: Blob) {
-    const form = new FormData()
-    form.append('audio', blob, 'recording.webm')
-
     try {
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: form
-      })
-      if (!response.ok) {
-        const body = await response.json().catch(() => undefined)
-        const message = body && typeof body.detail === 'string'
-          ? body.detail
-          : 'Erkennung fehlgeschlagen.'
-        throw new Error(message)
+      const available = backendAvailable.value
+      if (!available) {
+        await enqueueRecording(blob)
       }
-      const transcription: TranscriptionResult = await response.json()
+      if (!available && mode.value !== 'text') {
+        throw new Error('Mathe- und Emoji-Erkennung benötigen eine Verbindung zum Server.')
+      }
+      const transcription = mode.value === 'text' && !available
+        ? offlineResult(await offline.transcribe(blob))
+        : await transcribeOnline(blob)
       result.value = transcription
       if (mode.value === 'emoji' && transcription.emoji_value && transcription.emoji_name) {
         rememberEmoji({ name: transcription.emoji_name, value: transcription.emoji_value })
@@ -286,7 +286,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
       : mode.value === 'emoji'
         ? emojiName.value
         : outputText.value
-    if (!result.value || !correctedText || hasSaved.value || isSaving.value)
+    if (!result.value?.audio_id || !correctedText || hasSaved.value || isSaving.value)
       return
     isSaving.value = true
     try {
@@ -327,5 +327,33 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     copySelected,
     shareToInstagram,
     shareText
+  }
+}
+
+async function transcribeOnline(blob: Blob): Promise<TranscriptionResult> {
+  const form = new FormData()
+  form.append('audio', blob, 'recording.webm')
+  const response = await fetch('/api/transcribe', { method: 'POST', body: form })
+  if (!response.ok) {
+    const body = await response.json().catch(() => undefined)
+    const message = body && typeof body.detail === 'string'
+      ? body.detail
+      : 'Erkennung fehlgeschlagen.'
+    throw new Error(message)
+  }
+  return response.json()
+}
+
+function offlineResult(rawTranscript: string): TranscriptionResult {
+  return {
+    audio_id: '',
+    audio_path: '',
+    raw_transcript: rawTranscript,
+    emoji_text: rawTranscript,
+    emoji_value: '',
+    emoji_name: '',
+    math_corrected_text: '',
+    math_number_text: '',
+    math_text: ''
   }
 }

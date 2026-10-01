@@ -1,4 +1,8 @@
 const isVitest = process.env.VITEST === 'true'
+const isolationHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp'
+}
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -18,6 +22,21 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css'],
+
+  routeRules: {
+    '/**': {
+      headers: isolationHeaders
+    }
+  },
+
+  vite: {
+    server: {
+      headers: isolationHeaders
+    },
+    worker: {
+      format: 'es'
+    }
+  },
 
   ...(!isVitest
     ? { pwa: {
@@ -57,9 +76,11 @@ export default defineNuxtConfig({
     : {}),
 
   runtimeConfig: {
-    apiBase: process.env.NUXT_API_BASE || 'http://127.0.0.1:8000',
+    hfToken: '',
+    offlineWhisperModelUrl: '',
     public: {
-      apiBase: process.env.NUXT_API_BASE || 'http://127.0.0.1:8000'
+      apiBase: 'http://127.0.0.1:8000',
+      offlineWhisperModelVersion: ''
     }
   },
 
@@ -77,7 +98,7 @@ export default defineNuxtConfig({
   umami: {
     // Tracking is on by default. Umami still needs a Website ID to send data.
     enabled: true,
-    host: process.env.NUXT_UMAMI_HOST || 'http://127.0.0.1:3001',
+    host: 'http://127.0.0.1:3001',
     autoTrack: true,
     ignoreLocalhost: false,
     urlOptions: {
