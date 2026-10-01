@@ -2,6 +2,7 @@
 defineProps<{
   disabled?: boolean
   text: string
+  audioId?: string
 }>()
 
 defineEmits<{
@@ -9,21 +10,21 @@ defineEmits<{
   shareInstagram: []
   shareText: []
   updateText: [text: string]
+  reviewActive: [active: boolean]
+  reviewBusy: [busy: boolean]
 }>()
+const correctionBusy = ref(false)
 </script>
 
 <template>
   <section class="space-y-4">
-    <UTextarea
-      :model-value="text"
-      aria-label="Erkannter Freitext"
-      autoresize
-      class="w-full"
-      :readonly="disabled"
-      :rows="7"
-      size="xl"
-      :ui="{ base: 'min-h-56 rounded-2xl p-5 text-xl font-semibold leading-relaxed' }"
-      @update:model-value="$emit('updateText', $event)"
+    <TranscriptReview
+      :text="text"
+      :audio-id="audioId"
+      :disabled="disabled"
+      @update-text="$emit('updateText', $event)"
+      @active="$emit('reviewActive', $event)"
+      @busy="correctionBusy = $event; $emit('reviewBusy', $event)"
     />
 
     <UButton
@@ -34,12 +35,12 @@ defineEmits<{
       label="Kopieren"
       size="xl"
       type="button"
-      :disabled="disabled || !text"
+      :disabled="disabled || correctionBusy || !text"
       @click="$emit('copy')"
     />
 
     <ResultActions
-      :disabled="disabled || !text"
+      :disabled="disabled || correctionBusy || !text"
       @share-instagram="$emit('shareInstagram')"
       @share-text="$emit('shareText')"
     />

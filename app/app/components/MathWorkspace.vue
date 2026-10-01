@@ -4,6 +4,7 @@ const props = defineProps<{
 }>()
 
 const speech = props.speech
+const speechCommands = useSpeechCommands()
 const expression = ref('')
 const result = computed(() => {
   try {
@@ -22,10 +23,7 @@ watch(() => speech.result.value?.math_text, (value) => {
 
 function speak() {
   if (!expression.value) return
-  speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(expression.value)
-  utterance.lang = 'de-DE'
-  speechSynthesis.speak(utterance)
+  speechCommands.speak(expression.value)
 }
 
 async function copy() {

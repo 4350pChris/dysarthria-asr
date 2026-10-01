@@ -5,7 +5,8 @@ import { enqueueRecording } from '~/utils/recordingUploadQueue'
 type SpeechMode = 'text' | 'math' | 'emoji'
 type SelectedEmoji = { name: string, value: string }
 
-export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>) {
+export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>, correctionBusy = ref(false)) {
+  const speechCommands = useSpeechCommands()
   const { track } = useUsageAnalytics()
   const backendAvailable = useBackendAvailability()
   const offline = useOfflineTranscription()
@@ -62,12 +63,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
           ? emojiText.value
           : undefined
   )
+  const labelText = computed(() => mode.value === 'emoji' ? emojiName.value : outputText.value)
   const saveFreeText = useDebounceFn(() => {
     void saveAttempt()
   }, 500)
 
-  watch([isRecording, isBusy], ([recording, busy]) => {
-    isSafeToUpdate.value = !recording && !busy
+  watch([isRecording, isBusy, correctionBusy], ([recording, busy, correcting]) => {
+    isSafeToUpdate.value = !recording && !busy && !correcting
   }, { immediate: true })
 
   onScopeDispose(() => {
@@ -136,11 +138,8 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
   }
 
   function speakSelected() {
-    if (!outputText.value) return
-    speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(outputText.value)
-    utterance.lang = 'de-DE'
-    speechSynthesis.speak(utterance)
+    if (!outputText.value || correctionBusy.value) return
+    speechCommands.speak(outputText.value)
     track('message_spoken', { mode: mode.value })
     void saveAttempt()
   }
@@ -281,16 +280,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
   }
 
   async function saveAttempt() {
-    const correctedText = mode.value === 'text'
-      ? freeText.value
-      : mode.value === 'emoji'
-        ? emojiName.value
-        : outputText.value
+    const correctedText = labelText.value
     if (!result.value?.audio_id || !correctedText || hasSaved.value || isSaving.value)
       return
+    const audioId = result.value.audio_id
     isSaving.value = true
     try {
-      await fetch(`/api/labeling/items/${result.value.audio_id}`, {
+      const response = await fetch(`/api/labeling/items/${audioId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           notes: mode.value === 'text' ? 'Edited free text.' : 'Provisional app selection.',
@@ -300,9 +296,14 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
         }),
         headers: { 'Content-Type': 'application/json' }
       })
-      hasSaved.value = true
+      if (!response.ok) throw new Error('Speichern fehlgeschlagen.')
+      hasSaved.value = result.value?.audio_id === audioId && labelText.value === correctedText
+      if (hasSaved.value && status.value.startsWith('Änderung noch nicht gespeichert.')) status.value = 'Änderung gespeichert.'
+    } catch {
+      status.value = 'Änderung noch nicht gespeichert. Kopieren oder Teilen versucht es erneut.'
     } finally {
       isSaving.value = false
+      if (result.value?.audio_id === audioId && labelText.value !== correctedText) saveFreeText()
     }
   }
 

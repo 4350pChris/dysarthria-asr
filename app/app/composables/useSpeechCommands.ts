@@ -9,6 +9,7 @@ type SpeechCommand = {
   label: string
   phrases: string[]
   handler: () => void | Promise<void>
+  enabled?: () => boolean
 }
 
 type SpeechCommands = {
@@ -18,6 +19,8 @@ type SpeechCommands = {
   status: Ref<string>
   start: () => void
   stop: () => void
+  pause: () => () => void
+  speak: (text: string) => void
   register: (command: SpeechCommand) => () => void
 }
 
@@ -62,6 +65,44 @@ export function createSpeechCommands(): SpeechCommands {
   const isListening = ref(false)
   const status = ref('')
   const recognition = shallowRef<SpeechRecognition>()
+  let running = false
+  let pauses = 0
+  let finishSpeech: (() => void) | undefined
+
+  function listen() {
+    if (!isListening.value || pauses || running) return
+    recognition.value?.start()
+    running = true
+  }
+
+  function pause() {
+    pauses += 1
+    recognition.value?.stop()
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      pauses -= 1
+      listen()
+    }
+  }
+
+  function speak(text: string) {
+    finishSpeech?.()
+    speechSynthesis.cancel()
+    if (!text) return
+    const resume = pause()
+    const utterance = new SpeechSynthesisUtterance(text)
+    const finish = () => {
+      resume()
+      if (finishSpeech === finish) finishSpeech = undefined
+    }
+    finishSpeech = finish
+    utterance.lang = 'de-DE'
+    utterance.onend = finish
+    utterance.onerror = finish
+    speechSynthesis.speak(utterance)
+  }
 
   function register(command: SpeechCommand) {
     commands.value = [...commands.value, command]
@@ -73,6 +114,7 @@ export function createSpeechCommands(): SpeechCommands {
   function matchCommand(text: string) {
     let best: { command: SpeechCommand, score: number } | undefined
     for (const command of commands.value) {
+      if (command.enabled && !command.enabled()) continue
       for (const phrase of command.phrases) {
         const score = similarity(text, phrase)
         if (!best || score >= best.score) best = { command, score }
@@ -83,13 +125,14 @@ export function createSpeechCommands(): SpeechCommands {
 
   function start() {
     if (isListening.value) return
-    recognition.value = createSpeechRecognition(true)
+    recognition.value ||= createSpeechRecognition(true)
     if (!recognition.value) {
       status.value = 'Sprachsteuerung wird von diesem Browser nicht unterstützt.'
       return
     }
 
     recognition.value.onresult = (event) => {
+      if (!isListening.value || pauses || speechSynthesis.speaking) return
       const result = event.results[event.results.length - 1]
       const command = result ? matchCommand(result[0]?.transcript || '') : undefined
       if (!command) {
@@ -104,10 +147,11 @@ export function createSpeechCommands(): SpeechCommands {
       status.value = `Fehler: ${event.error}`
     }
     recognition.value.onend = () => {
-      if (isListening.value) recognition.value?.start()
+      running = false
+      listen()
     }
-    recognition.value.start()
     isListening.value = true
+    listen()
     status.value = 'Sprachsteuerung aktiv.'
   }
 
@@ -120,9 +164,13 @@ export function createSpeechCommands(): SpeechCommands {
   onMounted(() => {
     isSupported.value = supportsSpeechRecognition()
   })
-  onBeforeUnmount(stop)
+  onBeforeUnmount(() => {
+    stop()
+    finishSpeech?.()
+    speechSynthesis.cancel()
+  })
 
-  return { commands, isListening, isSupported, status, start, stop, register }
+  return { commands, isListening, isSupported, status, start, stop, pause, speak, register }
 }
 
 export function useSpeechCommands() {

@@ -66,12 +66,29 @@ cd app
 NUXT_PUBLIC_API_BASE=https://example.com pnpm dev
 ```
 
+### Local text review
+
+Start the text review model from the project root. Docker runs Ollama and downloads
+the model. You do not need to install Ollama on the host:
+
+```sh
+docker compose up -d ollama-model
+docker compose logs -f ollama-model
+```
+
+Wait for the model task to exit with code 0. It downloads and loads the model.
+Press Ctrl+C to stop the log display.
+The API uses the local model service with its default settings.
+The model files stay in a Docker volume after a restart.
+See [the backend README](backend/README.md#local-text-review) for settings
+and checks. The default CPU setup can be too slow for text review.
+
 ### Local usage analytics
 
 Start the local Umami analytics dashboard from the project root:
 
 ```sh
-docker compose up -d
+docker compose up -d umami
 ```
 
 Open <http://127.0.0.1:3001> and sign in with `admin` / `umami`. Change the
@@ -94,7 +111,7 @@ speak, copy, and share actions; voice commands; reading-training recordings;
 and WhatsApp import completion. Event metadata is limited to fixed labels such
 as mode, share channel, and result state.
 
-To stop the analytics services, run `docker compose down`. The named Docker
+To stop the analytics services, run `docker compose stop umami umami-db`. The named Docker
 volume keeps analytics data until you remove it explicitly.
 
 ## Use the app

@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.error import URLError
 
 import numpy as np
 from fastapi import (
@@ -26,6 +28,7 @@ from ..labeling_models import AudioClipCreate, TranscriptionLabelChanges
 from ..math_normalizer import normalize_german_math
 from ..models import AsrSource, AudioClip, AudioSource, TranscriptionLabel
 from ..paths import AUDIO_DIR, ROOT
+from ..transcript_review import ReviewRequest, ReviewResult, review_transcript
 
 router = APIRouter(prefix="/api")
 
@@ -33,6 +36,35 @@ LIVE_WINDOW_SECONDS = 5
 LIVE_STABLE_SECONDS = 1
 LIVE_UPDATE_SECONDS = 1
 # ponytail: the last second can change; the final pass is authoritative.
+
+
+@router.post("/transcript/review", response_model=ReviewResult)
+def review_text(body: ReviewRequest) -> ReviewResult:
+    if not body.text.strip():
+        raise HTTPException(status_code=422, detail="Der Text darf nicht leer sein.")
+    try:
+        return review_transcript(body.text)
+    except (URLError, OSError) as error:
+        raise HTTPException(status_code=503, detail="Textprüfung nicht verfügbar. Du kannst den Text selbst korrigieren.") from error
+    except (ValueError, KeyError, IndexError, TypeError) as error:
+        raise HTTPException(status_code=502, detail="Die Textprüfung hat keine gültige Antwort geliefert.") from error
+
+
+@router.post("/transcribe/replacement")
+async def transcribe_replacement(audio: UploadFile = File(...)) -> dict[str, str]:
+    contents = await audio.read(10 * 1024 * 1024 + 1)
+    if not contents:
+        raise HTTPException(status_code=400, detail="Upload a non-empty audio file.")
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Die Aufnahme ist zu groß.")
+    # Correction audio must not become a training pair for the original recording.
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / "replacement.webm"
+        path.write_bytes(contents)
+        text = (await run_in_threadpool(transcribe_german, path)).strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Keine Sprache erkannt. Der Text bleibt unverändert.")
+    return {"text": replace_spoken_emojis(text)}
 
 
 @router.get("/emojis/recent")

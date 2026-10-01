@@ -9,7 +9,9 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
   { label: 'Emoji', value: 'emoji' }
 ]
 const autoStopOnSilence = useLocalStorage('auto-stop-on-silence', true)
-const speech = useSpeechSession(mode, autoStopOnSilence)
+const reviewActive = ref(false)
+const reviewBusy = ref(false)
+const speech = useSpeechSession(mode, autoStopOnSilence, reviewBusy)
 const speechCommands = useSpeechCommands()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
 const recentEmojis = computed(() =>
@@ -22,27 +24,30 @@ watch(mode, async (value) => {
   if (value !== 'emoji' || recognizedEmojis.value.length) return
   recognizedEmojis.value = await $fetch<Array<{ name: string, value: string }>>('/api/emojis/recent').catch(() => [])
 }, { immediate: true })
-useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los'], handler: startRecording })
-useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], handler: speech.stopRecording })
-useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], handler: speech.speakSelected })
-useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], handler: speech.copySelected })
-useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], handler: speech.shareText })
-useSpeechCommand({ id: 'share-instagram', label: 'Instagram', phrases: ['instagram', 'insta', 'bild teilen'], handler: speech.shareToInstagram })
-useSpeechCommand({ id: 'text-mode', label: 'Textmodus', phrases: ['text', 'sätze', 'satzmodus', 'freitext', 'freier text', 'freitextmodus'], handler: () => setMode('text') })
-useSpeechCommand({ id: 'math-mode', label: 'Mathemodus', phrases: ['mathe', 'mathemodus'], handler: () => setMode('math') })
-useSpeechCommand({ id: 'emoji-mode', label: 'Emojimodus', phrases: ['emoji', 'emojimodus'], handler: () => setMode('emoji') })
+useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los'], enabled: () => !reviewActive.value, handler: startRecording })
+useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], enabled: () => !reviewActive.value, handler: speech.stopRecording })
+useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], enabled: () => !reviewActive.value, handler: speech.speakSelected })
+useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], enabled: () => !reviewActive.value, handler: speech.copySelected })
+useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], enabled: () => !reviewActive.value, handler: speech.shareText })
+useSpeechCommand({ id: 'share-instagram', label: 'Instagram', phrases: ['instagram', 'insta', 'bild teilen'], enabled: () => !reviewActive.value, handler: speech.shareToInstagram })
+useSpeechCommand({ id: 'text-mode', label: 'Textmodus', phrases: ['text', 'sätze', 'satzmodus', 'freitext', 'freier text', 'freitextmodus'], enabled: () => !reviewActive.value, handler: () => setMode('text') })
+useSpeechCommand({ id: 'math-mode', label: 'Mathemodus', phrases: ['mathe', 'mathemodus'], enabled: () => !reviewActive.value, handler: () => setMode('math') })
+useSpeechCommand({ id: 'emoji-mode', label: 'Emojimodus', phrases: ['emoji', 'emojimodus'], enabled: () => !reviewActive.value, handler: () => setMode('emoji') })
 
 function setMode(nextMode: SpeechMode) {
+  if (reviewActive.value || speech.isBusy.value || speech.isRecording.value) return
   mode.value = nextMode
   speech.status.value = `${modeOptions.find(option => option.value === nextMode)?.label}modus.`
 }
 
 function startRecording() {
-  if (speech.isRecording.value || speech.isBusy.value) return
-  const shouldResumeVoiceCommands = speechCommands.isListening.value
-  speechCommands.stop()
-  void speech.startRecording().finally(() => {
-    if (shouldResumeVoiceCommands) speechCommands.start()
+  if (speech.isRecording.value || speech.isBusy.value || reviewActive.value) return
+  speechCommands.speak('')
+  const resume = speechCommands.pause()
+  void speech.startRecording().catch(() => {
+    speech.status.value = 'Aufnahme nicht möglich.'
+  }).finally(() => {
+    resume()
   })
 }
 </script>
@@ -66,7 +71,7 @@ function startRecording() {
 
     <RecordControl
       :is-recording="speech.isRecording.value"
-      :is-busy="speech.isBusy.value"
+      :is-busy="speech.isBusy.value || reviewActive"
       :start-label="mode === 'text' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
       :start-guidance="mode === 'text' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
       @start="startRecording"
@@ -92,6 +97,7 @@ function startRecording() {
           size="xl"
           type="button"
           :variant="mode === option.value ? 'solid' : 'outline'"
+          :disabled="reviewActive || speech.isBusy.value || speech.isRecording.value"
           @click="setMode(option.value)"
         >
           {{ option.label }}
@@ -111,10 +117,13 @@ function startRecording() {
       v-if="mode === 'text' && speech.freeText.value"
       :disabled="speech.isRecording.value || speech.isBusy.value"
       :text="speech.freeText.value"
+      :audio-id="speech.result.value?.audio_id"
       @copy="speech.copySelected"
       @share-instagram="speech.shareToInstagram"
       @share-text="speech.shareText"
       @update-text="speech.setFreeText"
+      @review-active="reviewActive = $event"
+      @review-busy="reviewBusy = $event"
     />
 
     <MathWorkspace

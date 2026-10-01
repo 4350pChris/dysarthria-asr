@@ -8,15 +8,12 @@ const cleanupSpeechCommands = speechCommands.register({
   label: 'Hilfe',
   phrases: ['hilfe', 'befehle'],
   handler: () => {
-    speechSynthesis.cancel()
     const labels = [...new Map(
       speechCommands.commands.value
-        .filter(command => command.id !== 'help')
+        .filter(command => command.id !== 'help' && (!command.enabled || command.enabled()))
         .map(command => [command.id, command.label.toLocaleLowerCase('de-DE')])
     ).values()]
-    const utterance = new SpeechSynthesisUtterance(`Du kannst sagen: ${labels.join(', ')}.`)
-    utterance.lang = 'de-DE'
-    speechSynthesis.speak(utterance)
+    speechCommands.speak(`Du kannst sagen: ${labels.join(', ')}.`)
   }
 })
 
