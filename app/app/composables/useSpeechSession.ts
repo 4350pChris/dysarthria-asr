@@ -7,7 +7,7 @@ type SelectedEmoji = { name: string, value: string }
 
 export function useSpeechSession(mode: Ref<SpeechMode>) {
   const { track } = useUsageAnalytics()
-  const isOnline = useOnline()
+  const backendAvailable = useBackendAvailability()
   const offline = useOfflineTranscription()
   onMounted(() => {
     void offline.prepare()
@@ -37,7 +37,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     onComplete: transcribe,
     withAudioLevel: true,
     onStream: (stream) => {
-      if (mode.value === 'text') void startLiveTranscription(stream)
+      if (mode.value === 'text' && backendAvailable.value) void startLiveTranscription(stream)
     },
     onStopping: () => {
       stopLiveTranscription()
@@ -78,7 +78,6 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
     selectedEmoji.value = undefined
     freeText.value = ''
     hasSaved.value = false
-    status.value = ''
     status.value = 'Aufnahme läuft...'
     await startAudioRecording()
     track('recording_started', { mode: mode.value })
@@ -90,8 +89,14 @@ export function useSpeechSession(mode: Ref<SpeechMode>) {
 
   async function transcribe(blob: Blob) {
     try {
-      if (!isOnline.value) await enqueueRecording(blob)
-      const transcription = mode.value === 'text' && !isOnline.value && offline.isReady.value
+      const available = backendAvailable.value
+      if (!available) {
+        await enqueueRecording(blob)
+      }
+      if (!available && mode.value !== 'text') {
+        throw new Error('Mathe- und Emoji-Erkennung benötigen eine Verbindung zum Server.')
+      }
+      const transcription = mode.value === 'text' && !available
         ? offlineResult(await offline.transcribe(blob))
         : await transcribeOnline(blob)
       result.value = transcription

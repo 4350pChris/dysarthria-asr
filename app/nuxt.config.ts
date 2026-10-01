@@ -1,4 +1,8 @@
 const isVitest = process.env.VITEST === 'true'
+const isolationHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp'
+}
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -19,7 +23,16 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  routeRules: {
+    '/**': {
+      headers: isolationHeaders
+    }
+  },
+
   vite: {
+    server: {
+      headers: isolationHeaders
+    },
     worker: {
       format: 'es'
     }

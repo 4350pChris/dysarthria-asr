@@ -13,7 +13,7 @@ export async function enqueueRecording(audio: Blob) {
 }
 
 export async function uploadPendingRecordings() {
-  if (isUploading || typeof navigator === 'undefined' || !navigator.onLine) return
+  if (isUploading || typeof window === 'undefined') return
 
   isUploading = true
   try {
@@ -24,7 +24,7 @@ export async function uploadPendingRecordings() {
 
     for (const recording of recordings) {
       const id = recording.id
-      if (!navigator.onLine || id === undefined) break
+      if (id === undefined) continue
 
       const form = new FormData()
       form.append('audio', recording.audio, 'recording.webm')
@@ -34,7 +34,7 @@ export async function uploadPendingRecordings() {
           method: 'POST',
           body: form
         })
-        if (!response.ok) continue
+        if (!response.ok) break
         await withStore('readwrite', store => store.delete(id))
       } catch {
         break

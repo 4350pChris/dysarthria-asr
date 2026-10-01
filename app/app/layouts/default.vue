@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { uploadPendingRecordings } from '~/utils/recordingUploadQueue'
-
 type HeaderAction = {
   to: string
   label: string
@@ -19,6 +17,7 @@ type PageHeader = {
 
 const route = useRoute()
 const speechCommands = useSpeechCommands()
+useBackendAvailability()
 const header = computed(() => route.meta.pageHeader as PageHeader)
 const title = computed(() => {
   if (header.value.titleParam) {
@@ -40,15 +39,6 @@ useSpeechCommand({
     }
     await navigateTo(header.value.backTo || '/')
   }
-})
-
-onMounted(() => {
-  window.addEventListener('online', uploadPendingRecordings)
-  void uploadPendingRecordings()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('online', uploadPendingRecordings)
 })
 </script>
 

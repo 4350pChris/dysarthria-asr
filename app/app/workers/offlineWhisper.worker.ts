@@ -4,20 +4,12 @@ type WorkerMessage
   = | { type: 'prepare', modelUrl: string }
     | { type: 'transcribe', id: number, audio: ArrayBuffer }
 
-type WhisperRuntime = {
-  instance: number | null
-  wasmModule: {
-    full_default: (
-      instance: number,
-      audio: Float32Array,
-      language: string,
-      threads: number,
-      translate: boolean
-    ) => string
-  } | null
-}
-
 let whisper: WhisperWasmService | undefined
+const transcriptionOptions = {
+  language: 'de',
+  threads: Math.min(4, navigator.hardwareConcurrency || 1),
+  translate: false
+}
 
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   if (event.data.type === 'prepare') void prepare(event.data.modelUrl)
@@ -26,13 +18,12 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
 
 async function prepare(modelUrl: string) {
   try {
-    postMessage({ type: 'status', status: 'loading' })
     const models = new ModelManager({ logLevel: 3 })
-    const model = await models.loadModelByUrl(modelUrl, (progress) => {
-      postMessage({ type: 'progress', progress })
-    })
+    const model = await models.loadModelByUrl(modelUrl)
     whisper = new WhisperWasmService({ logLevel: 3 })
     await whisper.initModel(model)
+    // Start the WASM thread while online so recording needs no worker download.
+    await whisper.transcribe(new Float32Array(16_000), undefined, transcriptionOptions)
     postMessage({ type: 'ready' })
   } catch (error) {
     postMessage({ type: 'error', message: messageFor(error) })
@@ -46,15 +37,12 @@ async function transcribe({ id, audio }: Extract<WorkerMessage, { type: 'transcr
   }
 
   try {
-    const runtime = whisper as unknown as WhisperRuntime
-    if (!runtime.wasmModule || runtime.instance === null) throw new Error('Offline model is not ready.')
-    const text = runtime.wasmModule.full_default(
-      runtime.instance,
-      new Float32Array(audio),
-      'de',
-      1,
-      false
-    ).trim()
+    const audioSamples = new Float32Array(audio)
+    if (!audioSamples.length || audioSamples.some(sample => !Number.isFinite(sample))) {
+      throw new Error('Offline audio data is empty or invalid.')
+    }
+    const { segments } = await whisper.transcribe(audioSamples, undefined, transcriptionOptions)
+    const text = segments.map(segment => segment.text).join(' ').trim()
     postMessage({ type: 'result', id, text })
   } catch (error) {
     postMessage({ type: 'error', id, message: messageFor(error) })

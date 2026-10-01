@@ -97,7 +97,6 @@ function startRecording() {
     </fieldset>
 
     <p
-      v-if="speech.isRecording.value"
       aria-live="polite"
       class="min-h-7 text-center text-lg font-semibold text-toned"
       role="status"
@@ -105,7 +104,7 @@ function startRecording() {
       {{ speech.status.value }}
     </p>
 
-    <LazyFreeTextResult
+    <FreeTextResult
       v-if="mode === 'text' && speech.freeText.value"
       :disabled="speech.isRecording.value || speech.isBusy.value"
       :text="speech.freeText.value"

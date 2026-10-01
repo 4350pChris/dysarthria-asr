@@ -15,36 +15,38 @@ export function useOfflineTranscription() {
   const modelVersion = useRuntimeConfig().public.offlineWhisperModelVersion
   const modelUrl = modelVersion ? `/offline-whisper-model/${modelVersion}` : ''
   const state = useState<OfflineState>('offline-transcription-state', () => 'idle')
-  const progress = useState('offline-transcription-progress', () => 0)
   const error = useState('offline-transcription-error', () => '')
-  const isSupported = ref(false)
-  const isConfigured = computed(() => Boolean(modelUrl))
-  const isReady = computed(() => state.value === 'ready')
-
-  onMounted(() => {
-    isSupported.value = typeof Worker !== 'undefined' && typeof AudioContext !== 'undefined'
-  })
 
   async function prepare() {
     if (state.value === 'loading' || state.value === 'ready') return
-    if (!isConfigured.value) {
+    if (!modelUrl) {
       error.value = 'Für die Offline-Erkennung ist noch kein angepasstes Modell veröffentlicht.'
       state.value = 'failed'
       return
     }
-    if (!isSupported.value) {
+    if (typeof Worker === 'undefined' || typeof AudioContext === 'undefined') {
       error.value = 'Dieses Gerät unterstützt die Offline-Erkennung nicht.'
       state.value = 'failed'
       return
     }
     state.value = 'loading'
-    progress.value = 0
     error.value = ''
-    getWorker(state, progress, error).postMessage({ type: 'prepare', modelUrl })
+    getWorker(state, error).postMessage({ type: 'prepare', modelUrl })
   }
 
   async function transcribe(recording: Blob) {
-    if (!isReady.value) throw new Error('Offline-Erkennung ist nicht bereit.')
+    if (state.value === 'loading') {
+      await new Promise<void>((resolve) => {
+        const stop = watch(state, (value) => {
+          if (value === 'loading') return
+          stop()
+          resolve()
+        })
+      })
+    }
+    if (state.value !== 'ready') {
+      throw new Error(error.value || 'Offline-Erkennung ist nicht bereit.')
+    }
     const file = new File([recording], 'recording.webm', { type: recording.type || 'audio/webm' })
     const { audioData } = await convertFromFile(file, {
       normalize: true,
@@ -53,7 +55,7 @@ export function useOfflineTranscription() {
     })
     const id = nextRequestId++
     const response = new Promise<string>((resolve, reject) => pending.set(id, { resolve, reject }))
-    getWorker(state, progress, error).postMessage({
+    getWorker(state, error).postMessage({
       type: 'transcribe',
       id,
       audio: audioData.buffer
@@ -61,12 +63,11 @@ export function useOfflineTranscription() {
     return response
   }
 
-  return { error, isConfigured, isReady, isSupported, prepare, progress, state, transcribe }
+  return { error, prepare, state, transcribe }
 }
 
 function getWorker(
   state: Ref<OfflineState>,
-  progress: Ref<number>,
   error: Ref<string>
 ) {
   if (worker) return worker
@@ -74,15 +75,12 @@ function getWorker(
   worker.onmessage = (event: MessageEvent<{
     id?: number
     message?: string
-    progress?: number
     text?: string
-    type: 'error' | 'progress' | 'ready' | 'result' | 'status'
+    type: 'error' | 'ready' | 'result'
   }>) => {
     const message = event.data
-    if (message.type === 'progress') progress.value = message.progress ?? 0
     if (message.type === 'ready') {
       state.value = 'ready'
-      progress.value = 100
     }
     if (message.type === 'result' && message.id !== undefined) {
       pending.get(message.id)?.resolve(message.text ?? '')
@@ -94,13 +92,19 @@ function getWorker(
         pending.get(message.id)?.reject(new Error(error.value))
         pending.delete(message.id)
       } else {
-        state.value = 'failed'
+        fail(message.message ?? 'Offline-Erkennung fehlgeschlagen.')
       }
     }
   }
-  worker.onerror = () => {
-    error.value = 'Offline-Erkennung konnte nicht gestartet werden.'
+  function fail(message: string) {
+    error.value = message
     state.value = 'failed'
+    for (const request of pending.values()) request.reject(new Error(message))
+    pending.clear()
+    worker?.terminate()
+    worker = undefined
   }
+  worker.onerror = event => fail(event.message || 'Offline-Erkennung konnte nicht gestartet werden.')
+  worker.onmessageerror = () => fail('Offline-Erkennung konnte die Audiodaten nicht verarbeiten.')
   return worker
 }
