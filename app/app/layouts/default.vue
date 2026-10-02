@@ -66,10 +66,46 @@ useSpeechCommand({
         <LogoLockup :mark-size="40" />
       </template>
       <template #right>
+        <UButton
+          to="/labeling"
+          block
+          color="neutral"
+          variant="ghost"
+          class="min-h-14 whitespace-normal text-center"
+          :aria-current="route.path === '/labeling' ? 'page' : undefined"
+        >
+          Labeling
+        </UButton>
+
         <UColorModeButton size="xl" />
       </template>
     </UHeader>
 
+    <nav
+      aria-label="Hauptnavigation"
+      class="mx-auto grid max-w-3xl grid-cols-2 gap-3 px-4 pt-4"
+    >
+      <UButton
+        to="/"
+        block
+        color="neutral"
+        variant="soft"
+        class="min-h-14"
+        :aria-current="route.path === '/' ? 'page' : undefined"
+      >
+        Sprechen
+      </UButton>
+      <UButton
+        to="/training"
+        block
+        color="neutral"
+        variant="soft"
+        class="min-h-14"
+        :aria-current="route.path === '/training' ? 'page' : undefined"
+      >
+        Lesetraining
+      </UButton>
+    </nav>
     <section class="px-4 pt-4">
       <UContainer class="max-w-3xl space-y-4 pb-5">
         <div>

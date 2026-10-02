@@ -10,6 +10,7 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
 ]
 const autoStopOnSilence = useLocalStorage('auto-stop-on-silence', true)
 const reviewActive = ref(false)
+const resultPanel = ref<HTMLElement>()
 const speech = useSpeechSession(mode, autoStopOnSilence)
 const speechCommands = useSpeechCommands()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
@@ -19,6 +20,12 @@ const recentEmojis = computed(() =>
     .slice(0, 8)
 )
 
+watch(speech.isBusy, async (busy, wasBusy) => {
+  if (busy || !wasBusy || mode.value !== 'text' || !speech.result.value || !speech.freeText.value) return
+  await nextTick()
+  resultPanel.value?.scrollIntoView({ block: 'start', behavior: 'instant' })
+})
+
 watch(mode, async (value) => {
   if (value !== 'emoji' || recognizedEmojis.value.length) return
   recognizedEmojis.value = await $fetch<Array<{ name: string, value: string }>>('/api/emojis/recent').catch(() => [])
@@ -27,7 +34,7 @@ useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'auf
 useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], enabled: () => !reviewActive.value, handler: speech.stopRecording })
 useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], enabled: () => !reviewActive.value, handler: speech.speakSelected })
 useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], enabled: () => !reviewActive.value, handler: speech.copySelected })
-useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken'], enabled: () => !reviewActive.value, handler: speech.shareText })
+useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken', 'text teilen'], enabled: () => !reviewActive.value, handler: speech.shareText })
 useSpeechCommand({ id: 'share-instagram', label: 'Instagram', phrases: ['instagram', 'insta', 'bild teilen'], enabled: () => !reviewActive.value, handler: speech.shareToInstagram })
 useSpeechCommand({ id: 'text-mode', label: 'Textmodus', phrases: ['text', 'sätze', 'satzmodus', 'freitext', 'freier text', 'freitextmodus'], enabled: () => !reviewActive.value, handler: () => setMode('text') })
 useSpeechCommand({ id: 'math-mode', label: 'Mathemodus', phrases: ['mathe', 'mathemodus'], enabled: () => !reviewActive.value, handler: () => setMode('math') })
@@ -56,6 +63,15 @@ function startRecording() {
     class="flex flex-1 flex-col justify-start gap-5"
     @submit.prevent="speech.speakSelected"
   >
+    <RecordControl
+      :is-recording="speech.isRecording.value"
+      :is-busy="speech.isBusy.value || reviewActive"
+      :start-label="mode === 'text' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
+      :start-guidance="mode === 'text' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
+      @start="startRecording"
+      @stop="speech.stopRecording"
+    />
+
     <ClientOnly>
       <SpeechCommandControl
         :is-listening="speechCommands.isListening.value"
@@ -67,15 +83,6 @@ function startRecording() {
     </ClientOnly>
 
     <SilenceStopSetting v-model="autoStopOnSilence" />
-
-    <RecordControl
-      :is-recording="speech.isRecording.value"
-      :is-busy="speech.isBusy.value || reviewActive"
-      :start-label="mode === 'text' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
-      :start-guidance="mode === 'text' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
-      @start="startRecording"
-      @stop="speech.stopRecording"
-    />
 
     <AudioLevelMeter
       v-if="speech.isRecording.value"
@@ -112,17 +119,23 @@ function startRecording() {
       {{ speech.status.value }}
     </p>
 
-    <FreeTextResult
+    <div
       v-if="mode === 'text' && speech.freeText.value"
-      :disabled="speech.isRecording.value || speech.isBusy.value"
-      :text="speech.freeText.value"
-      :audio-id="speech.result.value?.audio_id"
-      @copy="speech.copySelected"
-      @share-instagram="speech.shareToInstagram"
-      @share-text="speech.shareText"
-      @update-text="speech.setFreeText"
-      @review-active="reviewActive = $event"
-    />
+      ref="resultPanel"
+      class="scroll-mt-20"
+    >
+      <FreeTextResult
+        :disabled="speech.isRecording.value || speech.isBusy.value"
+        :text="speech.freeText.value"
+        :audio-id="speech.result.value?.audio_id"
+        @speak="speech.speakSelected"
+        @copy="speech.copySelected"
+        @share-instagram="speech.shareToInstagram"
+        @share-text="speech.shareText"
+        @update-text="speech.setFreeText"
+        @review-active="reviewActive = $event"
+      />
+    </div>
 
     <MathWorkspace
       v-if="mode === 'math'"
@@ -141,27 +154,5 @@ function startRecording() {
       :emoji-text="speech.emojiText.value"
       @copy="speech.copySelected"
     />
-
-    <UButton
-      block
-      color="primary"
-      icon="i-lucide-book-open-check"
-      size="xl"
-      to="/training"
-      variant="soft"
-    >
-      Lesetraining aufnehmen
-    </UButton>
-
-    <UButton
-      block
-      color="neutral"
-      icon="i-lucide-list-checks"
-      size="xl"
-      to="/labeling"
-      variant="subtle"
-    >
-      Aufnahmen prüfen
-    </UButton>
   </form>
 </template>

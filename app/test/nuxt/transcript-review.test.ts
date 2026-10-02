@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import TranscriptReview from '~/components/TranscriptReview.vue'
+import FreeTextResult from '~/components/FreeTextResult.vue'
 
 type Command = { id: string, enabled: () => boolean, handler: () => void | Promise<void> }
 const mocks = vi.hoisted(() => ({
@@ -44,7 +45,7 @@ it('marks the exact phrase, applies only on approval, shifts later marks, and un
   expect(view.emitted('updateText')).toBeUndefined()
   expect(command('accept-correction').enabled()).toBe(false)
   expect(document.querySelector('[role=dialog]')).toBeNull()
-  await view.findAll('button').find(button => button.text() === 'Prüfen')!.trigger('click')
+  await view.findAll('button').find(button => button.text() === 'Text prüfen')!.trigger('click')
   await flushPromises()
   const dialog = () => document.querySelector('[role=dialog]')!
   const button = (label: string) => [...dialog().querySelectorAll('button')].find(button => button.textContent?.trim() === label)!
@@ -57,7 +58,7 @@ it('marks the exact phrase, applies only on approval, shifts later marks, and un
   expect(dialog().textContent).not.toContain('Vorlesen')
   expect(mocks.speak.mock.calls.every(call => call[0] === '')).toBe(true)
   expect(mocks.commands.map(command => command.id)).toEqual([
-    'review', 'accept-correction', 'keep-correction', 'undo-correction', 'play-recording', 'close-review'
+    'review', 'accept-correction', 'keep-correction', 'undo-correction', 'close-review', 'edit-text'
   ])
   expect(command('accept-correction').enabled()).toBe(true)
   vi.useFakeTimers()
@@ -89,11 +90,7 @@ it('marks the exact phrase, applies only on approval, shifts later marks, and un
   await flushPromises()
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(view.emitted('active')!.at(-1)).toEqual([false])
-  await view.find('audio').trigger('play')
-  expect(mocks.pause).toHaveBeenCalledOnce()
-  await view.find('audio').trigger('error')
-  await view.find('audio').trigger('play')
-  expect(mocks.pause).toHaveBeenCalledTimes(2)
+  expect(view.text()).not.toContain('Sage „Übernehmen“ oder „Behalten“.')
   view.unmount()
 })
 
@@ -117,12 +114,16 @@ it('discards a checker reply after editing or starting another recording', async
 
 it('keeps direct text editing available when the checker fails', async () => {
   mocks.fetch.mockRejectedValueOnce(new Error('offline'))
-  const view = await mountSuspended(TranscriptReview, { props: { text: 'Hallo.', audioId: 'one' } })
+  const view = await mountSuspended(FreeTextResult, { props: { text: 'Hallo.', audioId: 'one' } })
   await flushPromises()
   expect(view.text()).toContain('Textprüfung nicht verfügbar. Du kannst den Text direkt bearbeiten.')
+  command('edit-text').handler()
+  await flushPromises()
   expect(view.find('textarea').attributes('readonly')).toBeUndefined()
   await view.find('textarea').setValue('Guten Tag.')
   expect(view.emitted('updateText')!.at(-1)).toEqual(['Guten Tag.'])
+  await view.setProps({ text: 'Guten Tag.' })
+  expect(view.find('textarea').exists()).toBe(true)
   expect(mocks.fetch).toHaveBeenCalledOnce()
   view.unmount()
 })
@@ -136,4 +137,67 @@ it('starts the check after the final recording becomes ready', async () => {
   await flushPromises()
   expect(mocks.fetch).toHaveBeenCalledOnce()
   view.unmount()
+})
+
+it('keeps extra actions in a dialog and supports direct voice editing and playback', async () => {
+  mocks.fetch.mockResolvedValue({ suggestions: [{ original: 'Brot bewohnen', replacement: 'Probewohnen' }] })
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+  const view = await mountSuspended(FreeTextResult, { props: { text: 'Mein Brot bewohnen.', audioId: 'one' } })
+  try {
+    await flushPromises()
+    expect(view.findAll('button').map(button => button.attributes('aria-label') || button.text())).toEqual([
+      'Text prüfen', 'Rückgängig', 'Text bearbeiten', 'Kopieren', 'Weitere Aktionen'
+    ])
+    expect(view.find('audio').exists()).toBe(false)
+    command('more-actions').handler()
+    await flushPromises()
+    expect(command('review').enabled()).toBe(false)
+    expect(view.emitted('reviewActive')!.at(-1)).toEqual([true])
+    expect(document.querySelector('[role=dialog]')!.textContent).toContain('Text teilen')
+    expect(document.querySelector('[role=dialog]')!.textContent).not.toContain('Text bearbeiten')
+    command('more-speak').handler()
+    await flushPromises()
+    expect(view.emitted('speak')).toHaveLength(1)
+    command('more-actions').handler()
+    await flushPromises()
+    command('more-share-text').handler()
+    await flushPromises()
+    expect(view.emitted('shareText')).toHaveLength(1)
+    expect(document.querySelector('[role=dialog]')).toBeNull()
+    expect(command('review').enabled()).toBe(true)
+    await view.findAll('button').find(button => button.text() === 'Text bearbeiten')!.trigger('click')
+    await view.find('textarea').setValue('Mein Probewohnen.')
+    expect(view.emitted('updateText')!.at(-1)).toEqual(['Mein Probewohnen.'])
+    await command('play-recording').handler()
+    await flushPromises()
+    const player = document.querySelector('audio')!
+    expect(player).not.toBeNull()
+    expect(play).toHaveBeenCalledOnce()
+    player.dispatchEvent(new Event('play'))
+    expect(mocks.pause).toHaveBeenCalledOnce()
+    player.dispatchEvent(new Event('pause'))
+    expect(pause).not.toHaveBeenCalled()
+    expect(mocks.resume).toHaveBeenCalledOnce()
+    player.dispatchEvent(new Event('play'))
+    player.dispatchEvent(new Event('pause'))
+    player.dispatchEvent(new Event('ended'))
+    expect(pause).not.toHaveBeenCalled()
+    expect(mocks.resume).toHaveBeenCalledTimes(2)
+    play.mockRejectedValueOnce(new DOMException('Playback was paused', 'AbortError'))
+    await command('play-recording').handler()
+    expect(pause).not.toHaveBeenCalled()
+    expect(document.querySelector('[role=dialog]')!.textContent).not.toContain('Die Aufnahme konnte nicht abgespielt werden.')
+    player.dispatchEvent(new Event('play'))
+    command('close-more-actions').handler()
+    await flushPromises()
+    expect(pause).toHaveBeenCalled()
+    expect(mocks.resume).toHaveBeenCalledTimes(3)
+    expect(document.querySelector('audio')).toBeNull()
+    expect(view.emitted('reviewActive')!.at(-1)).toEqual([false])
+  } finally {
+    view.unmount()
+    play.mockRestore()
+    pause.mockRestore()
+  }
 })

@@ -1,17 +1,21 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   disabled?: boolean
   text: string
   audioId?: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
+  speak: []
   copy: []
   shareInstagram: []
   shareText: []
   updateText: [text: string]
   reviewActive: [active: boolean]
 }>()
+const reviewActive = ref(false)
+const moreActive = ref(false)
+watch([reviewActive, moreActive], ([reviewing, more]) => emit('reviewActive', reviewing || more), { flush: 'sync' })
 </script>
 
 <template>
@@ -20,26 +24,30 @@ defineEmits<{
       :text="text"
       :audio-id="audioId"
       :disabled="disabled"
+      :inactive="moreActive"
       @update-text="$emit('updateText', $event)"
-      @active="$emit('reviewActive', $event)"
+      @active="reviewActive = $event"
     />
 
     <UButton
       block
       class="min-h-20"
-      color="primary"
+      color="neutral"
+      variant="soft"
       icon="i-lucide-copy"
       label="Kopieren"
       size="xl"
       type="button"
       :disabled="disabled || !text"
-      @click="$emit('copy')"
+      @click="emit('copy')"
     />
-
-    <ResultActions
-      :disabled="disabled || !text"
-      @share-instagram="$emit('shareInstagram')"
-      @share-text="$emit('shareText')"
+    <ResultMoreActions
+      :disabled="props.disabled || reviewActive"
+      :audio-id="audioId"
+      @active="moreActive = $event"
+      @speak="emit('speak')"
+      @share-instagram="emit('shareInstagram')"
+      @share-text="emit('shareText')"
     />
   </section>
 </template>

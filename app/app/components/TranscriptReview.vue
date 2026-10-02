@@ -1,7 +1,7 @@
 <script setup lang="ts">
 type Issue = { original: string, replacement: string, start: number, number: number }
 
-const props = defineProps<{ text: string, audioId?: string, disabled?: boolean }>()
+const props = defineProps<{ text: string, audioId?: string, disabled?: boolean, inactive?: boolean }>()
 const emit = defineEmits<{ updateText: [text: string], active: [active: boolean] }>()
 const commands = useSpeechCommands()
 const issues = ref<Issue[]>([])
@@ -13,15 +13,12 @@ const checking = ref(false)
 const editing = ref(false)
 const status = ref('')
 const undo = ref<{ before: string, after: string, issues: Issue[], current?: Issue }>()
-const audio = ref<HTMLAudioElement>()
 let snapshot = props.text
 let expectedText: string | undefined
 let request: AbortController | undefined
-let releasePlayback: (() => void) | undefined
-
-function resumePlaybackCommands() {
-  releasePlayback?.()
-  releasePlayback = undefined
+function edit() {
+  if (props.disabled || props.inactive || reviewOpen.value) return
+  editing.value = true
 }
 
 watch(reviewOpen, value => emit('active', value), { flush: 'sync' })
@@ -56,15 +53,13 @@ watch(() => [props.text, props.audioId, props.disabled] as const, ([text, audioI
     return
   }
   request?.abort()
-  audio.value?.pause()
-  resumePlaybackCommands()
   snapshot = text
   expectedText = undefined
   issues.value = []
   current.value = undefined
   reviewOpen.value = false
   actionLocked.value = false
-  editing.value = false
+  if (audioId !== previous?.[1] || disabled) editing.value = false
   undo.value = undefined
   status.value = ''
   checking.value = false
@@ -95,13 +90,11 @@ async function check() {
 }
 
 function review() {
-  if (props.disabled) return
+  if (props.disabled || props.inactive) return
   if (issues.value.length) {
     current.value = issues.value[0]
     reviewTotal.value = Math.max(...issues.value.map(issue => issue.number))
     reviewOpen.value = true
-    audio.value?.pause()
-    resumePlaybackCommands()
     commands.speak('')
     status.value = 'Sage „Übernehmen“ oder „Behalten“.'
   } else void check()
@@ -144,46 +137,34 @@ function restore() {
   status.value = 'Letzte Änderung rückgängig gemacht.'
 }
 
-async function play() {
-  if (!audio.value) return
-  commands.speak('')
-  resumePlaybackCommands()
-  releasePlayback = commands.pause()
-  try {
-    audio.value.currentTime = 0
-    await audio.value.play()
-  } catch {
-    resumePlaybackCommands()
-    status.value = 'Die Aufnahme konnte nicht abgespielt werden.'
-  }
-}
-
-useSpeechCommand({ id: 'review', label: 'Prüfen', phrases: ['prüfen', 'text prüfen'], enabled: () => !props.disabled && !reviewOpen.value, handler: review })
+useSpeechCommand({ id: 'review', label: 'Text prüfen', phrases: ['prüfen', 'text prüfen'], enabled: () => !props.disabled && !props.inactive && !reviewOpen.value, handler: review })
 useSpeechCommand({ id: 'accept-correction', label: 'Übernehmen', phrases: ['übernehmen'], enabled: () => Boolean(current.value?.replacement) && !props.disabled && !actionLocked.value, handler: apply })
 useSpeechCommand({ id: 'keep-correction', label: 'Behalten', phrases: ['behalten'], enabled: () => Boolean(current.value) && !props.disabled && !actionLocked.value, handler: keep })
-useSpeechCommand({ id: 'undo-correction', label: 'Rückgängig', phrases: ['rückgängig'], enabled: () => Boolean(undo.value) && !props.disabled, handler: restore })
-useSpeechCommand({ id: 'play-recording', label: 'Anhören', phrases: ['anhören'], enabled: () => Boolean(props.audioId) && !reviewOpen.value && !props.disabled, handler: play })
+useSpeechCommand({ id: 'undo-correction', label: 'Rückgängig', phrases: ['rückgängig'], enabled: () => Boolean(undo.value) && !props.disabled && !props.inactive, handler: restore })
 function closeReview() {
-  current.value = undefined
   reviewOpen.value = false
+  status.value = issues.value.length ? `${issues.value.length} Stellen noch zu prüfen. Sage „Text prüfen“.` : 'Prüfung beendet. Fehler können trotzdem vorkommen.'
 }
 useSpeechCommand({ id: 'close-review', label: 'Prüfung schließen', phrases: ['prüfung schließen'], enabled: () => reviewOpen.value, handler: closeReview })
+useSpeechCommand({ id: 'edit-text', label: 'Text bearbeiten', phrases: ['text bearbeiten'], enabled: () => !props.disabled && !props.inactive && !reviewOpen.value, handler: edit })
 onBeforeUnmount(() => {
   request?.abort()
-  audio.value?.pause()
-  resumePlaybackCommands()
   emit('active', false)
 })
 </script>
 
 <template>
   <section
-    class="space-y-4"
+    class="space-y-3 rounded-3xl border border-default p-4 sm:space-y-4 sm:p-5"
     aria-label="Text prüfen und korrigieren"
   >
+    <h2 class="text-lg font-semibold text-muted">
+      Dein Text
+    </h2>
     <p
-      v-if="issues.length && !editing"
-      class="min-h-56 whitespace-pre-wrap rounded-2xl border border-default p-5 text-xl font-semibold leading-relaxed"
+      v-if="!editing"
+      tabindex="0"
+      class="min-h-24 max-h-[30dvh] overflow-y-auto whitespace-pre-wrap break-words text-xl font-semibold leading-relaxed"
     >
       <template
         v-for="(part, index) in parts"
@@ -201,6 +182,7 @@ onBeforeUnmount(() => {
       v-else
       :model-value="text"
       aria-label="Erkannter Freitext"
+      autofocus
       autoresize
       class="w-full"
       :readonly="disabled || reviewOpen"
@@ -212,12 +194,15 @@ onBeforeUnmount(() => {
     <p
       role="status"
       aria-live="polite"
-      class="text-lg text-toned"
+      class="min-h-12 text-base text-toned"
     >
       {{ status }}
     </p>
 
-    <template v-if="!reviewOpen">
+    <div
+      v-if="!reviewOpen"
+      class="grid grid-cols-2 gap-4"
+    >
       <UButton
         block
         class="min-h-20"
@@ -227,43 +212,40 @@ onBeforeUnmount(() => {
         variant="soft"
         @click="review"
       >
-        Prüfen
+        Text prüfen
       </UButton>
       <UButton
-        v-if="issues.length"
+        aria-label="Rückgängig"
         block
         class="min-h-20"
+        size="xl"
+        icon="i-lucide-rotate-ccw"
+        type="button"
+        color="neutral"
+        variant="outline"
+        :disabled="disabled || !undo"
+        @click="restore"
+      />
+      <UButton
+        block
+        class="col-span-2 min-h-20"
         size="xl"
         type="button"
         color="neutral"
         variant="outline"
+        icon="i-lucide-pencil"
         :disabled="disabled"
-        @click="editing = !editing"
+        @click="edit"
       >
-        {{ editing ? 'Markierungen anzeigen' : 'Text bearbeiten' }}
+        Text bearbeiten
       </UButton>
-    </template>
-
-    <UButton
-      v-if="undo && !reviewOpen"
-      block
-      class="min-h-20"
-      size="xl"
-      type="button"
-      color="neutral"
-      variant="outline"
-      :disabled="disabled"
-      @click="restore"
-    >
-      Rückgängig
-    </UButton>
+    </div>
     <UModal
       :open="reviewOpen"
       title="Text prüfen"
       description="Übernimm den Vorschlag oder behalte deinen Text."
       :close="false"
       :dismissible="false"
-      :transition="false"
       :ui="{ content: 'rounded-3xl', title: 'text-2xl', description: 'text-lg', footer: 'p-4 sm:p-6' }"
     >
       <template #body>
@@ -343,30 +325,5 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </UModal>
-    <template v-if="audioId">
-      <UButton
-        block
-        class="min-h-20"
-        size="xl"
-        type="button"
-        color="neutral"
-        variant="soft"
-        :disabled="disabled"
-        @click="play"
-      >
-        Anhören
-      </UButton>
-      <audio
-        ref="audio"
-        class="w-full"
-        controls
-        preload="none"
-        :src="`/api/labeling/audio/${audioId}`"
-        @play="commands.speak(''); releasePlayback ||= commands.pause()"
-        @pause="resumePlaybackCommands"
-        @ended="resumePlaybackCommands"
-        @error="resumePlaybackCommands"
-      />
-    </template>
   </section>
 </template>
