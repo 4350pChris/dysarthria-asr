@@ -45,7 +45,6 @@ useSpeechCommand({
 <template>
   <div class="min-h-dvh bg-default">
     <UHeader
-      title="Dysarthria ASR"
       :toggle="false"
       :ui="{
         container: 'max-w-3xl px-4'
@@ -63,7 +62,10 @@ useSpeechCommand({
         >
           {{ header.backLabel || "Zurück" }}
         </UButton>
-        <LogoLockup :mark-size="40" />
+        <LogoMark
+          :size="40"
+          label="Dysarthria ASR Tuned Listener"
+        />
       </template>
       <template #right>
         <UButton
