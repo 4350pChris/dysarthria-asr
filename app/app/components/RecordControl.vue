@@ -4,6 +4,7 @@ const props = defineProps<{
   isBusy: boolean
   startLabel?: string
   startGuidance?: string
+  stopLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -25,17 +26,17 @@ const copy = computed(() => ({
     guidance: props.startGuidance || 'Tippe zum Sprechen'
   },
   recording: {
-    title: 'Aufnahme läuft',
-    guidance: 'Tippe zum Stoppen'
+    title: props.stopLabel || 'Aufnahme läuft',
+    guidance: props.stopLabel ? 'Dein Text bleibt.' : 'Tippe zum Stoppen'
   },
   warming: {
-    title: 'Erkennung wird vorbereitet',
+    title: 'Bitte warten',
     guidance: 'Einen Moment bitte'
   }
 })[state.value])
 
 function toggleRecording() {
-  if (disabledTimer.value) {
+  if (props.isBusy || disabledTimer.value) {
     return
   }
   disabledTimer.value = true

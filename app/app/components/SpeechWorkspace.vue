@@ -9,8 +9,9 @@ const modeOptions: Array<{ label: string, value: SpeechMode }> = [
   { label: 'Emoji', value: 'emoji' }
 ]
 const autoStopOnSilence = useLocalStorage('auto-stop-on-silence', true)
-const reviewActive = ref(false)
-const resultPanel = ref<HTMLElement>()
+const resultReviewActive = ref(false)
+const resetActive = ref(false)
+const reviewActive = computed(() => resultReviewActive.value || resetActive.value)
 const speech = useSpeechSession(mode, autoStopOnSilence)
 const speechCommands = useSpeechCommands()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
@@ -20,18 +21,12 @@ const recentEmojis = computed(() =>
     .slice(0, 8)
 )
 
-watch(speech.isBusy, async (busy, wasBusy) => {
-  if (busy || !wasBusy || mode.value !== 'text' || !speech.result.value || !speech.freeText.value) return
-  await nextTick()
-  resultPanel.value?.scrollIntoView({ block: 'start', behavior: 'instant' })
-})
-
 watch(mode, async (value) => {
   if (value !== 'emoji' || recognizedEmojis.value.length) return
   recognizedEmojis.value = await $fetch<Array<{ name: string, value: string }>>('/api/emojis/recent').catch(() => [])
 }, { immediate: true })
-useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los'], enabled: () => !reviewActive.value, handler: startRecording })
-useSpeechCommand({ id: 'stop-recording', label: 'Stopp', phrases: ['stopp', 'stop', 'anhalten', 'fertig'], enabled: () => !reviewActive.value, handler: speech.stopRecording })
+useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los', 'weiter'], enabled: () => !reviewActive.value, handler: startRecording })
+useSpeechCommand({ id: 'stop-recording', label: 'Pause', phrases: ['pause', 'stopp', 'stop', 'anhalten', 'fertig'], enabled: () => !reviewActive.value, handler: speech.stopRecording })
 useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], enabled: () => !reviewActive.value, handler: speech.speakSelected })
 useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], enabled: () => !reviewActive.value, handler: speech.copySelected })
 useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken', 'text teilen'], enabled: () => !reviewActive.value, handler: speech.shareText })
@@ -66,10 +61,18 @@ function startRecording() {
     <RecordControl
       :is-recording="speech.isRecording.value"
       :is-busy="speech.isBusy.value || reviewActive"
-      :start-label="mode === 'text' && speech.freeText.value ? 'Neue Aufnahme' : undefined"
-      :start-guidance="mode === 'text' && speech.freeText.value ? 'Startet einen neuen Text' : undefined"
+      :start-label="mode === 'text' && speech.freeText.value ? 'Weiter' : undefined"
+      :start-guidance="mode === 'text' && speech.freeText.value ? 'Dein Text bleibt.' : undefined"
+      :stop-label="mode === 'text' ? 'Pause' : undefined"
       @start="startRecording"
       @stop="speech.stopRecording"
+    />
+
+    <NewTextControl
+      v-if="mode === 'text' && speech.freeText.value"
+      :disabled="speech.isRecording.value || speech.isBusy.value || resultReviewActive"
+      @active="resetActive = $event"
+      @reset="speech.resetText"
     />
 
     <ClientOnly>
@@ -121,19 +124,18 @@ function startRecording() {
 
     <div
       v-if="mode === 'text' && speech.freeText.value"
-      ref="resultPanel"
       class="scroll-mt-20"
     >
       <FreeTextResult
-        :disabled="speech.isRecording.value || speech.isBusy.value"
+        :disabled="speech.isRecording.value || speech.isBusy.value || resetActive"
         :text="speech.freeText.value"
-        :audio-id="speech.result.value?.audio_id"
+        :audio-id="speech.audioId.value"
         @speak="speech.speakSelected"
         @copy="speech.copySelected"
         @share-instagram="speech.shareToInstagram"
         @share-text="speech.shareText"
         @update-text="speech.setFreeText"
-        @review-active="reviewActive = $event"
+        @review-active="resultReviewActive = $event"
       />
     </div>
 

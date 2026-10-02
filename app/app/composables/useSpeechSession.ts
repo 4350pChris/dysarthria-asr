@@ -21,10 +21,26 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
   const isBusy = ref(false)
   const isSaving = ref(false)
   const hasSaved = ref(false)
+  const isCombinedText = ref(false)
+  // ponytail: combined text has no single clip; add segment-aware labeling before saving its corrections.
+  const audioId = computed(() => isCombinedText.value ? undefined : result.value?.audio_id)
+  let previousText = ''
+  let lastActivation = -Infinity
+
+  function acceptActivation() {
+    const now = Date.now()
+    if (now - lastActivation < 2_000) return false
+    lastActivation = now
+    return true
+  }
+
+  function appendText(text: string) {
+    return [previousText, text].filter(Boolean).join(' ')
+  }
   const { start: startLiveTranscription, stop: stopLiveTranscription } = useLiveTranscription({
     onText(text) {
       if (mode.value !== 'text' || !text) return
-      freeText.value = text
+      freeText.value = appendText(text)
       status.value = 'Text wird erkannt...'
     }
   })
@@ -39,12 +55,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     autoStopOnSilence,
     withAudioLevel: true,
     onStream: (stream) => {
+      isBusy.value = false
       if (mode.value === 'text' && backendAvailable.value) void startLiveTranscription(stream)
     },
     onStopping: () => {
       stopLiveTranscription()
       isBusy.value = true
-      status.value = 'Ich höre zu...'
+      status.value = 'Text wird erkannt…'
     }
   })
 
@@ -76,17 +93,41 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     isSafeToUpdate.value = true
   })
 
-  async function startRecording() {
+  function resetText() {
+    if (isRecording.value || isBusy.value) return
     result.value = undefined
-    selectedEmoji.value = undefined
     freeText.value = ''
+    previousText = ''
+    isCombinedText.value = false
     hasSaved.value = false
-    status.value = 'Aufnahme läuft...'
-    await startAudioRecording()
-    track('recording_started', { mode: mode.value })
+    status.value = ''
+  }
+
+  async function startRecording() {
+    if (isRecording.value || isBusy.value || !acceptActivation()) return
+    previousText = mode.value === 'text' ? freeText.value : ''
+    if (mode.value !== 'text') {
+      result.value = undefined
+      selectedEmoji.value = undefined
+      freeText.value = ''
+      isCombinedText.value = false
+    }
+    isBusy.value = true
+    status.value = 'Aufnahme läuft.'
+    try {
+      track('recording_started', { mode: mode.value })
+      await startAudioRecording()
+    } catch {
+      stopLiveTranscription()
+      freeText.value = previousText
+      status.value = 'Aufnahme nicht möglich.'
+    } finally {
+      isBusy.value = false
+    }
   }
 
   function stopRecording() {
+    if (!isRecording.value || !acceptActivation()) return
     stopAudioRecording()
   }
 
@@ -107,7 +148,8 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
         rememberEmoji({ name: transcription.emoji_name, value: transcription.emoji_value })
       }
       if (mode.value === 'text') {
-        freeText.value = transcription.emoji_text
+        isCombinedText.value = isCombinedText.value || Boolean(previousText)
+        freeText.value = appendText(transcription.emoji_text)
       }
       hasSaved.value = false
       status.value
@@ -129,6 +171,7 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
               : (freeText.value ? 'result_available' : 'no_result')
       })
     } catch (error) {
+      if (mode.value === 'text') freeText.value = previousText
       status.value
         = error instanceof Error ? error.message : 'Erkennung fehlgeschlagen.'
       track('transcription_failed', { mode: mode.value })
@@ -281,12 +324,12 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
 
   async function saveAttempt() {
     const correctedText = labelText.value
-    if (!result.value?.audio_id || !correctedText || hasSaved.value || isSaving.value)
+    if (!audioId.value || isRecording.value || isBusy.value || !correctedText || hasSaved.value || isSaving.value)
       return
-    const audioId = result.value.audio_id
+    const savingAudioId = audioId.value
     isSaving.value = true
     try {
-      const response = await fetch(`/api/labeling/items/${audioId}`, {
+      const response = await fetch(`/api/labeling/items/${savingAudioId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           notes: mode.value === 'text' ? 'Edited free text.' : 'Provisional app selection.',
@@ -297,18 +340,20 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
         headers: { 'Content-Type': 'application/json' }
       })
       if (!response.ok) throw new Error('Speichern fehlgeschlagen.')
-      hasSaved.value = result.value?.audio_id === audioId && labelText.value === correctedText
+      hasSaved.value = audioId.value === savingAudioId && labelText.value === correctedText
       if (hasSaved.value && status.value.startsWith('Änderung noch nicht gespeichert.')) status.value = 'Änderung gespeichert.'
     } catch {
       status.value = 'Änderung noch nicht gespeichert. Kopieren oder Teilen versucht es erneut.'
     } finally {
       isSaving.value = false
-      if (result.value?.audio_id === audioId && labelText.value !== correctedText) saveFreeText()
+      if (audioId.value === savingAudioId && labelText.value !== correctedText) saveFreeText()
     }
   }
 
   return {
     result,
+    audioId,
+    resetText,
     audioLevel,
     freeText,
     status,

@@ -8,6 +8,7 @@ function makeSession() {
   return {
     freeText: ref(''), result: ref<{ audio_id: string }>(), isBusy: ref(false), isRecording: ref(false),
     status: ref(''), emojiHistory: ref([]), hasEmojiResult: ref(false), audioLevel: ref(0),
+    audioId: ref<string>(), resetText: vi.fn(),
     startRecording: vi.fn(), stopRecording: vi.fn(), speakSelected: vi.fn(), copySelected: vi.fn(),
     shareText: vi.fn(), shareToInstagram: vi.fn(), setFreeText: vi.fn()
   }
@@ -20,16 +21,22 @@ mockNuxtImport('useSpeechCommands', () => () => ({
   isListening: ref(false), isSupported: ref(true), status: ref(''),
   speak: vi.fn(), pause: () => () => {}, start: vi.fn(), stop: vi.fn()
 }))
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
-it('puts recording first and scrolls once to the final text before review finishes', async () => {
+it('keeps the recording control stationary and offers continuation', async () => {
   const scroll = vi.fn()
   const oldScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView')
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll })
   mocks.session = makeSession()
   const view = await mountSuspended(SpeechWorkspace, {
     props: { mode: 'text' },
-    global: { stubs: { FreeTextResult: true, SpeechCommandControl: true, SilenceStopSetting: true, AudioLevelMeter: true } }
+    global: { stubs: {
+      FreeTextResult: true, SpeechCommandControl: true, SilenceStopSetting: true, AudioLevelMeter: true,
+      UModal: { props: ['open'], template: '<div v-if="open"><slot name="footer" /></div>' }
+    } }
   })
   try {
     expect(view.findAll('button')[0]!.text()).toContain('Aufnehmen')
@@ -46,13 +53,23 @@ it('puts recording first and scrolls once to the final text before review finish
     expect(scroll).not.toHaveBeenCalled()
     mocks.session.isBusy.value = false
     await flushPromises()
-    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'start', behavior: 'instant' })
-    expect(view.find('button').text()).toContain('Neue Aufnahme')
+    expect(scroll).not.toHaveBeenCalled()
+    expect(view.find('button').text()).toContain('Weiter')
+    expect(view.findAll('button')[1]!.text()).toBe('Neuer Text')
     expect(view.find('button').classes()).toContain('min-h-60')
     expect(view.find('.fixed').exists()).toBe(false)
     mocks.session.freeText.value = 'Edited text'
     await flushPromises()
-    expect(scroll).toHaveBeenCalledOnce()
+    expect(scroll).not.toHaveBeenCalled()
+    const reset = view.findAll('button').find(button => button.text() === 'Neuer Text')!
+    await reset.trigger('click')
+    expect(mocks.session.resetText).not.toHaveBeenCalled()
+    expect(view.find('button').attributes('disabled')).toBeDefined()
+    await view.findAll('button').find(button => button.text() === 'Zurück')!.trigger('click')
+    expect(mocks.session.resetText).not.toHaveBeenCalled()
+    await reset.trigger('click')
+    await view.findAll('button').find(button => button.text() === 'Text verwerfen')!.trigger('click')
+    expect(mocks.session.resetText).toHaveBeenCalledOnce()
   } finally {
     view.unmount()
     if (oldScroll) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', oldScroll)

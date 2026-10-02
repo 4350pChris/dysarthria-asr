@@ -7,12 +7,16 @@ export function useLiveTranscription(options: LiveTranscriptionOptions) {
   let socket: WebSocket | undefined
   let source: MediaStreamAudioSourceNode | undefined
   let processor: AudioWorkletNode | undefined
+  let generation = 0
 
   async function start(stream: MediaStream) {
+    stop()
+    const activeGeneration = generation
     try {
       const queuedFrames: ArrayBuffer[] = []
       context = new AudioContext({ sampleRate: 16_000 })
       await context.audioWorklet.addModule('/pcm-capture.js')
+      if (activeGeneration !== generation) return
       socket = new WebSocket(streamUrl(context.sampleRate))
       socket.binaryType = 'arraybuffer'
       source = context.createMediaStreamSource(stream)
@@ -27,6 +31,7 @@ export function useLiveTranscription(options: LiveTranscriptionOptions) {
       socket.onopen = () => queuedFrames.splice(0).forEach(frame => socket?.send(frame))
       source.connect(processor).connect(context.destination)
       socket.onmessage = (event) => {
+        if (activeGeneration !== generation) return
         const message: unknown = JSON.parse(event.data)
         if (!message || typeof message !== 'object') return
         const { committed, partial, type } = message as Record<string, unknown>
@@ -35,11 +40,12 @@ export function useLiveTranscription(options: LiveTranscriptionOptions) {
         }
       }
     } catch {
-      stop()
+      if (activeGeneration === generation) stop()
     }
   }
 
   function stop() {
+    generation++
     processor?.disconnect()
     source?.disconnect()
     socket?.close()
