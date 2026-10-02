@@ -92,7 +92,7 @@ useSpeechCommand({
         block
         color="neutral"
         variant="soft"
-        class="min-h-14"
+        class="min-h-14 aria-[current=page]:ring aria-[current=page]:ring-primary/30"
         :aria-current="route.path === '/' ? 'page' : undefined"
       >
         Sprechen
@@ -102,10 +102,10 @@ useSpeechCommand({
         block
         color="neutral"
         variant="soft"
-        class="min-h-14"
+        class="min-h-14 aria-[current=page]:ring aria-[current=page]:ring-primary/30"
         :aria-current="route.path === '/training' ? 'page' : undefined"
       >
-        Lesetraining
+        Training
       </UButton>
     </nav>
     <section class="px-4 pt-4">
