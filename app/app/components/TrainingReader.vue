@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { AudioQualityReport } from '~/utils/audioQuality'
-import type { ReadingPrompt } from '~/types/speech'
+import type { LabelItem, ReadingPrompt } from '~/types/speech'
 
 type TrainingRecordingFormState = { promptId: string }
 
@@ -118,7 +118,7 @@ async function saveRecording(event: FormSubmitEvent<TrainingRecordingFormState>)
   form.append('audio', audio, 'guided-reading.webm')
   const saved = await submit(event, (data) => {
     form.append('prompt_id', data.promptId)
-    return $fetch('/api/training/recordings', { method: 'POST', body: form })
+    return $fetch<{ item: LabelItem, prompt: ReadingPrompt }>('/api/training/recordings', { method: 'POST', body: form })
   })
   if (!saved) return
   track('training_recording_saved')

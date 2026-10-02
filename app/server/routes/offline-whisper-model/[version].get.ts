@@ -1,5 +1,3 @@
-import { Readable } from 'node:stream'
-
 export default defineEventHandler(async (event) => {
   const version = getRouterParam(event, 'version')
   const config = useRuntimeConfig()
@@ -17,7 +15,8 @@ export default defineEventHandler(async (event) => {
   }
 
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
-  setResponseHeader(event, 'Content-Length', response.headers.get('content-length') || '')
+  const contentLength = response.headers.get('content-length')
+  if (contentLength) setResponseHeader(event, 'Content-Length', Number(contentLength))
   setResponseHeader(event, 'Content-Type', 'application/octet-stream')
-  return sendStream(event, Readable.fromWeb(response.body))
+  return sendStream(event, response.body)
 })
