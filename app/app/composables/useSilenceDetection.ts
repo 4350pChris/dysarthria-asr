@@ -1,6 +1,5 @@
 const MIN_DURATION_MS = 1500
 const SILENCE_MS = 2000
-const MAX_DURATION_MS = 60000
 const SILENCE_THRESHOLD = 0.025
 
 export function useSilenceDetection(onStop: () => void, isSilenceStopEnabled: () => boolean = () => true) {
@@ -47,12 +46,6 @@ export function useSilenceDetection(onStop: () => void, isSilenceStopEnabled: ()
 
       const now = performance.now()
       const elapsed = now - startedAt.value
-
-      if (elapsed >= MAX_DURATION_MS) {
-        stop()
-        onStop()
-        return
-      }
 
       if (isSilenceStopEnabled() && elapsed >= MIN_DURATION_MS && rms < SILENCE_THRESHOLD) {
         silentSince.value ??= now
