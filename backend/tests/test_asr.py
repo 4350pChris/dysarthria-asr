@@ -42,7 +42,7 @@ def test_live_transcription_uses_fast_settings(monkeypatch) -> None:
     transcription.transcribe_pcm_segments(b"\x00\x00" * 16_000, 16_000)
     assert captured["beam_size"] == 1
     assert captured["condition_on_previous_text"] is False
-    assert captured["model_reference"] is None
+    assert captured["model_reference"] == "dysarthria-asr/amsel-small-ct2@v1"
 
     monkeypatch.setenv("ASR_LIVE_MODEL", "dysarthria-asr/amsel-small-ct2")
     # Beam size is fixed at 1 for live previews; the knob must not reappear.

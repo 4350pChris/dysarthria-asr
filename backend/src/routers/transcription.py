@@ -85,7 +85,7 @@ def transcribe_pcm_segments(audio: bytes, sample_rate: int) -> list[tuple[float,
         vad_parameters=LIVE_VAD_PARAMETERS,
         beam_size=1,
         condition_on_previous_text=False,
-        model_reference=os.environ.get("ASR_LIVE_MODEL", "").strip() or None,
+        model_reference=os.environ.get("ASR_LIVE_MODEL", "dysarthria-asr/amsel-small-ct2@v1").strip() or None,
     )
 
 

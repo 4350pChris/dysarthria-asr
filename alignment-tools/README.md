@@ -215,10 +215,14 @@ Publish to the private live-model repo and set the server environment:
 ```sh
 hf upload dysarthria-asr/amsel-small-ct2 models/deployed/$RUN \
   --private --commit-message "$RUN"
+hf repos tag create dysarthria-asr/amsel-small-ct2 v2 --message "$RUN"
 ```
 
+`ASR_LIVE_MODEL` already defaults to `dysarthria-asr/amsel-small-ct2@v1`.
+Bump that pinned tag when a new run replaces it, or override the environment:
+
 ```sh
-ASR_LIVE_MODEL=dysarthria-asr/amsel-small-ct2
+ASR_LIVE_MODEL=dysarthria-asr/amsel-small-ct2@v2
 ```
 
 ## Prepare a browser model

@@ -34,7 +34,8 @@ rolling window and re-decodes it on every update, so live text is only a
 preview; the final authoritative text comes from `/api/transcribe` on the whole
 recording. Live decoding uses faster settings than the final pass:
 
-- `ASR_LIVE_MODEL` - a smaller CTranslate2 model for previews; defaults to `ASR_MODEL`.
+- `ASR_LIVE_MODEL` - a smaller CTranslate2 model for previews; defaults to
+  `dysarthria-asr/amsel-small-ct2@v1` (the adapted German small model).
 - `ASR_LIVE_WINDOW_SECONDS` - default `5`.
 - `ASR_LIVE_UPDATE_SECONDS` - default `1`.
 
