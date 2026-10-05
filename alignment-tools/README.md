@@ -219,7 +219,6 @@ hf upload dysarthria-asr/amsel-small-ct2 models/deployed/$RUN \
 
 ```sh
 ASR_LIVE_MODEL=dysarthria-asr/amsel-small-ct2
-ASR_LIVE_BEAM_SIZE=1
 ```
 
 ## Prepare a browser model

@@ -35,9 +35,10 @@ preview; the final authoritative text comes from `/api/transcribe` on the whole
 recording. Live decoding uses faster settings than the final pass:
 
 - `ASR_LIVE_MODEL` - a smaller CTranslate2 model for previews; defaults to `ASR_MODEL`.
-- `ASR_LIVE_BEAM_SIZE` - default `1` (the final pass uses 3).
 - `ASR_LIVE_WINDOW_SECONDS` - default `5`.
 - `ASR_LIVE_UPDATE_SECONDS` - default `1`.
+
+Live previews always decode with beam size 1; the final pass uses 3.
 
 Model size dominates on CPU. A local 5-second window took about 1.0 s with the
 adapted small model and 5.1 s with the adapted large model at beam 1; beam size

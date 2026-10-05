@@ -83,7 +83,7 @@ def transcribe_pcm_segments(audio: bytes, sample_rate: int) -> list[tuple[float,
     return transcribe_german_segments(
         samples,
         vad_parameters=LIVE_VAD_PARAMETERS,
-        beam_size=int(os.environ.get("ASR_LIVE_BEAM_SIZE", "1")),
+        beam_size=1,
         condition_on_previous_text=False,
         model_reference=os.environ.get("ASR_LIVE_MODEL", "").strip() or None,
     )
