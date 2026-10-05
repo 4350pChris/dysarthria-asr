@@ -67,7 +67,7 @@ watch(() => [props.text, props.audioId, props.disabled] as const, ([text, audioI
 }, { immediate: true })
 
 async function check() {
-  if (props.disabled || checking.value || !props.audioId) return
+  if (props.disabled || checking.value || !props.text.trim()) return
   request?.abort()
   const controller = new AbortController()
   request = controller
@@ -208,7 +208,7 @@ onBeforeUnmount(() => {
         class="min-h-20"
         size="xl"
         type="button"
-        :disabled="disabled || checking || !audioId"
+        :disabled="disabled || checking || !text.trim()"
         variant="soft"
         @click="review"
       >

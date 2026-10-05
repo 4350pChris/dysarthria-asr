@@ -139,6 +139,19 @@ it('starts the check after the final recording becomes ready', async () => {
   view.unmount()
 })
 
+it('checks text with no recording so typed and combined text stay reviewable', async () => {
+  mocks.fetch.mockResolvedValue({ suggestions: [{ original: 'Kaffe', replacement: 'Kaffee' }] })
+  const view = await mountSuspended(TranscriptReview, { props: { text: 'Danach trank ich Kaffe.' } })
+  const button = view.findAll('button').find(button => button.text() === 'Text prüfen')!
+  expect(button.attributes('disabled')).toBeUndefined()
+  expect(mocks.fetch).not.toHaveBeenCalled()
+  await button.trigger('click')
+  await flushPromises()
+  expect(mocks.fetch).toHaveBeenCalledOnce()
+  expect(view.findAll('mark').map(mark => mark.text())).toEqual(['Kaffe1'])
+  view.unmount()
+})
+
 it('keeps extra actions in a dialog and supports direct voice editing and playback', async () => {
   mocks.fetch.mockResolvedValue({ suggestions: [{ original: 'Brot bewohnen', replacement: 'Probewohnen' }] })
   const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
