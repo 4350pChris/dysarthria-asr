@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from pathlib import Path
 from urllib.error import URLError
@@ -82,6 +83,9 @@ def transcribe_pcm_segments(audio: bytes, sample_rate: int) -> list[tuple[float,
     return transcribe_german_segments(
         samples,
         vad_parameters=LIVE_VAD_PARAMETERS,
+        beam_size=int(os.environ.get("ASR_LIVE_BEAM_SIZE", "1")),
+        condition_on_previous_text=False,
+        model_reference=os.environ.get("ASR_LIVE_MODEL", "").strip() or None,
     )
 
 
@@ -96,6 +100,10 @@ async def stream_transcription(
     committed_until = 0.0
     committed: list[str] = []
     bytes_per_second = sample_rate * 2
+    # ponytail: every update re-decodes the whole rolling window. Keep the window
+    # short on slow CPUs; a streaming decoder would remove the repeated work.
+    window_seconds = float(os.environ.get("ASR_LIVE_WINDOW_SECONDS", str(LIVE_WINDOW_SECONDS)))
+    update_seconds = float(os.environ.get("ASR_LIVE_UPDATE_SECONDS", str(LIVE_UPDATE_SECONDS)))
 
     async def receive_audio() -> None:
         nonlocal window_start
@@ -109,14 +117,14 @@ async def stream_transcription(
             if not chunk:
                 continue
             audio.extend(chunk)
-            while len(audio) > LIVE_WINDOW_SECONDS * bytes_per_second:
+            while len(audio) > window_seconds * bytes_per_second:
                 del audio[:bytes_per_second]
                 window_start += 1
 
     async def send_updates() -> None:
         nonlocal committed_until
         while True:
-            await asyncio.sleep(LIVE_UPDATE_SECONDS)
+            await asyncio.sleep(update_seconds)
             if not audio:
                 continue
             snapshot = bytes(audio)

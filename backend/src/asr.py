@@ -31,8 +31,8 @@ class ModelSettings(TypedDict):
     use_auth_token: str | None
 
 
-def model_settings() -> ModelSettings:
-    model_reference = os.environ.get("ASR_MODEL", "").strip()
+def model_settings(reference: str | None = None) -> ModelSettings:
+    model_reference = (reference or os.environ.get("ASR_MODEL", "")).strip()
     if not model_reference:
         raise RuntimeError("Set ASR_MODEL to a full model ID, optionally followed by @revision.")
     model_name, separator, revision = model_reference.rpartition("@")
@@ -50,8 +50,8 @@ def model_settings() -> ModelSettings:
     }
 
 
-@lru_cache(maxsize=1)
-def _model():
+@lru_cache(maxsize=2)
+def _model(reference: str | None = None):
     try:
         from faster_whisper import WhisperModel
     except ImportError as exc:
@@ -59,7 +59,7 @@ def _model():
             "faster-whisper is not installed. Run `uv sync`."
         ) from exc
 
-    return WhisperModel(**model_settings())
+    return WhisperModel(**model_settings(reference))
 
 
 def transcribe_german(audio_path: Path) -> str:
@@ -75,12 +75,16 @@ def transcribe_german_segments(
     *,
     vad_parameters: dict = TOLERANT_VAD_PARAMETERS,
     chunk_length: int | None = None,
+    beam_size: int = 3,
+    condition_on_previous_text: bool = True,
+    model_reference: str | None = None,
 ) -> list[tuple[float, float, str]]:
     with INFERENCE_LOCK:
-        segments, _ = _model().transcribe(
+        segments, _ = _model(model_reference).transcribe(
             str(audio) if isinstance(audio, Path) else audio,
             language="de",
-            beam_size=3,
+            beam_size=beam_size,
+            condition_on_previous_text=condition_on_previous_text,
             vad_filter=True,
             vad_parameters=vad_parameters,
             chunk_length=chunk_length,

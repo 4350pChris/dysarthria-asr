@@ -178,6 +178,50 @@ two-hour limit. Do not reuse a run name.
 
 Set `ASR_MODEL` to the deployed model directory when you run the backend. Use the unchanged base model as the benchmark control.
 
+## Deploy a live transcription model
+
+Live previews use a smaller, faster model than the final pass, selected with
+`ASR_LIVE_MODEL` (see `backend/README.md`). Train it like any other LoRA run,
+then promote and publish it as a private CTranslate2 repo.
+
+After the run finishes and the Modal logs look correct, download the adapter:
+
+```sh
+RUN=whisper-small-german-lora-current-v1
+mkdir -p runs/training/$RUN/adapter
+for name in vocab.json tokenizer_config.json tokenizer.json special_tokens_map.json preprocessor_config.json normalizer.json merges.txt generation_config.json added_tokens.json adapter_model.safetensors adapter_config.json; do
+  uv run modal volume get dysarthria-asr-training-results \
+    /$RUN/adapter/$name runs/training/$RUN/adapter/$name
+done
+
+uv run python promote_whisper_lora.py runs/training/$RUN \
+  --output-dir models/deployed/$RUN
+```
+
+Benchmark it on the fixed held-out split before publishing. The final pass keeps
+`ASR_MODEL`, so the live model only needs to win on speed and preview quality:
+
+```sh
+uv run python benchmark_asr.py data/datasets/current \
+  --split data/datasets/current/split.csv \
+  --vad-mode tolerant --beam-size 1 \
+  --model live=models/deployed/$RUN \
+  --model previous=models/deployed/whisper-small-lora-current-v3 \
+  --output-dir runs/reports/$RUN-heldout
+```
+
+Publish to the private live-model repo and set the server environment:
+
+```sh
+hf upload dysarthria-asr/amsel-small-ct2 models/deployed/$RUN \
+  --private --commit-message "$RUN"
+```
+
+```sh
+ASR_LIVE_MODEL=dysarthria-asr/amsel-small-ct2
+ASR_LIVE_BEAM_SIZE=1
+```
+
 ## Prepare a browser model
 
 After a Whisper LoRA run passes its held-out benchmark, merge it and produce a

@@ -12,6 +12,7 @@
 
 - Before promoting a new Whisper model, benchmark beam sizes 1, 3, and 5 on the fixed held-out test split with the selected VAD settings. The best beam size can change after more training data or different training settings.
 - For the current v7 model with tolerant VAD, use `beam_size=1`. It matched beam 3 and 5 on WER and had the best CER.
+- Live transcription re-decodes a rolling window every update, so it cannot keep up when one window costs more than the update interval. Keep a small model on `ASR_LIVE_MODEL` for the preview and the large model for the final pass, and measure per-window latency before changing the live settings. Publish the live model to the private `dysarthria-asr/amsel-small-ct2` repo; the download and promote steps are in `alignment-tools/README.md`.
 
 ## Transcript review
 

@@ -27,6 +27,23 @@ The API runs at <http://127.0.0.1:8000>. The first transcription downloads the c
 
 Audio and transcripts can be sensitive data. Keep `data/` local unless you have clear permission to share it.
 
+## Live transcription
+
+The app streams 16 kHz PCM over `/api/transcribe/stream`. The server keeps a
+rolling window and re-decodes it on every update, so live text is only a
+preview; the final authoritative text comes from `/api/transcribe` on the whole
+recording. Live decoding uses faster settings than the final pass:
+
+- `ASR_LIVE_MODEL` - a smaller CTranslate2 model for previews; defaults to `ASR_MODEL`.
+- `ASR_LIVE_BEAM_SIZE` - default `1` (the final pass uses 3).
+- `ASR_LIVE_WINDOW_SECONDS` - default `5`.
+- `ASR_LIVE_UPDATE_SECONDS` - default `1`.
+
+Model size dominates on CPU. A local 5-second window took about 1.0 s with the
+adapted small model and 5.1 s with the adapted large model at beam 1; beam size
+changed large-model latency by around 20%. Point `ASR_LIVE_MODEL` at a small
+model, or lower `ASR_LIVE_WINDOW_SECONDS`, when live text lags.
+
 ## Text review
 
 The recording result can mark possible recognition errors. The user must approve each change.
