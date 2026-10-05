@@ -26,3 +26,7 @@ alignment-tools/data/
 alignment-tools/runs/
 alignment-tools/models/
 .agents/
+
+# Private transcript-review corpus derived from the app export
+alignment-tools/review-eval/local-cases.jsonl
+alignment-tools/review-eval/local-cases.reviewed.jsonl

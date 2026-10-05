@@ -43,7 +43,7 @@ def review_text(body: ReviewRequest) -> ReviewResult:
         raise HTTPException(status_code=422, detail="Der Text darf nicht leer sein.")
     try:
         return review_transcript(body.text)
-    except (URLError, OSError) as error:
+    except (URLError, OSError, RuntimeError) as error:
         raise HTTPException(status_code=503, detail="Textprüfung nicht verfügbar. Du kannst den Text selbst korrigieren.") from error
     except (ValueError, KeyError, IndexError, TypeError) as error:
         raise HTTPException(status_code=502, detail="Die Textprüfung hat keine gültige Antwort geliefert.") from error

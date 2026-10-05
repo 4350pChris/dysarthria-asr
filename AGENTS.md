@@ -12,3 +12,10 @@
 
 - Before promoting a new Whisper model, benchmark beam sizes 1, 3, and 5 on the fixed held-out test split with the selected VAD settings. The best beam size can change after more training data or different training settings.
 - For the current v7 model with tolerant VAD, use `beam_size=1`. It matched beam 3 and 5 on WER and had the best CER.
+
+## Transcript review
+
+- Before changing the review prompt or model in `backend/src/transcript_review.py`, re-run `alignment-tools/review-eval/run_eval.py` on the 147-case corpus. Restraint matters more than recall: score the harmful and critical-harmful rates alongside exact match.
+- Keep the prompt files in `alignment-tools/review-eval/prompts/`. The production prompt is currently `v4-no-reconstruction`.
+- Text review calls OpenRouter with `qwen/qwen3-235b-a22b-2507`. Keep `OPENROUTER_API_KEY` in the server environment, never in Git.
+- Never commit `local-cases.jsonl` or `local-cases.reviewed.jsonl`. They contain private transcripts; both are gitignored.

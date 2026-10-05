@@ -1,37 +1,4 @@
 services:
-  ollama:
-    image: ollama/ollama:0.35.0
-    environment:
-      OLLAMA_KEEP_ALIVE: '-1'
-    ports:
-      - '127.0.0.1:11434:11434'
-    volumes:
-      - ollama-data:/root/.ollama
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'ollama', 'list']
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
-  ollama-model:
-    image: ollama/ollama:0.35.0
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-      TEXT_REVIEW_MODEL: ${TEXT_REVIEW_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
-      TEXT_REVIEW_THREADS: ${TEXT_REVIEW_THREADS:-4}
-    entrypoint: ['/bin/sh', '-ec']
-    command:
-      - |
-        ollama pull "$$TEXT_REVIEW_MODEL"
-        printf 'FROM %s\nPARAMETER num_thread %s\n' "$$TEXT_REVIEW_MODEL" "$$TEXT_REVIEW_THREADS" > /tmp/Modelfile
-        ollama create "$$TEXT_REVIEW_MODEL" -f /tmp/Modelfile
-        ollama run "$$TEXT_REVIEW_MODEL" ""
-    depends_on:
-      ollama:
-        condition: service_healthy
-
   umami:
     image: docker.umami.is/umami-software/umami:postgresql-latest
     ports:
@@ -72,5 +39,4 @@ services:
       retries: 5
 
 volumes:
-  ollama-data:
   umami-db-data:

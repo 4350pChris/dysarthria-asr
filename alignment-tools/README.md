@@ -94,6 +94,49 @@ uv run python benchmark_asr.py data/datasets/current \
 Use this comparison before changing `condition_on_previous_text` in the
 backend. Its best value can change with the model and training data.
 
+## Trial Gemini audio transcription through OpenRouter
+
+This standalone benchmark does not change the app. It sends only audio and a
+verbatim German transcription prompt, never reference labels. Audio is private:
+use `--send-audio` only with permission to share it with OpenRouter and its
+provider. Requests disallow providers that collect data; this is not a guarantee
+of zero retention. Check the selected provider's policies.
+
+Start with a dry run (no key, uploads, or charges):
+
+```sh
+python benchmark_openrouter_audio.py data/datasets/current --limit 5
+```
+
+Set `OPENROUTER_API_KEY` securely in your shell environment, then run:
+
+```sh
+python benchmark_openrouter_audio.py data/datasets/current \
+  --limit 5 --send-audio \
+  --output-dir runs/reports/gemini-flash-audio-trial-01
+```
+
+The default model is `google/gemini-2.5-flash`. The trial selects the first five
+clips from the fixed test split, accepts WAV clips up to 60 seconds/10 MB, and
+makes one paid request per clip with no automatic retries. A five-clip trial is
+only a smoke test, not evidence for promotion. Set a spending limit on the
+OpenRouter key; the clip limit is not a dollar cap.
+
+Results are saved in the ignored `runs/reports/` directory. Each successful
+request is flushed to `details.csv`; errors stop the run, preserving completed
+rows. Use a new output directory for each run to avoid overwriting results.
+`summary.json` contains aggregate WER/CER, request time (including upload),
+usage-reported cost when available, and optional baseline metrics. Check billed
+usage in OpenRouter too. Add `--baseline path/to/whisper/details.csv` to compare
+only the exact same clips and references; a report with missing or duplicate
+predictions is rejected. Do not compare a five-clip score to a full-split score.
+
+Offline checks:
+
+```sh
+python -m unittest test_benchmark_openrouter_audio
+```
+
 ## Train and deploy Whisper on Modal
 
 Build `data/datasets/current`. The command downloads the reviewed app export

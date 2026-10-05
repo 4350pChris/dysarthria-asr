@@ -66,22 +66,13 @@ cd app
 NUXT_PUBLIC_API_BASE=https://example.com pnpm dev
 ```
 
-### Local text review
+### Text review
 
-Start the text review model from the project root. Docker runs Ollama and downloads
-the model. You do not need to install Ollama on the host:
-
-```sh
-docker compose up -d ollama-model
-docker compose logs -f ollama-model
-```
-
-Wait for the model task to exit with code 0. It downloads and loads the model.
-Press Ctrl+C to stop the log display.
-The API uses the local model service with its default settings.
-The model files stay in a Docker volume after a restart.
-See [the backend README](backend/README.md#local-text-review) for settings
-and checks. The default CPU setup can be too slow for text review.
+The backend marks possible recognition errors using OpenRouter. Set
+`OPENROUTER_API_KEY` in the environment before starting the API. The default
+model is `qwen/qwen3-235b-a22b-2507`. The request contains the displayed text.
+See [the backend README](backend/README.md#text-review) for settings and checks,
+and `alignment-tools/review-eval/` for the scoring corpus and prompt variants.
 
 ### Local usage analytics
 
