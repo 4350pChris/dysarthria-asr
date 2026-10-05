@@ -206,7 +206,7 @@ uv run python benchmark_asr.py data/datasets/current \
   --split data/datasets/current/split.csv \
   --vad-mode tolerant --beam-size 1 \
   --model live=models/deployed/$RUN \
-  --model previous=models/deployed/whisper-small-lora-current-v3 \
+  --model previous=dysarthria-asr/amsel-small-ct2@v1 \
   --output-dir runs/reports/$RUN-heldout
 ```
 
