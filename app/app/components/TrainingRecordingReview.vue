@@ -21,12 +21,13 @@ const emit = defineEmits<{
   />
   <UAlert
     v-if="props.audioQuality?.issues.length"
+    class="my-4"
     :color="canSave ? 'warning' : 'error'"
     icon="i-lucide-circle-alert"
     title="Aufnahme prüfen"
     :description="props.audioQuality.issues.map(issue => issue.message).join(' ')"
   />
-  <div class="grid grid-cols-2 gap-3">
+  <div class="space-y-3">
     <UButton
       block
       color="neutral"
