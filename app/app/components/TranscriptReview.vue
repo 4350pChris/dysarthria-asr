@@ -4,6 +4,13 @@ type Issue = { original: string, replacement: string, start: number, number: num
 const props = defineProps<{ text: string, audioId?: string, disabled?: boolean, inactive?: boolean }>()
 const emit = defineEmits<{ updateText: [text: string], active: [active: boolean] }>()
 const commands = useSpeechCommands()
+const { track, control } = useUsageAnalytics()
+
+function reviewActivation(action: string, event: Event | UsageInput | undefined, reason = '') {
+  const input = usageInput(event)
+  control(`review_${action}`, input, reviewOpen.value ? 'review' : 'result', reason)
+  if (!reason) track('review_action', { action, input_method: input })
+}
 const issues = ref<Issue[]>([])
 const current = ref<Issue>()
 const reviewOpen = ref(false)
@@ -100,8 +107,10 @@ function review() {
   } else void check()
 }
 
-function keep() {
-  if (!current.value || props.disabled || actionLocked.value) return
+function keep(event?: Event | UsageInput) {
+  const reason = props.disabled ? 'busy' : actionLocked.value ? 'cooldown' : !current.value ? 'wrong_state' : ''
+  reviewActivation('keep', event, reason)
+  if (reason) return
   actionLocked.value = true
   undo.value = { before: props.text, after: props.text, issues: [...issues.value], current: current.value }
   issues.value = issues.value.filter(issue => issue !== current.value)
@@ -109,10 +118,17 @@ function keep() {
   status.value = 'Original behalten.'
 }
 
-function apply() {
+function apply(event?: Event | UsageInput) {
   const issue = current.value
-  if (!issue?.replacement || props.disabled || actionLocked.value) return
-  if (props.text !== snapshot || props.text.slice(issue.start, issue.start + issue.original.length) !== issue.original) return
+  const reason = props.disabled
+    ? 'busy'
+    : actionLocked.value
+      ? 'cooldown'
+      : !issue?.replacement || props.text !== snapshot || props.text.slice(issue.start, issue.start + issue.original.length) !== issue.original
+          ? 'wrong_state'
+          : ''
+  reviewActivation('apply', event, reason)
+  if (reason || !issue) return
   const text = props.text.slice(0, issue.start) + issue.replacement + props.text.slice(issue.start + issue.original.length)
   actionLocked.value = true
   undo.value = { before: props.text, after: text, issues: [...issues.value], current: issue }
@@ -125,8 +141,10 @@ function apply() {
   status.value = 'Änderung übernommen.'
 }
 
-function restore() {
-  if (!undo.value || props.text !== undo.value.after || props.disabled) return
+function restore(event?: Event | UsageInput) {
+  const reason = props.disabled ? 'busy' : !undo.value || props.text !== undo.value.after ? 'wrong_state' : ''
+  reviewActivation('undo', event, reason)
+  if (reason || !undo.value) return
   const text = undo.value.before
   issues.value = undo.value.issues
   current.value = reviewOpen.value ? undo.value.current : undefined
@@ -138,9 +156,9 @@ function restore() {
 }
 
 useSpeechCommand({ id: 'review', label: 'Text prüfen', phrases: ['prüfen', 'text prüfen'], enabled: () => !props.disabled && !props.inactive && !reviewOpen.value, handler: review })
-useSpeechCommand({ id: 'accept-correction', label: 'Übernehmen', phrases: ['übernehmen'], enabled: () => Boolean(current.value?.replacement) && !props.disabled && !actionLocked.value, handler: apply })
-useSpeechCommand({ id: 'keep-correction', label: 'Behalten', phrases: ['behalten'], enabled: () => Boolean(current.value) && !props.disabled && !actionLocked.value, handler: keep })
-useSpeechCommand({ id: 'undo-correction', label: 'Rückgängig', phrases: ['rückgängig'], enabled: () => Boolean(undo.value) && !props.disabled && !props.inactive, handler: restore })
+useSpeechCommand({ id: 'accept-correction', label: 'Übernehmen', phrases: ['übernehmen'], enabled: () => Boolean(current.value?.replacement) && !props.disabled && !actionLocked.value, handler: () => apply('voice') })
+useSpeechCommand({ id: 'keep-correction', label: 'Behalten', phrases: ['behalten'], enabled: () => Boolean(current.value) && !props.disabled && !actionLocked.value, handler: () => keep('voice') })
+useSpeechCommand({ id: 'undo-correction', label: 'Rückgängig', phrases: ['rückgängig'], enabled: () => Boolean(undo.value) && !props.disabled && !props.inactive, handler: () => restore('voice') })
 function closeReview() {
   reviewOpen.value = false
   status.value = issues.value.length ? `${issues.value.length} Stellen noch zu prüfen. Sage „Text prüfen“.` : 'Prüfung beendet. Fehler können trotzdem vorkommen.'

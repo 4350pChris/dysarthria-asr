@@ -1,11 +1,18 @@
 <script setup lang="ts">
 const props = defineProps<{ disabled: boolean }>()
 const emit = defineEmits<{ reset: [], active: [active: boolean] }>()
+const { track } = useUsageAnalytics()
 const open = ref(false)
-watch(open, value => emit('active', value), { flush: 'sync' })
+let confirmed = false
+watch(open, (value) => {
+  emit('active', value)
+  if (value) confirmed = false
+  else track('text_reset', { outcome: confirmed ? 'confirmed' : 'cancelled' })
+}, { flush: 'sync' })
 
 function reset() {
   if (props.disabled) return
+  confirmed = true
   open.value = false
   emit('reset')
 }

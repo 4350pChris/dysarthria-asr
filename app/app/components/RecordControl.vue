@@ -8,10 +8,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  start: []
-  stop: []
+  start: [input: UsageInput]
+  stop: [input: UsageInput]
 }>()
 
+const { control } = useUsageAnalytics()
 const disabledTimer = refAutoReset(false, 2_000)
 const { isTargetReady } = useStartupLogoTransition()
 const state = computed(() => {
@@ -35,15 +36,17 @@ const copy = computed(() => ({
   }
 })[state.value])
 
-function toggleRecording() {
+function toggleRecording(event?: Event) {
+  const input = usageInput(event)
   if (props.isBusy || disabledTimer.value) {
+    control('record_toggle', input, state.value, props.isBusy ? 'busy' : 'cooldown')
     return
   }
   disabledTimer.value = true
   if (!props.isRecording) {
-    emit('start')
+    emit('start', input)
   } else {
-    emit('stop')
+    emit('stop', input)
   }
 }
 </script>

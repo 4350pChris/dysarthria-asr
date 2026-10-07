@@ -14,6 +14,7 @@ const resetActive = ref(false)
 const reviewActive = computed(() => resultReviewActive.value || resetActive.value)
 const speech = useSpeechSession(mode, autoStopOnSilence)
 const speechCommands = useSpeechCommands()
+const { control } = useUsageAnalytics()
 const recognizedEmojis = ref<Array<{ name: string, value: string }>>([])
 const recentEmojis = computed(() =>
   [...speech.emojiHistory.value, ...recognizedEmojis.value]
@@ -25,8 +26,8 @@ watch(mode, async (value) => {
   if (value !== 'emoji' || recognizedEmojis.value.length) return
   recognizedEmojis.value = await $fetch<Array<{ name: string, value: string }>>('/api/emojis/recent').catch(() => [])
 }, { immediate: true })
-useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los', 'weiter'], enabled: () => !reviewActive.value, handler: startRecording })
-useSpeechCommand({ id: 'stop-recording', label: 'Pause', phrases: ['pause', 'stopp', 'stop', 'anhalten', 'fertig'], enabled: () => !reviewActive.value, handler: speech.stopRecording })
+useSpeechCommand({ id: 'record', label: 'Aufnehmen', phrases: ['aufnehmen', 'aufnahme', 'start', 'los', 'weiter'], enabled: () => !reviewActive.value, handler: () => startRecording('voice') })
+useSpeechCommand({ id: 'stop-recording', label: 'Pause', phrases: ['pause', 'stopp', 'stop', 'anhalten', 'fertig'], enabled: () => !reviewActive.value, handler: () => speech.stopRecording('voice') })
 useSpeechCommand({ id: 'speak', label: 'Vorlesen', phrases: ['vorlesen', 'sagen', 'sprich', 'sprechen'], enabled: () => !reviewActive.value, handler: speech.speakSelected })
 useSpeechCommand({ id: 'copy', label: 'Kopieren', phrases: ['kopieren', 'kopie', 'abschreiben'], enabled: () => !reviewActive.value, handler: speech.copySelected })
 useSpeechCommand({ id: 'share-text', label: 'Text teilen', phrases: ['teilen', 'senden', 'schicken', 'whatsapp', 'verschicken', 'text teilen'], enabled: () => !reviewActive.value, handler: speech.shareText })
@@ -41,11 +42,15 @@ function setMode(nextMode: SpeechMode) {
   speech.status.value = `${modeOptions.find(option => option.value === nextMode)?.label}modus.`
 }
 
-function startRecording() {
-  if (speech.isRecording.value || speech.isBusy.value || reviewActive.value) return
+function startRecording(input: UsageInput = 'unknown') {
+  if (speech.isRecording.value || speech.isBusy.value || reviewActive.value) {
+    control('record_toggle', input, speech.isRecording.value ? 'recording' : 'busy',
+      reviewActive.value ? 'modal_active' : speech.isBusy.value ? 'busy' : 'wrong_state')
+    return
+  }
   speechCommands.speak('')
   const resume = speechCommands.pause()
-  void speech.startRecording().catch(() => {
+  void speech.startRecording(input).catch(() => {
     speech.status.value = 'Aufnahme nicht möglich.'
   }).finally(() => {
     resume()

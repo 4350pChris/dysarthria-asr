@@ -7,11 +7,14 @@ import FreeTextResult from '~/components/FreeTextResult.vue'
 type Command = { id: string, enabled: () => boolean, handler: () => void | Promise<void> }
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
+  track: vi.fn(),
+  control: vi.fn(),
   commands: [] as Command[],
   speak: vi.fn(),
   pause: vi.fn(),
   resume: vi.fn()
 }))
+mockNuxtImport('useUsageAnalytics', () => () => ({ track: mocks.track, control: mocks.control }))
 mockNuxtImport('useSpeechCommands', () => () => ({
   pause: mocks.pause,
   speak: mocks.speak
@@ -20,6 +23,8 @@ mockNuxtImport('useSpeechCommand', () => (command: Command) => {
   mocks.commands.push(command)
 })
 beforeEach(() => {
+  mocks.track.mockReset()
+  mocks.control.mockReset()
   mocks.speak.mockReset()
   mocks.commands = []
   mocks.fetch.mockReset()
@@ -65,6 +70,8 @@ it('marks the exact phrase, applies only on approval, shifts later marks, and un
   button('Übernehmen').click()
   command('accept-correction').handler()
   expect(view.emitted('updateText')).toHaveLength(1)
+  expect(mocks.track).toHaveBeenCalledWith('review_action', { action: 'apply', input_method: 'keyboard_or_assistive' })
+  expect(mocks.control).toHaveBeenCalledWith('review_apply', 'voice', 'review', 'cooldown')
   const corrected = '🤍 Ich hatte mein Probewohnen. Danach trank ich Kaffe.'
   expect(view.emitted('updateText')!.at(-1)).toEqual([corrected])
   await view.setProps({ text: corrected })
@@ -74,6 +81,7 @@ it('marks the exact phrase, applies only on approval, shifts later marks, and un
   button('Rückgängig').click()
   expect(view.emitted('updateText')!.at(-1)).toEqual([original])
   await view.setProps({ text: original })
+  expect(mocks.track).toHaveBeenCalledWith('review_action', { action: 'undo', input_method: 'keyboard_or_assistive' })
   expect(dialog().textContent).toContain('Stelle 1 von 2')
   button('Übernehmen').click()
   await view.setProps({ text: corrected })

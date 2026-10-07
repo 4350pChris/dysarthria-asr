@@ -3,7 +3,8 @@ type AudioRecordingOptions = {
   autoStopOnSilence?: Ref<boolean>
   withAudioLevel?: boolean
   onStream?: (stream: MediaStream) => void
-  onStopping?: () => void
+  onStarted?: () => void
+  onStopping?: (reason: string) => void
 }
 
 export function useAudioRecording(options: AudioRecordingOptions) {
@@ -12,7 +13,7 @@ export function useAudioRecording(options: AudioRecordingOptions) {
   const chunks = ref<Blob[]>([])
   const isRecording = ref(false)
   const audioLevel = ref(0)
-  const silenceDetection = useSilenceDetection(stop, () => options.autoStopOnSilence?.value ?? true)
+  const silenceDetection = useSilenceDetection(() => stop('silence'), () => options.autoStopOnSilence?.value ?? true)
   let levelContext: AudioContext | undefined
   let levelSource: MediaStreamAudioSourceNode | undefined
   let levelFrame = 0
@@ -78,13 +79,14 @@ export function useAudioRecording(options: AudioRecordingOptions) {
     activeRecorder.start()
     silenceDetection.start(activeStream)
     isRecording.value = true
+    options.onStarted?.()
 
     return recordingDone
   }
 
-  function stop() {
+  function stop(reason = 'manual') {
     if (recorder.value?.state !== 'recording') return
-    options.onStopping?.()
+    options.onStopping?.(reason)
     recorder.value.stop()
   }
 

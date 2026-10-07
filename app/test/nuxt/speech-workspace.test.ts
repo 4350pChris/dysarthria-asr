@@ -14,7 +14,8 @@ function makeSession() {
   }
 }
 
-const mocks = vi.hoisted(() => ({ session: undefined as ReturnType<typeof makeSession> | undefined }))
+const mocks = vi.hoisted(() => ({ session: undefined as ReturnType<typeof makeSession> | undefined, track: vi.fn(), control: vi.fn() }))
+mockNuxtImport('useUsageAnalytics', () => () => ({ track: mocks.track, control: mocks.control }))
 mockNuxtImport('useSpeechSession', () => () => mocks.session)
 mockNuxtImport('useSpeechCommand', () => () => {})
 mockNuxtImport('useSpeechCommands', () => () => ({
@@ -70,6 +71,8 @@ it('keeps the recording control stationary and offers continuation', async () =>
     await reset.trigger('click')
     await view.findAll('button').find(button => button.text() === 'Text verwerfen')!.trigger('click')
     expect(mocks.session.resetText).toHaveBeenCalledOnce()
+    expect(mocks.track).toHaveBeenCalledWith('text_reset', { outcome: 'cancelled' })
+    expect(mocks.track).toHaveBeenCalledWith('text_reset', { outcome: 'confirmed' })
   } finally {
     view.unmount()
     if (oldScroll) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', oldScroll)

@@ -5,7 +5,7 @@ import { useSpeechSession } from '~/composables/useSpeechSession'
 import type { TranscriptionResult } from '~/types/speech'
 
 mockNuxtImport('useSpeechCommands', () => () => ({ speak: vi.fn() }))
-mockNuxtImport('useUsageAnalytics', () => () => ({ track: vi.fn() }))
+mockNuxtImport('useUsageAnalytics', () => () => ({ track: vi.fn(), control: vi.fn() }))
 
 it('saves the latest correction after an in-flight save and permits retry after failure', async () => {
   let speech!: ReturnType<typeof useSpeechSession>

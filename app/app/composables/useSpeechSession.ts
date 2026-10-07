@@ -7,7 +7,7 @@ type SelectedEmoji = { name: string, value: string }
 
 export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<boolean>) {
   const speechCommands = useSpeechCommands()
-  const { track } = useUsageAnalytics()
+  const { track, control } = useUsageAnalytics()
   const backendAvailable = useBackendAvailability()
   const offline = useOfflineTranscription()
   onMounted(() => {
@@ -26,6 +26,13 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
   const audioId = computed(() => isCombinedText.value ? undefined : result.value?.audio_id)
   let previousText = ''
   let lastActivation = -Infinity
+  let startRequestedAt = 0
+  let recordingStartedAt = 0
+  let stoppedAt = 0
+  let readyAt: number | undefined
+  let previousStopReason = 'unknown'
+  let recordingTrigger: UsageInput = 'unknown'
+  let continuingText = false
 
   function acceptActivation() {
     const now = Date.now()
@@ -58,7 +65,25 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
       isBusy.value = false
       if (mode.value === 'text' && backendAvailable.value) void startLiveTranscription(stream)
     },
-    onStopping: () => {
+    onStarted: () => {
+      const now = Date.now()
+      recordingStartedAt = now
+      track('recording_started', {
+        mode: mode.value, trigger: recordingTrigger, continuing_text: continuingText,
+        auto_stop_enabled: autoStopOnSilence.value, start_latency_ms: now - startRequestedAt
+      })
+      if (readyAt !== undefined) {
+        track('recording_resumed', {
+          mode: mode.value, previous_stop_reason: previousStopReason,
+          ready_to_restart_ms: Math.max(0, startRequestedAt - readyAt)
+        })
+        readyAt = undefined
+      }
+    },
+    onStopping: (reason) => {
+      stoppedAt = Date.now()
+      previousStopReason = reason
+      track('recording_stopped', { mode: mode.value, reason, duration_ms: stoppedAt - recordingStartedAt })
       stopLiveTranscription()
       isBusy.value = true
       status.value = 'Text wird erkannt…'
@@ -101,10 +126,25 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     isCombinedText.value = false
     hasSaved.value = false
     status.value = ''
+    readyAt = undefined
   }
 
-  async function startRecording() {
-    if (isRecording.value || isBusy.value || !acceptActivation()) return
+  function recordingActivation(input: UsageInput, starting: boolean) {
+    const state = isRecording.value ? 'recording' : isBusy.value ? 'busy' : 'idle'
+    const reason = isBusy.value
+      ? 'busy'
+      : isRecording.value === starting
+        ? 'wrong_state'
+        : !acceptActivation() ? 'cooldown' : ''
+    control('record_toggle', input, state, reason)
+    return !reason
+  }
+
+  async function startRecording(input: UsageInput = 'unknown') {
+    if (!recordingActivation(input, true)) return
+    startRequestedAt = Date.now()
+    recordingTrigger = input
+    continuingText = mode.value === 'text' && Boolean(freeText.value)
     previousText = mode.value === 'text' ? freeText.value : ''
     if (mode.value !== 'text') {
       result.value = undefined
@@ -115,9 +155,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     isBusy.value = true
     status.value = 'Aufnahme läuft.'
     try {
-      track('recording_started', { mode: mode.value })
       await startAudioRecording()
-    } catch {
+    } catch (error) {
+      track('recording_start_failed', { mode: mode.value, trigger: input, error_code: usageErrorCode(error) })
       stopLiveTranscription()
       freeText.value = previousText
       status.value = 'Aufnahme nicht möglich.'
@@ -126,14 +166,16 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
     }
   }
 
-  function stopRecording() {
-    if (!isRecording.value || !acceptActivation()) return
-    stopAudioRecording()
+  function stopRecording(input: UsageInput = 'unknown') {
+    if (!recordingActivation(input, false)) return
+    stopAudioRecording(input === 'voice' ? 'voice_command' : 'manual')
   }
 
   async function transcribe(blob: Blob) {
+    const startedAt = Date.now()
+    const available = backendAvailable.value
+    const engine = available ? 'online' : 'offline'
     try {
-      const available = backendAvailable.value
       if (!available) {
         await enqueueRecording(blob)
       }
@@ -161,9 +203,9 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
               : 'Emoji nicht erkannt. Bitte sage den Namen des Emojis.'
             : 'Text erkannt.'
       track('transcription_completed', {
-        mode: mode.value,
+        mode: mode.value, engine, stop_to_result_ms: Date.now() - (stoppedAt || startedAt),
         outcome: mode.value === 'text'
-          ? 'text_recognized'
+          ? (transcription.emoji_text.trim() ? 'text_recognized' : 'no_result')
           : mode.value === 'math'
             ? (transcription.math_text ? 'result_available' : 'no_result')
             : mode.value === 'emoji'
@@ -174,9 +216,10 @@ export function useSpeechSession(mode: Ref<SpeechMode>, autoStopOnSilence: Ref<b
       if (mode.value === 'text') freeText.value = previousText
       status.value
         = error instanceof Error ? error.message : 'Erkennung fehlgeschlagen.'
-      track('transcription_failed', { mode: mode.value })
+      track('transcription_failed', { mode: mode.value, engine, error_code: usageErrorCode(error), elapsed_ms: Date.now() - startedAt })
     } finally {
       isBusy.value = false
+      readyAt = Date.now()
     }
   }
 
