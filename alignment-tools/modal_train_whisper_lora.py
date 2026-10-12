@@ -24,6 +24,8 @@ class Item:
 
 
 def read_split() -> tuple[list[Item], list[Item]]:
+    import soundfile as sf
+
     rows = read_split_rows()
     items_by_split: dict[str, list[Item]] = {"train": [], "validation": []}
     for row in rows:
@@ -32,8 +34,12 @@ def read_split() -> tuple[list[Item], list[Item]]:
             continue
         if split not in items_by_split:
             raise ValueError(f"Unknown split: {split}")
+        audio_path = REMOTE_DATASET_DIR / row["audio_file"]
+        info = sf.info(audio_path)
+        if info.samplerate != 16_000 or not 0 < info.frames <= 30 * info.samplerate:
+            raise ValueError(f"Whisper requires non-empty 16 kHz clips of at most 30 seconds: {audio_path}")
         items_by_split[split].append(
-            Item(REMOTE_DATASET_DIR / row["audio_file"], row["transcript"].strip(), row["audio_id"])
+            Item(audio_path, row["transcript"].strip(), row["audio_id"])
         )
     if not items_by_split["train"] or not items_by_split["validation"]:
         raise ValueError("Split must contain training and validation clips.")

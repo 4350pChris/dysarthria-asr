@@ -148,10 +148,27 @@ uv run python prepare_combined_training_data.py \
   --replace
 ```
 
-The builder assigns every normalized transcript to a stable 80% training, 10%
+The builder converts audio to 16 kHz mono WAV. For recordings longer than 25
+seconds, it uses the saved transcript with `Qwen/Qwen3-ForcedAligner-0.6B`
+to get word times, then cuts clips of at most 25 seconds with matching text.
+No alignment CSV or manual clip review is required. The first long recording
+loads the model and downloads its weights if needed. It uses CUDA when
+available and CPU otherwise; CPU alignment can be slow.
+
+Recordings longer than five minutes, or with missing words or invalid word
+times, are excluded. `excluded-recordings.csv` gives each recording ID and
+the reason. Model loading or other processing errors stop the build and keep
+the previous dataset. The saved transcript must match the spoken words;
+word alignment cannot verify that the transcript is correct.
+
+The builder assigns every full normalized transcript to a stable 80% training, 10%
 validation, or 10% test group. New recordings of the same text always use the
-same group. The validation group selects the checkpoint; the test group is for
+same group. All clips from one recording keep that group. The validation group selects the checkpoint; the test group is for
 the final benchmark only.
+
+Whisper training checks audio lengths before loading the model and rejects
+clips longer than 30 seconds. It does not silently train on shortened audio
+with a full transcript.
 
 The default model is `openai/whisper-base`. Use `--model-name` to train another
 Whisper model. Start the remote function in detached mode with a new run name:
