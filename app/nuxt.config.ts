@@ -41,6 +41,9 @@ export default defineNuxtConfig({
   ...(!isVitest
     ? { pwa: {
         registerType: 'prompt',
+        workbox: {
+          globPatterns: ['**/*.{js,css,html}']
+        },
         manifest: {
           id: '/',
           name: 'Sprechen',
