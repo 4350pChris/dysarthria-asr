@@ -20,10 +20,23 @@ from .tatoeba import ensure_prompts
 from .training_prompts import import_prompts
 
 
+def log_access_request(record: logging.LogRecord) -> bool:
+    args = record.args
+    return not (
+        isinstance(args, tuple)
+        and len(args) == 5
+        and args[1] == "GET"
+        and isinstance(args[2], str)
+        and args[2].partition("?")[0] == "/api/health"
+        and args[4] == 200
+    )
+
+
 def configure_logging() -> None:
     level = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(level=level)
     logging.getLogger("src").setLevel(level)
+    logging.getLogger("uvicorn.access").addFilter(log_access_request)
 
 
 @asynccontextmanager
